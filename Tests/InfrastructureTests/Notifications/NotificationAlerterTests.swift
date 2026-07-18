@@ -47,7 +47,6 @@ struct NotificationAlerterTests {
         // Then - returns correct provider names
         #expect(alerter.providerDisplayName(for: "claude") == "Claude")
         #expect(alerter.providerDisplayName(for: "codex") == "Codex")
-        #expect(alerter.providerDisplayName(for: "alibaba") == "Alibaba")
     }
 
     @Test

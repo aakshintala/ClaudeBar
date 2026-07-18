@@ -12,7 +12,6 @@ public final class JSONSettingsRepository:
     BedrockSettingsRepository,
     ClaudeSettingsRepository,
     CodexSettingsRepository,
-    AlibabaSettingsRepository,
     HookSettingsRepository,
     @unchecked Sendable
 {
@@ -269,54 +268,6 @@ public final class JSONSettingsRepository:
         } else {
             store.write(value: nil, key: "bedrock.dailyBudget")
         }
-    }
-
-    // MARK: - AlibabaSettingsRepository
-
-    public func alibabaRegion() -> AlibabaRegion {
-        guard let rawValue: String = store.read(key: "alibaba.region") else {
-            return .international
-        }
-        return AlibabaRegion(rawValue: rawValue) ?? .international
-    }
-
-    public func setAlibabaRegion(_ region: AlibabaRegion) {
-        store.write(value: region.rawValue, key: "alibaba.region")
-    }
-
-    public func alibabaCookieSource() -> AlibabaCookieSource {
-        guard let rawValue: String = store.read(key: "alibaba.cookieSource") else {
-            return .auto
-        }
-        return AlibabaCookieSource(rawValue: rawValue) ?? .auto
-    }
-
-    public func setAlibabaCookieSource(_ source: AlibabaCookieSource) {
-        store.write(value: source.rawValue, key: "alibaba.cookieSource")
-    }
-
-    public func saveAlibabaManualCookie(_ cookie: String) {
-        credentials.set(cookie, forKey: "com.claudebar.credentials.alibaba-manual-cookie")
-    }
-
-    public func getAlibabaManualCookie() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.alibaba-manual-cookie")
-    }
-
-    public func saveAlibabaApiKey(_ key: String) {
-        credentials.set(key, forKey: "com.claudebar.credentials.alibaba-api-key")
-    }
-
-    public func getAlibabaApiKey() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.alibaba-api-key")
-    }
-
-    public func deleteAlibabaApiKey() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.alibaba-api-key")
-    }
-
-    public func hasAlibabaApiKey() -> Bool {
-        credentials.object(forKey: "com.claudebar.credentials.alibaba-api-key") != nil
     }
 
     // MARK: - HookSettingsRepository

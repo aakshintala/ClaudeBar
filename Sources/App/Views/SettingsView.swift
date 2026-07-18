@@ -30,7 +30,6 @@ struct SettingsContentView: View {
         static let claude = "claude"
         static let codex = "codex"
         static let bedrock = "bedrock"
-        static let alibaba = "alibaba"
     }
 
     private var isClaudeEnabled: Bool {
@@ -43,10 +42,6 @@ struct SettingsContentView: View {
 
     private var isBedrockEnabled: Bool {
         monitor.provider(for: ProviderID.bedrock)?.isEnabled ?? false
-    }
-
-    private var isAlibabaEnabled: Bool {
-        monitor.provider(for: ProviderID.alibaba)?.isEnabled ?? false
     }
 
     /// Extension providers that are enabled and have config fields declared in their manifest.
@@ -86,10 +81,6 @@ struct SettingsContentView: View {
                     }
                     if isCodexEnabled {
                         CodexConfigCard(monitor: monitor)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    if isAlibabaEnabled {
-                        AlibabaConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if isBedrockEnabled {

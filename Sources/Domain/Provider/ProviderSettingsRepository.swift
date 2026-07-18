@@ -83,40 +83,6 @@ public protocol CodexSettingsRepository: ProviderSettingsRepository {
     func setCodexProbeMode(_ mode: CodexProbeMode)
 }
 
-/// Alibaba Coding Plan-specific settings repository, extending base ProviderSettingsRepository.
-/// Stores region, cookie source, manual cookie, and API key for Alibaba Coding Plan quota monitoring.
-public protocol AlibabaSettingsRepository: ProviderSettingsRepository {
-    /// Gets the API region (international or chinaMainland, default: international)
-    func alibabaRegion() -> AlibabaRegion
-
-    /// Sets the API region
-    func setAlibabaRegion(_ region: AlibabaRegion)
-
-    /// Gets the cookie source (auto from browser or manual)
-    func alibabaCookieSource() -> AlibabaCookieSource
-
-    /// Sets the cookie source
-    func setAlibabaCookieSource(_ source: AlibabaCookieSource)
-
-    /// Saves a manually entered cookie string
-    func saveAlibabaManualCookie(_ cookie: String)
-
-    /// Retrieves the manually entered cookie string
-    func getAlibabaManualCookie() -> String?
-
-    /// Saves the Alibaba API key
-    func saveAlibabaApiKey(_ key: String)
-
-    /// Retrieves the Alibaba API key
-    func getAlibabaApiKey() -> String?
-
-    /// Deletes the Alibaba API key
-    func deleteAlibabaApiKey()
-
-    /// Checks if an Alibaba API key is saved
-    func hasAlibabaApiKey() -> Bool
-}
-
 // MARK: - Default Implementation
 
 public extension ProviderSettingsRepository {

@@ -22,14 +22,6 @@ struct ProbeErrorTests {
     }
 
     @Test
-    func `sessionExpired with alibaba hint shows alibaba message`() {
-        let error = ProbeError.sessionExpired(hint: "Re-authenticate in Alibaba Cloud console.")
-        let description = error.localizedDescription
-        #expect(description.contains("Session expired"))
-        #expect(description.contains("Alibaba"))
-    }
-
-    @Test
     func `sessionExpired equality ignores hint`() {
         let error1 = ProbeError.sessionExpired()
         let error2 = ProbeError.sessionExpired(hint: "some hint")

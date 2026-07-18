@@ -78,10 +78,6 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
-            AlibabaProvider(
-                probe: AlibabaUsageProbe(settingsRepository: settingsRepository, cookieProvider: AlibabaBrowserCookieProvider()),
-                settingsRepository: settingsRepository
-            ),
             OpenCodeProvider(
                 probe: OpenCodeUsageProbe(),
                 settingsRepository: settingsRepository

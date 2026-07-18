@@ -85,7 +85,6 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
         case "claude": return "Claude"
         case "codex": return "Codex"
         case "bedrock": return "AWS Bedrock"
-        case "alibaba": return "Alibaba"
         case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized
         }

@@ -57,7 +57,6 @@ let project = Project(
                 .external(name: "AWSSDKIdentity"),
                 .external(name: "AWSSSO"),
                 .external(name: "AWSSSOOIDC"),
-                .external(name: "SweetCookieKit"),
             ],
             settings: .settings(
                 base: [
