@@ -610,24 +610,11 @@ extension AppTheme {
             return coralAccent(for: scheme)
         case "codex":
             return tealBright(for: scheme)
-        case "copilot":
-            return scheme == .dark
-                ? Color(red: 0.38, green: 0.55, blue: 0.93)
-                : Color(red: 0.26, green: 0.43, blue: 0.82)
-        case "zai":
-            return scheme == .dark
-                ? Color(red: 0.35, green: 0.60, blue: 1.0)
-                : Color(red: 0.23, green: 0.51, blue: 0.96)
         case "bedrock":
             // AWS orange color
             return scheme == .dark
                 ? Color(red: 1.0, green: 0.60, blue: 0.20)
                 : Color(red: 0.92, green: 0.47, blue: 0.07)
-        case "minimax":
-            // MiniMax brand pink-orange
-            return scheme == .dark
-                ? Color(red: 0.91, green: 0.27, blue: 0.42)
-                : Color(red: 0.82, green: 0.20, blue: 0.35)
         case "alibaba":
             // Alibaba Cloud orange
             return scheme == .dark
@@ -654,24 +641,11 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.25, green: 0.65, blue: 0.85)
                 : Color(red: 0.12, green: 0.52, blue: 0.72)
-        case "copilot":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.55, green: 0.40, blue: 0.90)
-                : Color(red: 0.45, green: 0.30, blue: 0.80)
-        case "zai":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.30, green: 0.45, blue: 0.85)
-                : Color(red: 0.20, green: 0.35, blue: 0.75)
         case "bedrock":
             // AWS orange gradient
             secondaryColor = scheme == .dark
                 ? Color(red: 0.85, green: 0.40, blue: 0.15)
                 : Color(red: 0.75, green: 0.30, blue: 0.05)
-        case "minimax":
-            // MiniMax pink-to-orange gradient
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.96, green: 0.53, blue: 0.24)
-                : Color(red: 0.86, green: 0.43, blue: 0.14)
         case "alibaba":
             // Alibaba orange-to-red gradient
             secondaryColor = scheme == .dark
@@ -697,10 +671,7 @@ extension AppTheme {
         switch providerId {
         case "claude": return "ClaudeIcon"
         case "codex": return "CodexIcon"
-        case "copilot": return "CopilotIcon"
-        case "zai": return "ZaiIcon"
         case "bedrock": return "BedrockIcon"
-        case "minimax": return "MiniMaxIcon"
         case "alibaba": return "AlibabaIcon"
         case "opencode-go": return "OpenCodeIcon"
         default: return "QuestionIcon"
@@ -712,10 +683,7 @@ extension AppTheme {
         switch providerId {
         case "claude": return "Claude"
         case "codex": return "Codex"
-        case "copilot": return "GitHub Copilot"
-        case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
-        case "minimax": return "MiniMax"
         case "alibaba": return "Alibaba"
         case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized
@@ -727,10 +695,7 @@ extension AppTheme {
         switch providerId {
         case "claude": return "brain.fill"
         case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "copilot": return "chevron.left.forwardslash.chevron.right"
-        case "zai": return "z.square.fill"
         case "bedrock": return "cloud.fill" // AWS cloud icon
-        case "minimax": return "waveform"
         case "alibaba": return "cloud.fill"
         case "opencode-go": return "square.stack.3d.up.fill"
         default: return "questionmark.circle.fill"

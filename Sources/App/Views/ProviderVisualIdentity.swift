@@ -77,62 +77,6 @@ extension CodexProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - CopilotProvider Visual Identity
-
-extension CopilotProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "chevron.left.forwardslash.chevron.right" }
-
-    public var iconAssetName: String { "CopilotIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // GitHub's blue color
-        scheme == .dark
-            ? Color(red: 0.38, green: 0.55, blue: 0.93)
-            : Color(red: 0.26, green: 0.43, blue: 0.82)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.55, green: 0.40, blue: 0.90)
-                    : Color(red: 0.45, green: 0.30, blue: 0.80)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
-// MARK: - ZaiProvider Visual Identity
-
-extension ZaiProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "z.square.fill" }
-
-    public var iconAssetName: String { "ZaiIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Blue color matching Z.ai branding
-        scheme == .dark
-            ? Color(red: 0.35, green: 0.60, blue: 1.0)
-            : Color(red: 0.23, green: 0.51, blue: 0.96)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.30, green: 0.45, blue: 0.85)
-                    : Color(red: 0.20, green: 0.35, blue: 0.75)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - BedrockProvider Visual Identity
 
 extension BedrockProvider: ProviderVisualIdentity {
@@ -161,34 +105,6 @@ extension BedrockProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - KimiProvider Visual Identity
-
-extension KimiProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "k.square.fill" }
-
-    public var iconAssetName: String { "KimiIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // Blue/cyan color matching Kimi branding
-        scheme == .dark
-            ? Color(red: 0.30, green: 0.65, blue: 0.95)
-            : Color(red: 0.20, green: 0.55, blue: 0.85)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.20, green: 0.50, blue: 0.80)
-                    : Color(red: 0.10, green: 0.40, blue: 0.70)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - CursorProvider Visual Identity
 
 extension CursorProvider: ProviderVisualIdentity {
@@ -210,34 +126,6 @@ extension CursorProvider: ProviderVisualIdentity {
                 scheme == .dark
                     ? Color(red: 0.15, green: 0.55, blue: 0.75)
                     : Color(red: 0.08, green: 0.45, blue: 0.60)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
-// MARK: - MiniMaxProvider Visual Identity
-
-extension MiniMaxProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "waveform" }
-
-    public var iconAssetName: String { "MiniMaxIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // MiniMax brand pink-orange
-        scheme == .dark
-            ? Color(red: 0.91, green: 0.27, blue: 0.42)
-            : Color(red: 0.82, green: 0.20, blue: 0.35)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.96, green: 0.53, blue: 0.24)
-                    : Color(red: 0.86, green: 0.43, blue: 0.14)
             ],
             startPoint: .topLeading,
             endPoint: .bottomTrailing
@@ -324,26 +212,10 @@ enum ProviderVisualIdentityLookup {
             return scheme == .dark
                 ? BaseTheme.tealBright
                 : Color(red: 0.18, green: 0.72, blue: 0.68)
-        case "copilot":
-            return scheme == .dark
-                ? Color(red: 0.38, green: 0.55, blue: 0.93)
-                : Color(red: 0.26, green: 0.43, blue: 0.82)
-        case "zai":
-            return scheme == .dark
-                ? Color(red: 0.35, green: 0.60, blue: 1.0)
-                : Color(red: 0.23, green: 0.51, blue: 0.96)
         case "bedrock":
             return scheme == .dark
                 ? Color(red: 1.0, green: 0.6, blue: 0.2)
                 : Color(red: 0.92, green: 0.5, blue: 0.15)
-        case "kimi":
-            return scheme == .dark
-                ? Color(red: 0.30, green: 0.65, blue: 0.95)
-                : Color(red: 0.20, green: 0.55, blue: 0.85)
-        case "minimax":
-            return scheme == .dark
-                ? Color(red: 0.91, green: 0.27, blue: 0.42)
-                : Color(red: 0.82, green: 0.20, blue: 0.35)
         case "cursor":
             return scheme == .dark
                 ? Color(red: 0.20, green: 0.78, blue: 0.82)
@@ -371,26 +243,10 @@ enum ProviderVisualIdentityLookup {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.25, green: 0.65, blue: 0.85)
                 : Color(red: 0.12, green: 0.52, blue: 0.72)
-        case "copilot":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.55, green: 0.40, blue: 0.90)
-                : Color(red: 0.45, green: 0.30, blue: 0.80)
-        case "zai":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.30, green: 0.45, blue: 0.85)
-                : Color(red: 0.20, green: 0.35, blue: 0.75)
         case "bedrock":
             secondaryColor = scheme == .dark
                 ? Color(red: 0.85, green: 0.45, blue: 0.15)
                 : Color(red: 0.75, green: 0.35, blue: 0.1)
-        case "kimi":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.20, green: 0.50, blue: 0.80)
-                : Color(red: 0.10, green: 0.40, blue: 0.70)
-        case "minimax":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.96, green: 0.53, blue: 0.24)
-                : Color(red: 0.86, green: 0.43, blue: 0.14)
         case "cursor":
             secondaryColor = scheme == .dark
                 ? Color(red: 0.15, green: 0.55, blue: 0.75)
@@ -419,11 +275,7 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "ClaudeIcon"
         case "codex": return "CodexIcon"
-        case "copilot": return "CopilotIcon"
-        case "zai": return "ZaiIcon"
         case "bedrock": return "BedrockIcon"
-        case "kimi": return "KimiIcon"
-        case "minimax": return "MiniMaxIcon"
         case "cursor": return "CursorIcon"
         case "opencode-go": return "OpenCodeIcon"
         default: return "QuestionIcon"
@@ -435,11 +287,7 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "Claude"
         case "codex": return "Codex"
-        case "copilot": return "GitHub Copilot"
-        case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
-        case "kimi": return "Kimi"
-        case "minimax": return "MiniMax"
         case "cursor": return "Cursor"
         case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized
@@ -451,11 +299,7 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "brain.fill"
         case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "copilot": return "chevron.left.forwardslash.chevron.right"
-        case "zai": return "z.square.fill"
         case "bedrock": return "cloud.fill"
-        case "kimi": return "k.square.fill"
-        case "minimax": return "waveform"
         case "cursor": return "cursorarrow.rays"
         case "opencode-go": return "square.stack.3d.up.fill"
         default: return "questionmark.circle.fill"

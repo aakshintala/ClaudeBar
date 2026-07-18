@@ -86,11 +86,11 @@ struct UserDefaultsProviderSettingsRepositoryTests {
         defer { cleanupDefaults() }
 
         // When
-        repository.setEnabled(true, forProvider: "copilot")
-        let enabledFirst = repository.isEnabled(forProvider: "copilot", defaultValue: false)
+        repository.setEnabled(true, forProvider: "codex")
+        let enabledFirst = repository.isEnabled(forProvider: "codex", defaultValue: false)
 
-        repository.setEnabled(false, forProvider: "copilot")
-        let enabledSecond = repository.isEnabled(forProvider: "copilot", defaultValue: true)
+        repository.setEnabled(false, forProvider: "codex")
+        let enabledSecond = repository.isEnabled(forProvider: "codex", defaultValue: true)
 
         // Then
         #expect(enabledFirst == true)
@@ -132,46 +132,6 @@ struct UserDefaultsProviderSettingsRepositoryTests {
 
         // Then
         #expect(enabled == true)
-    }
-
-    // MARK: - Copilot Monthly Limit Tests
-
-    @Test
-    func `copilotMonthlyLimit returns nil when not set`() {
-        // Given
-        let repository = makeRepository()
-        defer { cleanupDefaults() }
-
-        // Then
-        #expect(repository.copilotMonthlyLimit() == nil)
-    }
-
-    @Test
-    func `copilotMonthlyLimit returns stored value when set`() {
-        // Given
-        let repository = makeRepository()
-        defer { cleanupDefaults() }
-
-        // When
-        repository.setCopilotMonthlyLimit(300)
-
-        // Then
-        #expect(repository.copilotMonthlyLimit() == 300)
-    }
-
-    @Test
-    func `setCopilotMonthlyLimit removes value when set to nil`() {
-        // Given
-        let repository = makeRepository()
-        defer { cleanupDefaults() }
-
-        // When - set a value first
-        repository.setCopilotMonthlyLimit(300)
-        #expect(repository.copilotMonthlyLimit() == 300)
-
-        // Then - clear it by setting nil
-        repository.setCopilotMonthlyLimit(nil)
-        #expect(repository.copilotMonthlyLimit() == nil)
     }
 
     // MARK: - Claude CLI Fallback

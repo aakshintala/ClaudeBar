@@ -47,9 +47,6 @@ struct NotificationAlerterTests {
         // Then - returns correct provider names
         #expect(alerter.providerDisplayName(for: "claude") == "Claude")
         #expect(alerter.providerDisplayName(for: "codex") == "Codex")
-        #expect(alerter.providerDisplayName(for: "copilot") == "GitHub Copilot")
-        #expect(alerter.providerDisplayName(for: "zai") == "Z.ai")
-        #expect(alerter.providerDisplayName(for: "minimax") == "MiniMax")
         #expect(alerter.providerDisplayName(for: "alibaba") == "Alibaba")
     }
 

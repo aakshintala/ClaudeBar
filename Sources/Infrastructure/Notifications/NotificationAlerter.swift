@@ -84,10 +84,7 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
         switch providerId {
         case "claude": return "Claude"
         case "codex": return "Codex"
-        case "copilot": return "GitHub Copilot"
-        case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
-        case "minimax": return "MiniMax"
         case "alibaba": return "Alibaba"
         case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized

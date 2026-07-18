@@ -73,29 +73,11 @@ struct ClaudeBarApp: App {
                 apiProbe: CodexAPIUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-            ZaiProvider(
-                probe: ZaiUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
-            CopilotProvider(
-                billingProbe: CopilotUsageProbe(settingsRepository: settingsRepository),
-                internalProbe: CopilotInternalAPIProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
             BedrockProvider(
                 probe: BedrockUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
-            KimiProvider(
-                cliProbe: KimiCLIUsageProbe(),
-                apiProbe: KimiUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
-            MiniMaxProvider(
-                probe: MiniMaxUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
             AlibabaProvider(
                 probe: AlibabaUsageProbe(settingsRepository: settingsRepository, cookieProvider: AlibabaBrowserCookieProvider()),
                 settingsRepository: settingsRepository

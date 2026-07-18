@@ -9,13 +9,9 @@ import Domain
 /// Credentials (tokens, API keys) use UserDefaults for now (Keychain migration later).
 public final class JSONSettingsRepository:
     AppSettingsRepository,
-    ZaiSettingsRepository,
-    CopilotSettingsRepository,
     BedrockSettingsRepository,
     ClaudeSettingsRepository,
     CodexSettingsRepository,
-    KimiSettingsRepository,
-    MiniMaxSettingsRepository,
     AlibabaSettingsRepository,
     HookSettingsRepository,
     @unchecked Sendable
@@ -244,143 +240,6 @@ public final class JSONSettingsRepository:
         store.write(value: mode.rawValue, key: "codex.probeMode")
     }
 
-    // MARK: - KimiSettingsRepository
-
-    public func kimiProbeMode() -> KimiProbeMode {
-        guard let raw: String = store.read(key: "kimi.probeMode"),
-              let mode = KimiProbeMode(rawValue: raw) else {
-            return .cli
-        }
-        return mode
-    }
-
-    public func setKimiProbeMode(_ mode: KimiProbeMode) {
-        store.write(value: mode.rawValue, key: "kimi.probeMode")
-    }
-
-    // MARK: - ZaiSettingsRepository
-
-    public func zaiConfigPath() -> String {
-        store.read(key: "zai.configPath") ?? ""
-    }
-
-    public func setZaiConfigPath(_ path: String) {
-        store.write(value: path, key: "zai.configPath")
-    }
-
-    public func glmAuthEnvVar() -> String {
-        store.read(key: "zai.glmAuthEnvVar") ?? ""
-    }
-
-    public func setGlmAuthEnvVar(_ envVar: String) {
-        store.write(value: envVar, key: "zai.glmAuthEnvVar")
-    }
-
-    // MARK: - CopilotSettingsRepository
-
-    public func copilotProbeMode() -> CopilotProbeMode {
-        guard let raw: String = store.read(key: "copilot.probeMode"),
-              let mode = CopilotProbeMode(rawValue: raw) else {
-            return .billing
-        }
-        return mode
-    }
-
-    public func setCopilotProbeMode(_ mode: CopilotProbeMode) {
-        store.write(value: mode.rawValue, key: "copilot.probeMode")
-    }
-
-    public func copilotAuthEnvVar() -> String {
-        store.read(key: "copilot.authEnvVar") ?? ""
-    }
-
-    public func setCopilotAuthEnvVar(_ envVar: String) {
-        store.write(value: envVar, key: "copilot.authEnvVar")
-    }
-
-    public func copilotMonthlyLimit() -> Int? {
-        store.read(key: "copilot.monthlyLimit")
-    }
-
-    public func setCopilotMonthlyLimit(_ limit: Int?) {
-        store.write(value: limit, key: "copilot.monthlyLimit")
-    }
-
-    public func copilotManualUsageValue() -> Double? {
-        store.read(key: "copilot.manualUsageValue")
-    }
-
-    public func setCopilotManualUsageValue(_ value: Double?) {
-        store.write(value: value, key: "copilot.manualUsageValue")
-    }
-
-    public func copilotManualUsageIsPercent() -> Bool {
-        store.read(key: "copilot.manualUsageIsPercent") ?? false
-    }
-
-    public func setCopilotManualUsageIsPercent(_ isPercent: Bool) {
-        store.write(value: isPercent, key: "copilot.manualUsageIsPercent")
-    }
-
-    public func copilotManualOverrideEnabled() -> Bool {
-        store.read(key: "copilot.manualOverrideEnabled") ?? false
-    }
-
-    public func setCopilotManualOverrideEnabled(_ enabled: Bool) {
-        store.write(value: enabled, key: "copilot.manualOverrideEnabled")
-    }
-
-    public func copilotApiReturnedEmpty() -> Bool {
-        store.read(key: "copilot.apiReturnedEmpty") ?? false
-    }
-
-    public func setCopilotApiReturnedEmpty(_ empty: Bool) {
-        store.write(value: empty, key: "copilot.apiReturnedEmpty")
-    }
-
-    public func copilotLastUsagePeriodMonth() -> Int? {
-        store.read(key: "copilot.lastUsagePeriodMonth")
-    }
-
-    public func copilotLastUsagePeriodYear() -> Int? {
-        store.read(key: "copilot.lastUsagePeriodYear")
-    }
-
-    public func setCopilotLastUsagePeriod(month: Int, year: Int) {
-        store.write(value: month, key: "copilot.lastUsagePeriodMonth")
-        store.write(value: year, key: "copilot.lastUsagePeriodYear")
-    }
-
-    // Credentials (UserDefaults for now, Keychain migration later)
-
-    public func saveGithubToken(_ token: String) {
-        credentials.set(token, forKey: "com.claudebar.credentials.github-copilot-token")
-    }
-
-    public func getGithubToken() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.github-copilot-token")
-    }
-
-    public func deleteGithubToken() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.github-copilot-token")
-    }
-
-    public func hasGithubToken() -> Bool {
-        getGithubToken() != nil
-    }
-
-    public func saveGithubUsername(_ username: String) {
-        credentials.set(username, forKey: "com.claudebar.credentials.github-username")
-    }
-
-    public func getGithubUsername() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.github-username")
-    }
-
-    public func deleteGithubUsername() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.github-username")
-    }
-
     // MARK: - BedrockSettingsRepository
 
     public func awsProfileName() -> String {
@@ -477,45 +336,5 @@ public final class JSONSettingsRepository:
 
     public func setHookPort(_ port: Int) {
         store.write(value: port, key: "hook.port")
-    }
-
-    // MARK: - MiniMaxSettingsRepository
-
-    public func minimaxRegion() -> MiniMaxRegion {
-        guard let raw: String = store.read(key: "minimax.region"),
-              let region = MiniMaxRegion(rawValue: raw) else {
-            return .china
-        }
-        return region
-    }
-
-    public func setMinimaxRegion(_ region: MiniMaxRegion) {
-        store.write(value: region.rawValue, key: "minimax.region")
-    }
-
-    public func minimaxAuthEnvVar() -> String {
-        store.read(key: "minimax.authEnvVar") ?? ""
-    }
-
-    public func setMinimaxAuthEnvVar(_ envVar: String) {
-        store.write(value: envVar, key: "minimax.authEnvVar")
-    }
-
-    // MiniMax Credentials (UserDefaults for now)
-
-    public func saveMinimaxApiKey(_ key: String) {
-        credentials.set(key, forKey: "com.claudebar.credentials.minimax-api-key")
-    }
-
-    public func getMinimaxApiKey() -> String? {
-        credentials.string(forKey: "com.claudebar.credentials.minimax-api-key")
-    }
-
-    public func deleteMinimaxApiKey() {
-        credentials.removeObject(forKey: "com.claudebar.credentials.minimax-api-key")
-    }
-
-    public func hasMinimaxApiKey() -> Bool {
-        getMinimaxApiKey() != nil
     }
 }

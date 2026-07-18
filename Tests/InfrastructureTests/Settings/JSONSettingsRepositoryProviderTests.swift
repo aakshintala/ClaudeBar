@@ -35,7 +35,7 @@ struct JSONSettingsRepositoryProviderTests {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
-        #expect(repo.isEnabled(forProvider: "copilot", defaultValue: false) == false)
+        #expect(repo.isEnabled(forProvider: "cursor", defaultValue: false) == false)
     }
 
     @Test
@@ -166,105 +166,6 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.codexProbeMode() == .api)
     }
 
-    // MARK: - Kimi Settings
-
-    @Test
-    func `kimiProbeMode defaults to cli`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.kimiProbeMode() == .cli)
-    }
-
-    @Test
-    func `setKimiProbeMode persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setKimiProbeMode(.api)
-        #expect(repo.kimiProbeMode() == .api)
-    }
-
-    // MARK: - Zai Settings
-
-    @Test
-    func `zaiConfigPath defaults to empty string`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.zaiConfigPath() == "")
-    }
-
-    @Test
-    func `setZaiConfigPath persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setZaiConfigPath("/custom/path")
-        #expect(repo.zaiConfigPath() == "/custom/path")
-    }
-
-    @Test
-    func `glmAuthEnvVar defaults to empty string`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.glmAuthEnvVar() == "")
-    }
-
-    @Test
-    func `setGlmAuthEnvVar persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setGlmAuthEnvVar("GLM_TOKEN")
-        #expect(repo.glmAuthEnvVar() == "GLM_TOKEN")
-    }
-
-    // MARK: - Copilot Settings
-
-    @Test
-    func `copilotProbeMode defaults to billing`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.copilotProbeMode() == .billing)
-    }
-
-    @Test
-    func `setCopilotProbeMode persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCopilotProbeMode(.copilotAPI)
-        #expect(repo.copilotProbeMode() == .copilotAPI)
-    }
-
-    @Test
-    func `copilotAuthEnvVar defaults to empty string`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.copilotAuthEnvVar() == "")
-    }
-
-    @Test
-    func `copilotMonthlyLimit defaults to nil`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.copilotMonthlyLimit() == nil)
-    }
-
-    @Test
-    func `setCopilotMonthlyLimit persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCopilotMonthlyLimit(100)
-        #expect(repo.copilotMonthlyLimit() == 100)
-    }
-
     // MARK: - Bedrock Settings
 
     @Test
@@ -343,25 +244,6 @@ struct JSONSettingsRepositoryProviderTests {
 
         repo.setHookPort(8080)
         #expect(repo.hookPort() == 8080)
-    }
-
-    // MARK: - MiniMax Settings
-
-    @Test
-    func `minimaxRegion defaults to china`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.minimaxRegion() == .china)
-    }
-
-    @Test
-    func `setMinimaxRegion persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setMinimaxRegion(.international)
-        #expect(repo.minimaxRegion() == .international)
     }
 
 }

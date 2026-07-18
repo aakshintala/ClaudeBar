@@ -280,7 +280,7 @@ struct QuotaDisplaySpec {
             let quota = UsageQuota(
                 percentRemaining: -98,
                 quotaType: .session,
-                providerId: "copilot"
+                providerId: "codex"
             )
 
             #expect(quota.status == .depleted)
