@@ -50,12 +50,6 @@ struct ActionBarSpec {
         }
 
         @Test
-        func `Antigravity has no dashboard URL`() {
-            let antigravity = AntigravityProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
-            #expect(antigravity.dashboardURL == nil)
-        }
-
-        @Test
         func `Bedrock dashboard URL is AWS console`() {
             let suiteName = "com.claudebar.test.\(UUID().uuidString)"
             let defaults = UserDefaults(suiteName: suiteName)!

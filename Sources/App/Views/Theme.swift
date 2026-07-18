@@ -616,10 +616,6 @@ extension AppTheme {
             return scheme == .dark
                 ? Color(red: 0.38, green: 0.55, blue: 0.93)
                 : Color(red: 0.26, green: 0.43, blue: 0.82)
-        case "antigravity":
-            return scheme == .dark
-                ? Color(red: 0.72, green: 0.35, blue: 0.85)
-                : Color(red: 0.58, green: 0.22, blue: 0.72)
         case "zai":
             return scheme == .dark
                 ? Color(red: 0.35, green: 0.60, blue: 1.0)
@@ -643,10 +639,6 @@ extension AppTheme {
             return scheme == .dark
                 ? Color(red: 0.52, green: 0.36, blue: 1.0)
                 : Color(red: 0.42, green: 0.28, blue: 1.0)
-        case "omp":
-            return scheme == .dark
-                ? Color(red: 0.30, green: 0.85, blue: 0.55)
-                : Color(red: 0.16, green: 0.62, blue: 0.38)
         default:
             return purpleVibrant(for: scheme)
         }
@@ -672,10 +664,6 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.55, green: 0.40, blue: 0.90)
                 : Color(red: 0.45, green: 0.30, blue: 0.80)
-        case "antigravity":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.45, green: 0.25, blue: 0.75)
-                : Color(red: 0.35, green: 0.15, blue: 0.65)
         case "zai":
             secondaryColor = scheme == .dark
                 ? Color(red: 0.30, green: 0.45, blue: 0.85)
@@ -699,10 +687,6 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.36, green: 0.20, blue: 0.90)
                 : Color(red: 0.30, green: 0.15, blue: 0.80)
-        case "omp":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.16, green: 0.62, blue: 0.42)
-                : Color(red: 0.10, green: 0.48, blue: 0.30)
         default:
             return accentGradient(for: scheme)
         }
@@ -721,13 +705,11 @@ extension AppTheme {
         case "codex": return "CodexIcon"
         case "gemini": return "GeminiIcon"
         case "copilot": return "CopilotIcon"
-        case "antigravity": return "AntigravityIcon"
         case "zai": return "ZaiIcon"
         case "bedrock": return "BedrockIcon"
         case "minimax": return "MiniMaxIcon"
         case "alibaba": return "AlibabaIcon"
         case "opencode-go": return "OpenCodeIcon"
-        case "omp": return "OmpIcon"
         default: return "QuestionIcon"
         }
     }
@@ -739,13 +721,11 @@ extension AppTheme {
         case "codex": return "Codex"
         case "gemini": return "Gemini"
         case "copilot": return "GitHub Copilot"
-        case "antigravity": return "Antigravity"
         case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
         case "minimax": return "MiniMax"
         case "alibaba": return "Alibaba"
         case "opencode-go": return "OpenCode Go"
-        case "omp": return "Oh My Pi"
         default: return providerId.capitalized
         }
     }
@@ -757,13 +737,11 @@ extension AppTheme {
         case "codex": return "chevron.left.forwardslash.chevron.right"
         case "gemini": return "sparkles"
         case "copilot": return "chevron.left.forwardslash.chevron.right"
-        case "antigravity": return "wand.and.stars"
         case "zai": return "z.square.fill"
         case "bedrock": return "cloud.fill" // AWS cloud icon
         case "minimax": return "waveform"
         case "alibaba": return "cloud.fill"
         case "opencode-go": return "square.stack.3d.up.fill"
-        case "omp": return "terminal.fill"
         default: return "questionmark.circle.fill"
         }
     }

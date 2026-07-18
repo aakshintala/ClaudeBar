@@ -396,11 +396,11 @@ struct UsageSnapshotTests {
     @Test
     func `grouped quotas bucket by group in first-appearance order`() {
         let quotas = [
-            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Codex 5h"), providerId: "omp", group: "Codex"),
-            UsageQuota(percentRemaining: 40, quotaType: .timeLimit("Codex 7d"), providerId: "omp", group: "Codex"),
-            UsageQuota(percentRemaining: 95, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Codex 5h"), providerId: "claude", group: "Codex"),
+            UsageQuota(percentRemaining: 40, quotaType: .timeLimit("Codex 7d"), providerId: "claude", group: "Codex"),
+            UsageQuota(percentRemaining: 95, quotaType: .timeLimit("Claude 5h"), providerId: "claude", group: "Claude"),
         ]
-        let snapshot = UsageSnapshot(providerId: "omp", quotas: quotas, capturedAt: Date())
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
 
         #expect(snapshot.hasQuotaGroups == true)
         let groups = snapshot.quotaGroups
@@ -414,12 +414,12 @@ struct UsageSnapshotTests {
     @Test
     func `grouped metrics become note-only sections after quota sections`() {
         let quotas = [
-            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "claude", group: "Claude"),
         ]
         let metrics = [
             ExtensionMetric(label: "Copilot · work@example.com", value: "No usage reported", unit: "", group: "Copilot · work"),
         ]
-        let snapshot = UsageSnapshot(providerId: "omp", quotas: quotas, capturedAt: Date(), extensionMetrics: metrics)
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date(), extensionMetrics: metrics)
 
         let groups = snapshot.quotaGroups
         #expect(groups.map(\.title) == ["Claude", "Copilot · work"])
@@ -435,12 +435,12 @@ struct UsageSnapshotTests {
         // it as a row, never drop it (note-only sections keep the note in
         // the header instead, where it doubles as the summary).
         let quotas = [
-            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "claude", group: "Claude"),
         ]
         let metrics = [
             ExtensionMetric(label: "Claude · solo@example.com", value: "No usage reported", unit: "", group: "Claude"),
         ]
-        let snapshot = UsageSnapshot(providerId: "omp", quotas: quotas, capturedAt: Date(), extensionMetrics: metrics)
+        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date(), extensionMetrics: metrics)
 
         let groups = snapshot.quotaGroups
         #expect(groups.count == 1)
@@ -451,14 +451,14 @@ struct UsageSnapshotTests {
     @Test
     func `group notes accumulate in first appearance order`() {
         let quotas = [
-            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "omp", group: "Claude"),
+            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Claude 5h"), providerId: "claude", group: "Claude"),
         ]
         let metrics = [
             ExtensionMetric(label: "Claude Extra Usage", value: "Extra usage $1,234.56 spent · no cap", unit: "", group: "Claude"),
             ExtensionMetric(label: "Claude account", value: "No usage reported", unit: "", group: "Claude"),
         ]
         let snapshot = UsageSnapshot(
-            providerId: "omp",
+            providerId: "claude",
             quotas: quotas,
             capturedAt: Date(),
             extensionMetrics: metrics
@@ -476,7 +476,7 @@ struct UsageSnapshotTests {
         #expect(noteOnly.notePlacement == .headerInline("No usage reported"))
 
         let plain = QuotaGroup(title: "Claude", quotas: [
-            UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "omp", group: "Claude"),
+            UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude", group: "Claude"),
         ])
         #expect(plain.notePlacement == nil)
     }

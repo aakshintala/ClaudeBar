@@ -74,7 +74,6 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
-            AntigravityProvider(probe: AntigravityUsageProbe(), settingsRepository: settingsRepository),
             ZaiProvider(
                 probe: ZaiUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
@@ -88,13 +87,11 @@ struct ClaudeBarApp: App {
                 probe: BedrockUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository
             ),
-            AmpCodeProvider(probe: AmpCodeUsageProbe(), settingsRepository: settingsRepository),
             KimiProvider(
                 cliProbe: KimiCLIUsageProbe(),
                 apiProbe: KimiUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-            KiroProvider(probe: KiroUsageProbe(), settingsRepository: settingsRepository),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
             MiniMaxProvider(
                 probe: MiniMaxUsageProbe(settingsRepository: settingsRepository),
@@ -104,16 +101,8 @@ struct ClaudeBarApp: App {
                 probe: AlibabaUsageProbe(settingsRepository: settingsRepository, cookieProvider: AlibabaBrowserCookieProvider()),
                 settingsRepository: settingsRepository
             ),
-            MistralProvider(
-                probe: MistralUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
             OpenCodeProvider(
                 probe: OpenCodeUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            OmpProvider(
-                probe: OmpUsageProbe(),
                 settingsRepository: settingsRepository
             ),
         ])

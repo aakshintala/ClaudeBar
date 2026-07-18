@@ -330,7 +330,7 @@ struct UsageQuotaTests {
     @Test
     func `isDollarBased returns true when dollarRemaining is set`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "ampcode", dollarRemaining: 50)
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "claude", dollarRemaining: 50)
 
         // When & Then
         #expect(quota.isDollarBased == true)
@@ -339,7 +339,7 @@ struct UsageQuotaTests {
     @Test
     func `isDollarBased returns false when dollarRemaining is nil`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 87.95, quotaType: .modelSpecific("Amp Free"), providerId: "ampcode")
+        let quota = UsageQuota(percentRemaining: 87.95, quotaType: .modelSpecific("Amp Free"), providerId: "claude")
 
         // When & Then
         #expect(quota.isDollarBased == false)
@@ -348,7 +348,7 @@ struct UsageQuotaTests {
     @Test
     func `formattedDollarRemaining formats whole dollars`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "ampcode", dollarRemaining: 50)
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "claude", dollarRemaining: 50)
 
         // When & Then
         #expect(quota.formattedDollarRemaining == "$50.00")
@@ -357,7 +357,7 @@ struct UsageQuotaTests {
     @Test
     func `formattedDollarRemaining formats zero`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "ampcode", dollarRemaining: 0)
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "claude", dollarRemaining: 0)
 
         // When & Then
         #expect(quota.formattedDollarRemaining == "$0.00")
@@ -366,7 +366,7 @@ struct UsageQuotaTests {
     @Test
     func `formattedDollarRemaining formats decimal amount`() {
         // Given
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "ampcode", dollarRemaining: Decimal(string: "17.59"))
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "claude", dollarRemaining: Decimal(string: "17.59"))
 
         // When & Then
         #expect(quota.formattedDollarRemaining == "$17.59")
@@ -386,7 +386,7 @@ struct UsageQuotaTests {
         let quota = UsageQuota(
             percentRemaining: 75,
             quotaType: .timeLimit("Claude Extra"),
-            providerId: "omp",
+            providerId: "claude",
             dollarUsed: Decimal(string: "123.45"),
             dollarCap: 500
         )
@@ -401,7 +401,7 @@ struct UsageQuotaTests {
         let quota = UsageQuota(
             percentRemaining: 100,
             quotaType: .timeLimit("Claude Extra"),
-            providerId: "omp",
+            providerId: "claude",
             dollarUsed: 0,
             dollarCap: 500
         )
@@ -478,7 +478,7 @@ struct UsageQuotaTests {
         let quota = UsageQuota(
             percentRemaining: 50,
             quotaType: .timeLimit("Claude 5h"),
-            providerId: "omp",
+            providerId: "claude",
             resetsAt: resetsAt,
             windowDuration: 5 * 3600
         )
@@ -492,7 +492,7 @@ struct UsageQuotaTests {
         let quota = UsageQuota(
             percentRemaining: 50,
             quotaType: .timeLimit("Anything"),
-            providerId: "omp",
+            providerId: "claude",
             resetsAt: resetsAt
         )
         let elapsed = quota.percentTimeElapsed!

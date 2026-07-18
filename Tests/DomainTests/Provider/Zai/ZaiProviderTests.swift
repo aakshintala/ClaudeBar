@@ -269,9 +269,9 @@ struct ZaiProviderTests {
         let codex = CodexProvider(probe: mockProbe, settingsRepository: baseSettings)
         let gemini = GeminiProvider(probe: mockProbe, settingsRepository: baseSettings)
         let copilot = CopilotProvider(probe: mockProbe, settingsRepository: copilotSettings)
-        let antigravity = AntigravityProvider(probe: mockProbe, settingsRepository: baseSettings)
+        let cursor = CursorProvider(probe: mockProbe, settingsRepository: baseSettings)
 
-        let ids = Set([zai.id, claude.id, codex.id, gemini.id, copilot.id, antigravity.id])
+        let ids = Set([zai.id, claude.id, codex.id, gemini.id, copilot.id, cursor.id])
         #expect(ids.count == 6) // All unique
     }
 }
