@@ -22,7 +22,7 @@ struct AIProviderProtocolTests {
         let providers: [any AIProvider] = [
             ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
             CodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            CursorProvider(probe: MockUsageProbe(), settingsRepository: settings)
         ]
 
         let ids = Set(providers.map(\.id))
@@ -35,7 +35,7 @@ struct AIProviderProtocolTests {
         let providers: [any AIProvider] = [
             ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
             CodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            CursorProvider(probe: MockUsageProbe(), settingsRepository: settings)
         ]
 
         for provider in providers {
@@ -49,7 +49,7 @@ struct AIProviderProtocolTests {
         let providers: [any AIProvider] = [
             ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
             CodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            CursorProvider(probe: MockUsageProbe(), settingsRepository: settings)
         ]
 
         for provider in providers {
@@ -62,10 +62,10 @@ struct AIProviderProtocolTests {
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let cursor = CursorProvider(probe: MockUsageProbe(), settingsRepository: settings)
 
         #expect(claude.id != codex.id)
-        #expect(claude.id != gemini.id)
-        #expect(codex.id != gemini.id)
+        #expect(claude.id != cursor.id)
+        #expect(codex.id != cursor.id)
     }
 }

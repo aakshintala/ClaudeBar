@@ -593,27 +593,27 @@ struct QuotaMonitorTests {
             capturedAt: Date()
         ))
 
-        let geminiProbe = MockUsageProbe()
-        given(geminiProbe).isAvailable().willReturn(true)
-        given(geminiProbe).probe().willReturn(UsageSnapshot(
-            providerId: "gemini",
-            quotas: [UsageQuota(percentRemaining: 30, quotaType: .session, providerId: "gemini")],
+        let cursorProbe = MockUsageProbe()
+        given(cursorProbe).isAvailable().willReturn(true)
+        given(cursorProbe).probe().willReturn(UsageSnapshot(
+            providerId: "cursor",
+            quotas: [UsageQuota(percentRemaining: 30, quotaType: .session, providerId: "cursor")],
             capturedAt: Date()
         ))
 
         let settings = makeSettingsRepository()
         let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
         let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let geminiProvider = GeminiProvider(probe: geminiProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider, geminiProvider]))
+        let cursorProvider = CursorProvider(probe: cursorProbe, settingsRepository: settings)
+        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider, cursorProvider]))
 
         // When - refresh all except Claude
         await monitor.refreshOthers(except: "claude")
 
-        // Then - Codex and Gemini loaded, Claude excluded
+        // Then - Codex and Cursor loaded, Claude excluded
         #expect(claudeProvider.snapshot == nil)
         #expect(codexProvider.snapshot?.quota(for: .session)?.percentRemaining == 50)
-        #expect(geminiProvider.snapshot?.quota(for: .session)?.percentRemaining == 30)
+        #expect(cursorProvider.snapshot?.quota(for: .session)?.percentRemaining == 30)
     }
 
     // MARK: - Provider Access

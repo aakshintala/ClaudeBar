@@ -91,7 +91,6 @@ struct ProviderIconView: View {
         switch providerId {
         case "claude": return "brain.head.profile"
         case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "gemini": return "sparkles"
         case "zai": return "z.square.fill"
         case "copilot": return "chevron.left.forwardslash.chevron.right"
         case "minimax": return "waveform"
@@ -118,8 +117,8 @@ struct ProviderIconView: View {
                 .foregroundStyle(.white)
         }
         VStack {
-            ProviderIconView(providerId: "gemini", size: 40)
-            Text("Gemini")
+            ProviderIconView(providerId: "cursor", size: 40)
+            Text("Cursor")
                 .font(.caption)
                 .foregroundStyle(.white)
         }
@@ -144,8 +143,8 @@ struct ProviderIconView: View {
                 .foregroundStyle(LightTheme().textPrimary)
         }
         VStack {
-            ProviderIconView(providerId: "gemini", size: 40)
-            Text("Gemini")
+            ProviderIconView(providerId: "cursor", size: 40)
+            Text("Cursor")
                 .font(.caption)
                 .foregroundStyle(LightTheme().textPrimary)
         }

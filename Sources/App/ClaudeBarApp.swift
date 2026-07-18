@@ -73,7 +73,6 @@ struct ClaudeBarApp: App {
                 apiProbe: CodexAPIUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-            GeminiProvider(probe: GeminiUsageProbe(), settingsRepository: settingsRepository),
             ZaiProvider(
                 probe: ZaiUsageProbe(settingsRepository: settingsRepository),
                 settingsRepository: settingsRepository

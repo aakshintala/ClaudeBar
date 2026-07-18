@@ -22,8 +22,8 @@ import Domain
                 .foregroundStyle(.white)
         }
         VStack(spacing: 8) {
-            ProviderIconView(providerId: "gemini", size: 32)
-            Text("Gemini")
+            ProviderIconView(providerId: "cursor", size: 32)
+            Text("Cursor")
                 .font(.caption)
                 .foregroundStyle(.white)
         }
@@ -47,7 +47,7 @@ import Domain
         HStack(spacing: 8) {
             ProviderPill(providerId: "claude", providerName: "Claude", isSelected: true, hasData: true) {}
             ProviderPill(providerId: "codex", providerName: "Codex", isSelected: false, hasData: true) {}
-            ProviderPill(providerId: "gemini", providerName: "Gemini", isSelected: false, hasData: false) {}
+            ProviderPill(providerId: "cursor", providerName: "Cursor", isSelected: false, hasData: false) {}
             ProviderPill(providerId: "zai", providerName: "Z.ai", isSelected: false, hasData: true) {}
         }
 
@@ -55,7 +55,7 @@ import Domain
         HStack(spacing: 8) {
             ProviderPill(providerId: "claude", providerName: "Claude", isSelected: false, hasData: true) {}
             ProviderPill(providerId: "codex", providerName: "Codex", isSelected: false, hasData: true) {}
-            ProviderPill(providerId: "gemini", providerName: "Gemini", isSelected: false, hasData: true) {}
+            ProviderPill(providerId: "cursor", providerName: "Cursor", isSelected: false, hasData: true) {}
             ProviderPill(providerId: "zai", providerName: "Z.ai", isSelected: true, hasData: true) {}
         }
     }
@@ -238,8 +238,8 @@ import Domain
                 Text("Codex").font(.caption).foregroundStyle(.white)
             }
             VStack {
-                Circle().fill(ProviderVisualIdentityLookup.color(for: "gemini", scheme: .dark)).frame(width: 40, height: 40)
-                Text("Gemini").font(.caption).foregroundStyle(.white)
+                Circle().fill(ProviderVisualIdentityLookup.color(for: "cursor", scheme: .dark)).frame(width: 40, height: 40)
+                Text("Cursor").font(.caption).foregroundStyle(.white)
             }
             VStack {
                 Circle().fill(ProviderVisualIdentityLookup.color(for: "zai", scheme: .dark)).frame(width: 40, height: 40)
@@ -381,7 +381,7 @@ import Domain
         HStack(spacing: 8) {
             ProviderPill(providerId: "claude", providerName: "Claude", isSelected: true, hasData: true) {}
             ProviderPill(providerId: "codex", providerName: "Codex", isSelected: false, hasData: true) {}
-            ProviderPill(providerId: "gemini", providerName: "Gemini", isSelected: false, hasData: false) {}
+            ProviderPill(providerId: "cursor", providerName: "Cursor", isSelected: false, hasData: false) {}
             ProviderPill(providerId: "zai", providerName: "Z.ai", isSelected: false, hasData: true) {}
         }
     }

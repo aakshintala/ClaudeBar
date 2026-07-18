@@ -25,7 +25,7 @@ struct AIProvidersTests {
         let providers = AIProviders(providers: [
             ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
             CodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            CursorProvider(probe: MockUsageProbe(), settingsRepository: settings)
         ])
 
         #expect(providers.all.count == 3)
@@ -45,17 +45,17 @@ struct AIProvidersTests {
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let gemini = GeminiProvider(probe: MockUsageProbe(), settingsRepository: settings)
+        let cursor = CursorProvider(probe: MockUsageProbe(), settingsRepository: settings)
 
-        // Disable gemini
-        gemini.isEnabled = false
+        // Disable cursor
+        cursor.isEnabled = false
 
-        let providers = AIProviders(providers: [claude, codex, gemini])
+        let providers = AIProviders(providers: [claude, codex, cursor])
 
         #expect(providers.enabled.count == 2)
         #expect(providers.enabled.contains { $0.id == "claude" })
         #expect(providers.enabled.contains { $0.id == "codex" })
-        #expect(!providers.enabled.contains { $0.id == "gemini" })
+        #expect(!providers.enabled.contains { $0.id == "cursor" })
     }
 
     @Test

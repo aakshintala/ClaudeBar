@@ -77,33 +77,6 @@ extension CodexProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - GeminiProvider Visual Identity
-
-extension GeminiProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "sparkles" }
-
-    public var iconAssetName: String { "GeminiIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        scheme == .dark
-            ? BaseTheme.goldenGlow
-            : Color(red: 0.92, green: 0.72, blue: 0.28)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.95, green: 0.55, blue: 0.35)
-                    : Color(red: 0.85, green: 0.45, blue: 0.25)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - CopilotProvider Visual Identity
 
 extension CopilotProvider: ProviderVisualIdentity {
@@ -351,10 +324,6 @@ enum ProviderVisualIdentityLookup {
             return scheme == .dark
                 ? BaseTheme.tealBright
                 : Color(red: 0.18, green: 0.72, blue: 0.68)
-        case "gemini":
-            return scheme == .dark
-                ? BaseTheme.goldenGlow
-                : Color(red: 0.92, green: 0.72, blue: 0.28)
         case "copilot":
             return scheme == .dark
                 ? Color(red: 0.38, green: 0.55, blue: 0.93)
@@ -402,10 +371,6 @@ enum ProviderVisualIdentityLookup {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.25, green: 0.65, blue: 0.85)
                 : Color(red: 0.12, green: 0.52, blue: 0.72)
-        case "gemini":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.95, green: 0.55, blue: 0.35)
-                : Color(red: 0.85, green: 0.45, blue: 0.25)
         case "copilot":
             secondaryColor = scheme == .dark
                 ? Color(red: 0.55, green: 0.40, blue: 0.90)
@@ -454,7 +419,6 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "ClaudeIcon"
         case "codex": return "CodexIcon"
-        case "gemini": return "GeminiIcon"
         case "copilot": return "CopilotIcon"
         case "zai": return "ZaiIcon"
         case "bedrock": return "BedrockIcon"
@@ -471,7 +435,6 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "Claude"
         case "codex": return "Codex"
-        case "gemini": return "Gemini"
         case "copilot": return "GitHub Copilot"
         case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
@@ -488,7 +451,6 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "brain.fill"
         case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "gemini": return "sparkles"
         case "copilot": return "chevron.left.forwardslash.chevron.right"
         case "zai": return "z.square.fill"
         case "bedrock": return "cloud.fill"

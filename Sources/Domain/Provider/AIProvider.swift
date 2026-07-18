@@ -12,7 +12,7 @@ public enum RefreshKind: Sendable {
 }
 
 /// Protocol defining what an AI provider is.
-/// Each provider (Claude, Codex, Gemini) is a rich domain model implementing this protocol.
+/// Each provider (Claude, Codex, Cursor, OpenCode) is a rich domain model implementing this protocol.
 /// Providers are @Observable classes with their own state (isSyncing, snapshot, error).
 ///
 /// `@MainActor` isolates the observable state (isSyncing/snapshot/lastError) to the main
@@ -24,10 +24,10 @@ public enum RefreshKind: Sendable {
 public protocol AIProvider: AnyObject, Sendable, Identifiable where ID == String {
     // MARK: - Identity
 
-    /// Unique identifier for the provider (e.g., "claude", "codex", "gemini")
+    /// Unique identifier for the provider (e.g., "claude", "codex", "cursor")
     var id: String { get }
 
-    /// Display name for the provider (e.g., "Claude", "Codex", "Gemini")
+    /// Display name for the provider (e.g., "Claude", "Codex", "Cursor")
     var name: String { get }
 
     /// CLI command used to invoke the provider

@@ -47,7 +47,6 @@ struct NotificationAlerterTests {
         // Then - returns correct provider names
         #expect(alerter.providerDisplayName(for: "claude") == "Claude")
         #expect(alerter.providerDisplayName(for: "codex") == "Codex")
-        #expect(alerter.providerDisplayName(for: "gemini") == "Gemini")
         #expect(alerter.providerDisplayName(for: "copilot") == "GitHub Copilot")
         #expect(alerter.providerDisplayName(for: "zai") == "Z.ai")
         #expect(alerter.providerDisplayName(for: "minimax") == "MiniMax")
@@ -90,9 +89,9 @@ struct NotificationAlerterTests {
     func `alertBody for depleted describes depletion`() {
         let alerter = NotificationAlerter()
 
-        let body = alerter.alertBody(for: .depleted, providerName: "Gemini")
+        let body = alerter.alertBody(for: .depleted, providerName: "Cursor")
 
-        #expect(body.contains("Gemini"))
+        #expect(body.contains("Cursor"))
         #expect(body.contains("depleted"))
     }
 
@@ -179,7 +178,7 @@ struct NotificationAlerterTests {
         let alerter = NotificationAlerter(alertSender: mockSender)
 
         // When
-        await alerter.alert(providerId: "gemini", previousStatus: .critical, currentStatus: .depleted)
+        await alerter.alert(providerId: "cursor", previousStatus: .critical, currentStatus: .depleted)
 
         // Then
         verify(mockSender).send(

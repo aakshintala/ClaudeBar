@@ -247,9 +247,9 @@ struct CopilotProviderTests {
         let copilot = CopilotProvider(probe: mockProbe, settingsRepository: copilotSettings)
         let claude = ClaudeProvider(probe: mockProbe, settingsRepository: baseSettings)
         let codex = CodexProvider(probe: mockProbe, settingsRepository: baseSettings)
-        let gemini = GeminiProvider(probe: mockProbe, settingsRepository: baseSettings)
+        let cursor = CursorProvider(probe: mockProbe, settingsRepository: baseSettings)
 
-        let ids = Set([copilot.id, claude.id, codex.id, gemini.id])
+        let ids = Set([copilot.id, claude.id, codex.id, cursor.id])
         #expect(ids.count == 4) // All unique
     }
 

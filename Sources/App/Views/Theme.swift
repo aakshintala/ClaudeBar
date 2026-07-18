@@ -610,8 +610,6 @@ extension AppTheme {
             return coralAccent(for: scheme)
         case "codex":
             return tealBright(for: scheme)
-        case "gemini":
-            return goldenGlow(for: scheme)
         case "copilot":
             return scheme == .dark
                 ? Color(red: 0.38, green: 0.55, blue: 0.93)
@@ -656,10 +654,6 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.25, green: 0.65, blue: 0.85)
                 : Color(red: 0.12, green: 0.52, blue: 0.72)
-        case "gemini":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.95, green: 0.55, blue: 0.35)
-                : Color(red: 0.85, green: 0.45, blue: 0.25)
         case "copilot":
             secondaryColor = scheme == .dark
                 ? Color(red: 0.55, green: 0.40, blue: 0.90)
@@ -703,7 +697,6 @@ extension AppTheme {
         switch providerId {
         case "claude": return "ClaudeIcon"
         case "codex": return "CodexIcon"
-        case "gemini": return "GeminiIcon"
         case "copilot": return "CopilotIcon"
         case "zai": return "ZaiIcon"
         case "bedrock": return "BedrockIcon"
@@ -719,7 +712,6 @@ extension AppTheme {
         switch providerId {
         case "claude": return "Claude"
         case "codex": return "Codex"
-        case "gemini": return "Gemini"
         case "copilot": return "GitHub Copilot"
         case "zai": return "Z.ai"
         case "bedrock": return "AWS Bedrock"
@@ -735,7 +727,6 @@ extension AppTheme {
         switch providerId {
         case "claude": return "brain.fill"
         case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "gemini": return "sparkles"
         case "copilot": return "chevron.left.forwardslash.chevron.right"
         case "zai": return "z.square.fill"
         case "bedrock": return "cloud.fill" // AWS cloud icon
