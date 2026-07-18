@@ -51,12 +51,6 @@ let project = Project(
                 .target(name: "Domain"),
                 .external(name: "Mockable"),
                 .external(name: "SwiftTerm"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
             ],
             settings: .settings(
                 base: [
@@ -113,12 +107,6 @@ let project = Project(
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),
                 .external(name: "Mockable"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
             ],
             settings: .settings(
                 base: [
@@ -139,12 +127,6 @@ let project = Project(
                 .target(name: "Infrastructure"),
                 .target(name: "Domain"),
                 .external(name: "Mockable"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
             ],
             settings: .settings(
                 base: [
@@ -165,12 +147,6 @@ let project = Project(
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),
                 .external(name: "Mockable"),
-                .external(name: "AWSCloudWatch"),
-                .external(name: "AWSSTS"),
-                .external(name: "AWSPricing"),
-                .external(name: "AWSSDKIdentity"),
-                .external(name: "AWSSSO"),
-                .external(name: "AWSSSOOIDC"),
             ],
             settings: .settings(
                 base: [

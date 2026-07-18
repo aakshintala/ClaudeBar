@@ -77,34 +77,6 @@ extension CodexProvider: ProviderVisualIdentity {
     }
 }
 
-// MARK: - BedrockProvider Visual Identity
-
-extension BedrockProvider: ProviderVisualIdentity {
-    public var symbolIcon: String { "cloud.fill" }
-
-    public var iconAssetName: String { "BedrockIcon" }
-
-    public func themeColor(for scheme: ColorScheme) -> Color {
-        // AWS orange color
-        scheme == .dark
-            ? Color(red: 1.0, green: 0.6, blue: 0.2)
-            : Color(red: 0.92, green: 0.5, blue: 0.15)
-    }
-
-    public func themeGradient(for scheme: ColorScheme) -> LinearGradient {
-        LinearGradient(
-            colors: [
-                themeColor(for: scheme),
-                scheme == .dark
-                    ? Color(red: 0.85, green: 0.45, blue: 0.15)
-                    : Color(red: 0.75, green: 0.35, blue: 0.1)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-    }
-}
-
 // MARK: - CursorProvider Visual Identity
 
 extension CursorProvider: ProviderVisualIdentity {
@@ -212,10 +184,6 @@ enum ProviderVisualIdentityLookup {
             return scheme == .dark
                 ? BaseTheme.tealBright
                 : Color(red: 0.18, green: 0.72, blue: 0.68)
-        case "bedrock":
-            return scheme == .dark
-                ? Color(red: 1.0, green: 0.6, blue: 0.2)
-                : Color(red: 0.92, green: 0.5, blue: 0.15)
         case "cursor":
             return scheme == .dark
                 ? Color(red: 0.20, green: 0.78, blue: 0.82)
@@ -243,10 +211,6 @@ enum ProviderVisualIdentityLookup {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.25, green: 0.65, blue: 0.85)
                 : Color(red: 0.12, green: 0.52, blue: 0.72)
-        case "bedrock":
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.85, green: 0.45, blue: 0.15)
-                : Color(red: 0.75, green: 0.35, blue: 0.1)
         case "cursor":
             secondaryColor = scheme == .dark
                 ? Color(red: 0.15, green: 0.55, blue: 0.75)
@@ -275,7 +239,6 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "ClaudeIcon"
         case "codex": return "CodexIcon"
-        case "bedrock": return "BedrockIcon"
         case "cursor": return "CursorIcon"
         case "opencode-go": return "OpenCodeIcon"
         default: return "QuestionIcon"
@@ -287,7 +250,6 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "Claude"
         case "codex": return "Codex"
-        case "bedrock": return "AWS Bedrock"
         case "cursor": return "Cursor"
         case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized
@@ -299,7 +261,6 @@ enum ProviderVisualIdentityLookup {
         switch providerId {
         case "claude": return "brain.fill"
         case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "bedrock": return "cloud.fill"
         case "cursor": return "cursorarrow.rays"
         case "opencode-go": return "square.stack.3d.up.fill"
         default: return "questionmark.circle.fill"

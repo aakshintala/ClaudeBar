@@ -39,15 +39,6 @@ struct ActionBarSpec {
             let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
             #expect(codex.dashboardURL?.absoluteString == "https://platform.openai.com/usage")
         }
-
-        @Test
-        func `Bedrock dashboard URL is AWS console`() {
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let settings = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
-            let bedrock = BedrockProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            #expect(bedrock.dashboardURL?.absoluteString == "https://console.aws.amazon.com/bedrock/home")
-        }
     }
 
     // MARK: - #25: Claude guest passes

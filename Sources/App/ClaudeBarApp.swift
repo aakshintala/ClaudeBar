@@ -73,10 +73,6 @@ struct ClaudeBarApp: App {
                 apiProbe: CodexAPIUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-            BedrockProvider(
-                probe: BedrockUsageProbe(settingsRepository: settingsRepository),
-                settingsRepository: settingsRepository
-            ),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
             OpenCodeProvider(
                 probe: OpenCodeUsageProbe(),

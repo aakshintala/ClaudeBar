@@ -3,7 +3,7 @@ import Domain
 
 /// UserDefaults-based implementation of ProviderSettingsRepository and its sub-protocols.
 /// Persists provider settings like isEnabled state and provider-specific configuration.
-public final class UserDefaultsProviderSettingsRepository: BedrockSettingsRepository, ClaudeSettingsRepository, CodexSettingsRepository, HookSettingsRepository, @unchecked Sendable {
+public final class UserDefaultsProviderSettingsRepository: ClaudeSettingsRepository, CodexSettingsRepository, HookSettingsRepository, @unchecked Sendable {
     /// Shared singleton instance
     public static let shared = UserDefaultsProviderSettingsRepository()
 
@@ -77,39 +77,6 @@ public final class UserDefaultsProviderSettingsRepository: BedrockSettingsReposi
         userDefaults.set(mode.rawValue, forKey: Keys.codexProbeMode)
     }
 
-    // MARK: - BedrockSettingsRepository
-
-    public func awsProfileName() -> String {
-        userDefaults.string(forKey: Keys.awsProfileName) ?? ""
-    }
-
-    public func setAWSProfileName(_ name: String) {
-        userDefaults.set(name, forKey: Keys.awsProfileName)
-    }
-
-    public func bedrockRegions() -> [String] {
-        userDefaults.stringArray(forKey: Keys.bedrockRegions) ?? ["us-east-1"]
-    }
-
-    public func setBedrockRegions(_ regions: [String]) {
-        userDefaults.set(regions, forKey: Keys.bedrockRegions)
-    }
-
-    public func bedrockDailyBudget() -> Decimal? {
-        guard let doubleValue = userDefaults.object(forKey: Keys.bedrockDailyBudget) as? Double else {
-            return nil
-        }
-        return Decimal(doubleValue)
-    }
-
-    public func setBedrockDailyBudget(_ amount: Decimal?) {
-        if let amount {
-            userDefaults.set(NSDecimalNumber(decimal: amount).doubleValue, forKey: Keys.bedrockDailyBudget)
-        } else {
-            userDefaults.removeObject(forKey: Keys.bedrockDailyBudget)
-        }
-    }
-
     // MARK: - HookSettingsRepository
 
     public func isHookEnabled() -> Bool {
@@ -143,10 +110,6 @@ public final class UserDefaultsProviderSettingsRepository: BedrockSettingsReposi
         static let claudeCliFallbackEnabled = "providerConfig.claudeCliFallbackEnabled"
         // Codex settings
         static let codexProbeMode = "providerConfig.codexProbeMode"
-        // Bedrock settings
-        static let awsProfileName = "providerConfig.awsProfileName"
-        static let bedrockRegions = "providerConfig.bedrockRegions"
-        static let bedrockDailyBudget = "providerConfig.bedrockDailyBudget"
     }
 
     /// Generates the UserDefaults key for a provider's enabled state

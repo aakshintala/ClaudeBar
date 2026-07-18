@@ -259,7 +259,6 @@ public final class ClaudeProvider: AIProvider {
             loginMethod: snapshot.loginMethod,
             accountTier: snapshot.accountTier,
             costUsage: snapshot.costUsage,
-            bedrockUsage: snapshot.bedrockUsage,
             dailyUsageReport: report
         )
     }

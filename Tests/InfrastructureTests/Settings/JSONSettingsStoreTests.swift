@@ -180,9 +180,9 @@ struct JSONSettingsStoreTests {
         let (store, dir) = try makeStore()
         defer { cleanup(dir) }
 
-        store.write(value: ["us-east-1", "eu-west-1"], key: "bedrock.regions")
+        store.write(value: ["us-east-1", "eu-west-1"], key: "test.regions")
 
-        let result: [String]? = store.read(key: "bedrock.regions")
+        let result: [String]? = store.read(key: "test.regions")
         #expect(result == ["us-east-1", "eu-west-1"])
     }
 

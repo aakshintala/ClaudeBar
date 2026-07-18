@@ -610,11 +610,6 @@ extension AppTheme {
             return coralAccent(for: scheme)
         case "codex":
             return tealBright(for: scheme)
-        case "bedrock":
-            // AWS orange color
-            return scheme == .dark
-                ? Color(red: 1.0, green: 0.60, blue: 0.20)
-                : Color(red: 0.92, green: 0.47, blue: 0.07)
         case "opencode-go":
             return scheme == .dark
                 ? Color(red: 0.52, green: 0.36, blue: 1.0)
@@ -636,11 +631,6 @@ extension AppTheme {
             secondaryColor = scheme == .dark
                 ? Color(red: 0.25, green: 0.65, blue: 0.85)
                 : Color(red: 0.12, green: 0.52, blue: 0.72)
-        case "bedrock":
-            // AWS orange gradient
-            secondaryColor = scheme == .dark
-                ? Color(red: 0.85, green: 0.40, blue: 0.15)
-                : Color(red: 0.75, green: 0.30, blue: 0.05)
         case "opencode-go":
             secondaryColor = scheme == .dark
                 ? Color(red: 0.36, green: 0.20, blue: 0.90)
@@ -661,7 +651,6 @@ extension AppTheme {
         switch providerId {
         case "claude": return "ClaudeIcon"
         case "codex": return "CodexIcon"
-        case "bedrock": return "BedrockIcon"
         case "opencode-go": return "OpenCodeIcon"
         default: return "QuestionIcon"
         }
@@ -672,7 +661,6 @@ extension AppTheme {
         switch providerId {
         case "claude": return "Claude"
         case "codex": return "Codex"
-        case "bedrock": return "AWS Bedrock"
         case "opencode-go": return "OpenCode Go"
         default: return providerId.capitalized
         }
@@ -683,7 +671,6 @@ extension AppTheme {
         switch providerId {
         case "claude": return "brain.fill"
         case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "bedrock": return "cloud.fill" // AWS cloud icon
         case "opencode-go": return "square.stack.3d.up.fill"
         default: return "questionmark.circle.fill"
         }

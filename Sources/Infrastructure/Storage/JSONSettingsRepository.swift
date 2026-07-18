@@ -9,7 +9,6 @@ import Domain
 /// Credentials (tokens, API keys) use UserDefaults for now (Keychain migration later).
 public final class JSONSettingsRepository:
     AppSettingsRepository,
-    BedrockSettingsRepository,
     ClaudeSettingsRepository,
     CodexSettingsRepository,
     HookSettingsRepository,
@@ -237,37 +236,6 @@ public final class JSONSettingsRepository:
 
     public func setCodexProbeMode(_ mode: CodexProbeMode) {
         store.write(value: mode.rawValue, key: "codex.probeMode")
-    }
-
-    // MARK: - BedrockSettingsRepository
-
-    public func awsProfileName() -> String {
-        store.read(key: "bedrock.awsProfile") ?? ""
-    }
-
-    public func setAWSProfileName(_ name: String) {
-        store.write(value: name, key: "bedrock.awsProfile")
-    }
-
-    public func bedrockRegions() -> [String] {
-        store.read(key: "bedrock.regions") ?? ["us-east-1"]
-    }
-
-    public func setBedrockRegions(_ regions: [String]) {
-        store.write(value: regions, key: "bedrock.regions")
-    }
-
-    public func bedrockDailyBudget() -> Decimal? {
-        guard let value: Double = store.read(key: "bedrock.dailyBudget") else { return nil }
-        return Decimal(value)
-    }
-
-    public func setBedrockDailyBudget(_ amount: Decimal?) {
-        if let amount = amount {
-            store.write(value: NSDecimalNumber(decimal: amount).doubleValue, key: "bedrock.dailyBudget")
-        } else {
-            store.write(value: nil, key: "bedrock.dailyBudget")
-        }
     }
 
     // MARK: - HookSettingsRepository

@@ -166,50 +166,6 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.codexProbeMode() == .api)
     }
 
-    // MARK: - Bedrock Settings
-
-    @Test
-    func `awsProfileName defaults to empty string`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.awsProfileName() == "")
-    }
-
-    @Test
-    func `bedrockRegions defaults to us-east-1`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.bedrockRegions() == ["us-east-1"])
-    }
-
-    @Test
-    func `setBedrockRegions persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setBedrockRegions(["us-west-2", "eu-west-1"])
-        #expect(repo.bedrockRegions() == ["us-west-2", "eu-west-1"])
-    }
-
-    @Test
-    func `bedrockDailyBudget defaults to nil`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.bedrockDailyBudget() == nil)
-    }
-
-    @Test
-    func `setBedrockDailyBudget persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setBedrockDailyBudget(25.50)
-        #expect(repo.bedrockDailyBudget() == 25.50)
-    }
-
     // MARK: - Hook Settings
 
     @Test

@@ -29,7 +29,6 @@ struct SettingsContentView: View {
     private enum ProviderID {
         static let claude = "claude"
         static let codex = "codex"
-        static let bedrock = "bedrock"
     }
 
     private var isClaudeEnabled: Bool {
@@ -38,10 +37,6 @@ struct SettingsContentView: View {
 
     private var isCodexEnabled: Bool {
         monitor.provider(for: ProviderID.codex)?.isEnabled ?? false
-    }
-
-    private var isBedrockEnabled: Bool {
-        monitor.provider(for: ProviderID.bedrock)?.isEnabled ?? false
     }
 
     /// Extension providers that are enabled and have config fields declared in their manifest.
@@ -81,10 +76,6 @@ struct SettingsContentView: View {
                     }
                     if isCodexEnabled {
                         CodexConfigCard(monitor: monitor)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    if isBedrockEnabled {
-                        BedrockConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     ForEach(enabledExtensionProvidersWithConfig, id: \.id) { extProvider in

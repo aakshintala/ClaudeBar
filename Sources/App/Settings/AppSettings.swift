@@ -289,7 +289,6 @@ public final class AppSettings {
     public var provider: ProviderSettingsRepository { repository }
     public var claude: ClaudeSettingsRepository { repository }
     public var codex: CodexSettingsRepository { repository }
-    public var bedrock: BedrockSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
 
     /// Extension config repository for dynamic extension provider settings.

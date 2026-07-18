@@ -23,9 +23,6 @@ public struct UsageSnapshot: Sendable, Equatable {
     /// Cost-based usage data (for Claude API accounts)
     public let costUsage: CostUsage?
 
-    /// Bedrock usage summary (for AWS Bedrock provider)
-    public let bedrockUsage: BedrockUsageSummary?
-
     /// Daily usage report from local session JSONL analysis (e.g., Claude Code)
     public let dailyUsageReport: DailyUsageReport?
 
@@ -43,7 +40,6 @@ public struct UsageSnapshot: Sendable, Equatable {
         loginMethod: String? = nil,
         accountTier: AccountTier? = nil,
         costUsage: CostUsage? = nil,
-        bedrockUsage: BedrockUsageSummary? = nil,
         dailyUsageReport: DailyUsageReport? = nil,
         extensionMetrics: [ExtensionMetric]? = nil
     ) {
@@ -55,7 +51,6 @@ public struct UsageSnapshot: Sendable, Equatable {
         self.loginMethod = loginMethod
         self.accountTier = accountTier
         self.costUsage = costUsage
-        self.bedrockUsage = bedrockUsage
         self.dailyUsageReport = dailyUsageReport
         self.extensionMetrics = extensionMetrics
     }
