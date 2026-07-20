@@ -28,7 +28,7 @@ import Domain
                 .foregroundStyle(.white)
         }
         VStack(spacing: 8) {
-            ProviderIconView(providerId: "zai", size: 32)
+            ProviderIconView(providerId: "claude", size: 32)
             Text("Z.ai")
                 .font(.caption)
                 .foregroundStyle(.white)
@@ -48,7 +48,7 @@ import Domain
             ProviderPill(providerId: "claude", providerName: "Claude", isSelected: true, hasData: true) {}
             ProviderPill(providerId: "codex", providerName: "Codex", isSelected: false, hasData: true) {}
             ProviderPill(providerId: "cursor", providerName: "Cursor", isSelected: false, hasData: false) {}
-            ProviderPill(providerId: "zai", providerName: "Z.ai", isSelected: false, hasData: true) {}
+            ProviderPill(providerId: "claude", providerName: "Z.ai", isSelected: false, hasData: true) {}
         }
 
         // Different selection (Z.ai selected)
@@ -56,7 +56,7 @@ import Domain
             ProviderPill(providerId: "claude", providerName: "Claude", isSelected: false, hasData: true) {}
             ProviderPill(providerId: "codex", providerName: "Codex", isSelected: false, hasData: true) {}
             ProviderPill(providerId: "cursor", providerName: "Cursor", isSelected: false, hasData: true) {}
-            ProviderPill(providerId: "zai", providerName: "Z.ai", isSelected: true, hasData: true) {}
+            ProviderPill(providerId: "claude", providerName: "Z.ai", isSelected: true, hasData: true) {}
         }
     }
     .padding(40)
@@ -128,8 +128,8 @@ import Domain
 #Preview("Stat Cards - Z.ai") {
     // Z.ai quotas showing session and time limit (MCP) usage
     let quotas = [
-        UsageQuota(percentRemaining: 35, quotaType: .session, providerId: "zai"),
-        UsageQuota(percentRemaining: 70, quotaType: .timeLimit("MCP"), providerId: "zai"),
+        UsageQuota(percentRemaining: 35, quotaType: .session, providerId: "claude"),
+        UsageQuota(percentRemaining: 70, quotaType: .timeLimit("MCP"), providerId: "claude"),
     ]
 
     LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
@@ -242,7 +242,7 @@ import Domain
                 Text("Cursor").font(.caption).foregroundStyle(.white)
             }
             VStack {
-                Circle().fill(ProviderVisualIdentityLookup.color(for: "zai", scheme: .dark)).frame(width: 40, height: 40)
+                Circle().fill(ProviderVisualIdentityLookup.color(for: "claude", scheme: .dark)).frame(width: 40, height: 40)
                 Text("Z.ai").font(.caption).foregroundStyle(.white)
             }
         }
@@ -382,7 +382,7 @@ import Domain
             ProviderPill(providerId: "claude", providerName: "Claude", isSelected: true, hasData: true) {}
             ProviderPill(providerId: "codex", providerName: "Codex", isSelected: false, hasData: true) {}
             ProviderPill(providerId: "cursor", providerName: "Cursor", isSelected: false, hasData: false) {}
-            ProviderPill(providerId: "zai", providerName: "Z.ai", isSelected: false, hasData: true) {}
+            ProviderPill(providerId: "claude", providerName: "Z.ai", isSelected: false, hasData: true) {}
         }
     }
     .padding(.vertical, 20)
