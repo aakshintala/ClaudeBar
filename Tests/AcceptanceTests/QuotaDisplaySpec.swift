@@ -43,28 +43,19 @@ struct QuotaDisplaySpec {
 
         @Test
         func `account email and tier are displayed after refresh`() async throws {
-            // Given — CLI returns output with account metadata
-            let mockExecutor = MockCLIExecutor()
-            given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
-            given(mockExecutor).execute(
-                binary: .any, args: .any, input: .any,
-                timeout: .any, workingDirectory: .any, autoResponses: .any
-            ).willReturn(CLIResult(output: """
-                Claude Code v1.0.27
+            // Given — probe returns a snapshot with account metadata
+            let snapshot = UsageSnapshot(
+                providerId: "claude",
+                quotas: [UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")],
+                capturedAt: Date(),
+                accountEmail: "user@example.com",
+                accountOrganization: "Acme Corp",
+                accountTier: .claudeMax
+            )
+            let probe = MockUsageProbe()
+            given(probe).isAvailable().willReturn(true)
+            given(probe).probe().willReturn(snapshot)
 
-                Current session
-                ████████████████░░░░ 65% left
-                Resets in 2h 15m
-
-                Account: user@example.com
-                Organization: Acme Corp
-                Login method: Claude Max
-                """, exitCode: 0))
-
-            let mockResolver = MockAccountInfoResolving()
-            given(mockResolver).resolve().willReturn(Domain.AccountInfo(email: "user@example.com", organization: "Acme Corp"))
-
-            let probe = ClaudeUsageProbe(cliExecutor: mockExecutor, accountInfoResolver: mockResolver)
             let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
@@ -101,26 +92,19 @@ struct QuotaDisplaySpec {
 
         @Test
         func `healthy session and warning weekly quotas display with correct status`() async throws {
-            // Given — CLI returns 65% session (healthy) and 35% weekly (warning)
-            let mockExecutor = MockCLIExecutor()
-            given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
-            given(mockExecutor).execute(
-                binary: .any, args: .any, input: .any,
-                timeout: .any, workingDirectory: .any, autoResponses: .any
-            ).willReturn(CLIResult(output: """
-                Current session
-                ████████████████░░░░ 65% left
-                Resets in 2h 15m
+            // Given — 65% session (healthy) and 35% weekly (warning)
+            let snapshot = UsageSnapshot(
+                providerId: "claude",
+                quotas: [
+                    UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude"),
+                    UsageQuota(percentRemaining: 35, quotaType: .weekly, providerId: "claude")
+                ],
+                capturedAt: Date()
+            )
+            let probe = MockUsageProbe()
+            given(probe).isAvailable().willReturn(true)
+            given(probe).probe().willReturn(snapshot)
 
-                Current week (all models)
-                ██████████░░░░░░░░░░ 35% left
-                Resets Jan 15, 3:30pm
-
-                Account: user@example.com
-                Login method: Claude Max
-                """, exitCode: 0))
-
-            let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
             let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
@@ -131,15 +115,15 @@ struct QuotaDisplaySpec {
             await monitor.refresh(providerId: "claude")
 
             // Then — multiple quota cards with correct statuses
-            let snapshot = claude.snapshot
-            #expect(snapshot != nil)
-            #expect(snapshot!.quotas.count == 2)
+            let resultSnapshot = claude.snapshot
+            #expect(resultSnapshot != nil)
+            #expect(resultSnapshot!.quotas.count == 2)
 
-            let session = snapshot?.quota(for: .session)
+            let session = resultSnapshot?.quota(for: .session)
             #expect(session?.percentRemaining == 65)
             #expect(session?.status == .healthy)
 
-            let weekly = snapshot?.quota(for: .weekly)
+            let weekly = resultSnapshot?.quota(for: .weekly)
             #expect(weekly?.percentRemaining == 35)
             #expect(weekly?.status == .warning)
         }
@@ -147,18 +131,15 @@ struct QuotaDisplaySpec {
         @Test
         func `exhausted session shows depleted status`() async throws {
             // Given — 0% left
-            let mockExecutor = MockCLIExecutor()
-            given(mockExecutor).locate(.any).willReturn("/usr/local/bin/claude")
-            given(mockExecutor).execute(
-                binary: .any, args: .any, input: .any,
-                timeout: .any, workingDirectory: .any, autoResponses: .any
-            ).willReturn(CLIResult(output: """
-                Current session
-                ░░░░░░░░░░░░░░░░░░░░ 0% left
-                Resets in 30m
-                """, exitCode: 0))
+            let snapshot = UsageSnapshot(
+                providerId: "claude",
+                quotas: [UsageQuota(percentRemaining: 0, quotaType: .session, providerId: "claude")],
+                capturedAt: Date()
+            )
+            let probe = MockUsageProbe()
+            given(probe).isAvailable().willReturn(true)
+            given(probe).probe().willReturn(snapshot)
 
-            let probe = ClaudeUsageProbe(cliExecutor: mockExecutor)
             let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
             let monitor = QuotaMonitor(
                 providers: AIProviders(providers: [claude]),
