@@ -98,6 +98,82 @@ struct ClaudeAPIUsageProbeTests {
         #expect(await probe.isAvailable() == false)
     }
 
+    // MARK: - Account Info Tests
+
+    @Test
+    func `probe populates account email and organization from resolver`() async throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry, subscriptionType: "claude_pro")
+
+        let mockNetwork = MockNetworkClient()
+        let responseJSON = """
+        {
+          "five_hour": {
+            "utilization": 25.5,
+            "resets_at": "2025-01-15T10:00:00Z"
+          }
+        }
+        """.data(using: .utf8)!
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(Domain.AccountInfo(email: "user@example.com", organization: "Acme Corp"))
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork, accountInfoResolver: resolver)
+
+        let snapshot = try await probe.probe()
+
+        #expect(snapshot.accountEmail == "user@example.com")
+        #expect(snapshot.accountOrganization == "Acme Corp")
+    }
+
+    @Test
+    func `probe leaves account email nil when resolver has no data`() async throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
+        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry, subscriptionType: "claude_pro")
+
+        let mockNetwork = MockNetworkClient()
+        let responseJSON = """
+        {
+          "five_hour": {
+            "utilization": 10.0,
+            "resets_at": "2025-01-15T10:00:00Z"
+          }
+        }
+        """.data(using: .utf8)!
+        let response = HTTPURLResponse(
+            url: URL(string: "https://api.anthropic.com")!,
+            statusCode: 200,
+            httpVersion: nil,
+            headerFields: nil
+        )!
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let resolver = MockAccountInfoResolving()
+        given(resolver).resolve().willReturn(nil)
+
+        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
+        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork, accountInfoResolver: resolver)
+
+        let snapshot = try await probe.probe()
+
+        #expect(snapshot.accountEmail == nil)
+        #expect(snapshot.accountOrganization == nil)
+    }
+
     // MARK: - Snapshot Cache (TTL) Tests
 
     @Test
