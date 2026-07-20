@@ -50,7 +50,6 @@ let project = Project(
             dependencies: [
                 .target(name: "Domain"),
                 .external(name: "Mockable"),
-                .external(name: "SwiftTerm"),
             ],
             settings: .settings(
                 base: [
