@@ -26,7 +26,7 @@ let project = Project(
             name: "Domain",
             destinations: .macOS,
             product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.domain",
+            bundleId: "com.aakshintala.subscriptionusagebar.domain",
             deploymentTargets: .macOS("15.0"),
             sources: ["Sources/Domain/**"],
             dependencies: [
@@ -44,7 +44,7 @@ let project = Project(
             name: "Infrastructure",
             destinations: .macOS,
             product: .staticFramework,
-            bundleId: "com.tddworks.claudebar.infrastructure",
+            bundleId: "com.aakshintala.subscriptionusagebar.infrastructure",
             deploymentTargets: .macOS("15.0"),
             sources: ["Sources/Infrastructure/**"],
             dependencies: [
@@ -64,7 +64,7 @@ let project = Project(
             name: "ClaudeBar",
             destinations: .macOS,
             product: .app,
-            bundleId: "com.tddworks.claudebar",
+            bundleId: "com.aakshintala.subscriptionusagebar",
             deploymentTargets: .macOS("15.0"),
             infoPlist: .file(path: "Sources/App/Info.plist"),
             sources: ["Sources/App/**"],
@@ -96,7 +96,7 @@ let project = Project(
             name: "DomainTests",
             destinations: .macOS,
             product: .unitTests,
-            bundleId: "com.tddworks.claudebar.domain-tests",
+            bundleId: "com.aakshintala.subscriptionusagebar.domain-tests",
             deploymentTargets: .macOS("15.0"),
             sources: ["Tests/DomainTests/**"],
             dependencies: [
@@ -116,7 +116,7 @@ let project = Project(
             name: "InfrastructureTests",
             destinations: .macOS,
             product: .unitTests,
-            bundleId: "com.tddworks.claudebar.infrastructure-tests",
+            bundleId: "com.aakshintala.subscriptionusagebar.infrastructure-tests",
             deploymentTargets: .macOS("15.0"),
             sources: ["Tests/InfrastructureTests/**"],
             dependencies: [
@@ -136,7 +136,7 @@ let project = Project(
             name: "AcceptanceTests",
             destinations: .macOS,
             product: .unitTests,
-            bundleId: "com.tddworks.claudebar.acceptance-tests",
+            bundleId: "com.aakshintala.subscriptionusagebar.acceptance-tests",
             deploymentTargets: .macOS("15.0"),
             sources: ["Tests/AcceptanceTests/**"],
             dependencies: [
