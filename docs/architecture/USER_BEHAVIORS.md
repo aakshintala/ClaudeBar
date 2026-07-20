@@ -341,34 +341,21 @@ Scenario: Share referral link
 
 | # | Behavior |
 |---|----------|
-| 28 | User switches Claude to API mode → uses OAuth HTTP API instead of CLI |
-| 29 | API mode shows credential status (found / not found) |
+| 29 | API credential status is shown (found / not found) |
 | 30 | Expired session shows "Run `claude` in terminal to log in again" |
 | 31 | User sets monthly budget → sees cost-based usage card |
-| 32 | Auto-trusts probe directory when CLI shows trust dialog |
+
+Behaviors #28 (CLI/API mode switching) and #32 (CLI folder-trust auto-accept) were
+removed with the CLI probe (`ClaudeUsageProbe`) — Claude now always fetches usage
+via the Anthropic OAuth API, so there is no mode to switch and no CLI trust dialog
+to dismiss.
 
 ### BDD Scenarios
-
-**#28 — Switch Claude to API mode**
-```
-Scenario: Switch from CLI to API mode
-  Given Claude is using CLI mode (default)
-    And OAuth credentials exist at ~/.claude/.credentials.json
-  When the user switches to API mode
-  Then the probe mode is persisted as "api"
-    And the next refresh uses the API probe instead of CLI
-
-Scenario: API mode falls back when no credentials
-  Given the user selects API mode
-    But no OAuth credentials are found
-  When the probe checks availability
-  Then the credential status shows "No OAuth credentials found"
-```
 
 **#30 — Expired session error**
 ```
 Scenario: API returns 401
-  Given Claude is using API mode
+  Given Claude authenticates via the Anthropic OAuth API
   When the API returns HTTP 401
   Then the error message shows "Session expired. Run `claude` in terminal to log in again"
 ```
@@ -376,7 +363,6 @@ Scenario: API returns 401
 ### Inner TDD Tests (existing)
 - `ClaudeAPIUsageProbeTests.*`
 - `ClaudeCredentialLoaderTests.*`
-- `ClaudeProviderTests.probeMode switching`
 - `ProbeErrorTests.sessionExpired description`
 
 ---

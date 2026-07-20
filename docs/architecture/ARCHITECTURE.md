@@ -69,7 +69,7 @@ The key principle is **QuotaMonitor as Single Source of Truth** - all provider s
 │                     INFRASTRUCTURE LAYER                             │
 │                                                                      │
 │  CLI Probes (Sources/Infrastructure/)                               │
-│  ├── ClaudeUsageProbe - probes `claude /usage` (CLI + API)          │
+│  ├── ClaudeAPIUsageProbe - probes Anthropic OAuth API                │
 │  ├── CodexUsageProbe - probes Codex via RPC/TTY (RPC + API)         │
 │  ├── GeminiUsageProbe - probes Gemini CLI + API                     │
 │  ├── CopilotUsageProbe - probes GitHub API with token               │
