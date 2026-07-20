@@ -1041,7 +1041,10 @@ struct QuotaMonitorTests {
     @Test
     func `background loop doubles the cadence while on battery`() async {
         let settings = makeSettingsRepository()
-        let provider = ClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
+        // Codex imposes no provider background floor, so this isolates the
+        // battery-doubling behavior from any provider-specific cadence floor
+        // (unlike Claude, which now always floors at 900s — issue #204).
+        let provider = CodexProvider(probe: CountingUsageProbe(providerId: "codex"), settingsRepository: settings)
         let power = FakePowerStateProvider(asleep: false, onBattery: true)
         let clock = RecordingClock()
         let monitor = QuotaMonitor(
@@ -1053,14 +1056,14 @@ struct QuotaMonitorTests {
         let stream = monitor.startMonitoring(interval: .seconds(600))
         for await _ in stream {}
 
-        // 600s → 1200s on battery (×2); CLI mode adds no provider floor.
+        // 600s → 1200s on battery (×2); no provider floor applies.
         #expect(clock.durations == [.seconds(1200)])
     }
 
     @Test
     func `background loop keeps the normal cadence on AC power`() async {
         let settings = makeSettingsRepository()
-        let provider = ClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
+        let provider = CodexProvider(probe: CountingUsageProbe(providerId: "codex"), settingsRepository: settings)
         let power = FakePowerStateProvider(asleep: false, onBattery: false)
         let clock = RecordingClock()
         let monitor = QuotaMonitor(

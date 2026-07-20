@@ -192,22 +192,6 @@ struct RefreshSpec {
             }
         }
 
-        /// Minimal `ClaudeSettingsRepository` fixing the probe mode, so a scenario
-        /// can exercise API-mode background behavior end-to-end.
-        private final class ClaudeModeSettings: ClaudeSettingsRepository, @unchecked Sendable {
-            let mode: ClaudeProbeMode
-            init(mode: ClaudeProbeMode) { self.mode = mode }
-            func isEnabled(forProvider id: String) -> Bool { true }
-            func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool { true }
-            func setEnabled(_ enabled: Bool, forProvider id: String) {}
-            func customCardURL(forProvider id: String) -> String? { nil }
-            func setCustomCardURL(_ url: String?, forProvider id: String) {}
-            func claudeProbeMode() -> ClaudeProbeMode { mode }
-            func setClaudeProbeMode(_ mode: ClaudeProbeMode) {}
-            func claudeCliFallbackEnabled() -> Bool { true }
-            func setClaudeCliFallbackEnabled(_ enabled: Bool) {}
-        }
-
         /// A probe that returns the next snapshot in a sequence on each call, so a
         /// test can tell successive refreshes apart by their data.
         private final class SequentialProbe: UsageProbe, @unchecked Sendable {
@@ -226,47 +210,18 @@ struct RefreshSpec {
         }
 
         @Test
-        func `CLI mode keeps auto-refreshing in the background`() async {
-            // Given — a CLI-mode Claude provider (base settings → CLI).
+        func `background cadence is at least 15 minutes`() async {
+            // Given — a Claude provider and a user who picked the 1-minute option.
             let settings = RefreshSpec.makeSettings()
-            let probe = MockUsageProbe()
-            given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willReturn(UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 42, quotaType: .session, providerId: "claude")],
-                capturedAt: Date()
-            ))
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
-            )
-
-            // When — background sync runs a cycle.
-            let stream = monitor.startMonitoring(interval: .seconds(600))
-            for await _ in stream.prefix(1) {}
-            monitor.stopMonitoring()
-
-            // Then — it refreshed via the CLI probe (no silent CLI→API swap).
-            #expect(claude.snapshot?.quotas.first?.percentRemaining == 42)
-        }
-
-        @Test
-        func `API mode background cadence is at least 15 minutes`() async {
-            // Given — API-mode Claude and a user who picked the 1-minute option.
-            let settings = ClaudeModeSettings(mode: .api)
             let snapshot = UsageSnapshot(
                 providerId: "claude",
                 quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
                 capturedAt: Date()
             )
-            let cliProbe = MockUsageProbe()
-            given(cliProbe).isAvailable().willReturn(true)
-            given(cliProbe).probe().willReturn(snapshot)
-            let apiProbe = MockUsageProbe()
-            given(apiProbe).isAvailable().willReturn(true)
-            given(apiProbe).probe().willReturn(snapshot)
-            let claude = ClaudeProvider(cliProbe: cliProbe, apiProbe: apiProbe, settingsRepository: settings)
+            let probe = MockUsageProbe()
+            given(probe).isAvailable().willReturn(true)
+            given(probe).probe().willReturn(snapshot)
+            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
             let clock = RecordingClock()
             let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: clock)
 
@@ -279,10 +234,10 @@ struct RefreshSpec {
         }
 
         @Test
-        func `interactive refresh is not throttled by the API background floor`() async {
-            // Given — an API-mode Claude provider (which imposes a 15-min background
-            // floor) returning a different snapshot on each probe.
-            let settings = ClaudeModeSettings(mode: .api)
+        func `interactive refresh is not throttled by the background floor`() async {
+            // Given — a Claude provider (which imposes a 15-min background floor)
+            // returning a different snapshot on each probe.
+            let settings = RefreshSpec.makeSettings()
             let probe = SequentialProbe([
                 UsageSnapshot(
                     providerId: "claude",
@@ -295,7 +250,7 @@ struct RefreshSpec {
                     capturedAt: Date()
                 ),
             ])
-            let claude = ClaudeProvider(cliProbe: MockUsageProbe(), apiProbe: probe, settingsRepository: settings)
+            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
 
             // When/Then — two back-to-back user-initiated refreshes both update the

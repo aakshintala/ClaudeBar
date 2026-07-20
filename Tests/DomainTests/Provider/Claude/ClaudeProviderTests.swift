@@ -90,30 +90,6 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `isAvailable returns false in API mode when API unavailable and CLI fallback disabled`() async {
-        let settings = FakeClaudeSettings(probeMode: .api, cliFallbackEnabled: false)
-        let cliProbe = MockUsageProbe()
-        given(cliProbe).isAvailable().willReturn(true)
-        let apiProbe = MockUsageProbe()
-        given(apiProbe).isAvailable().willReturn(false)
-        let claude = ClaudeProvider(cliProbe: cliProbe, apiProbe: apiProbe, settingsRepository: settings)
-
-        #expect(await claude.isAvailable() == false)
-    }
-
-    @Test
-    func `isAvailable returns true in API mode when API unavailable but CLI fallback enabled`() async {
-        let settings = FakeClaudeSettings(probeMode: .api, cliFallbackEnabled: true)
-        let cliProbe = MockUsageProbe()
-        given(cliProbe).isAvailable().willReturn(true)
-        let apiProbe = MockUsageProbe()
-        given(apiProbe).isAvailable().willReturn(false)
-        let claude = ClaudeProvider(cliProbe: cliProbe, apiProbe: apiProbe, settingsRepository: settings)
-
-        #expect(await claude.isAvailable() == true)
-    }
-
-    @Test
     func `claude provider delegates refresh to probe`() async throws {
         let settings = makeSettingsRepository()
         let expectedSnapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date())
@@ -187,117 +163,15 @@ struct ClaudeProviderTests {
         #expect(provider1.id == provider2.id)
     }
 
-    // MARK: - Error Propagation When Both Probes Fail
-
-    @Test
-    func `refresh does not invoke CLI fallback when API returns rateLimited`() async {
-        // When the API probe is rate-limited, the CLI probe talks to the
-        // same Anthropic backend (subject to the same per-token throttle)
-        // AND it's currently broken in the field. The rate-limit error
-        // should surface immediately without the CLI probe being touched.
-        let settings = FakeClaudeSettings(probeMode: .api, cliFallbackEnabled: true)
-
-        let retryAt = Date().addingTimeInterval(300)
-        let apiProbe = MockUsageProbe()
-        given(apiProbe).isAvailable().willReturn(true)
-        given(apiProbe).probe().willThrow(ProbeError.rateLimited(retryAt: retryAt))
-
-        let cliProbe = MockUsageProbe()
-        given(cliProbe).isAvailable().willReturn(true)
-
-        let claude = ClaudeProvider(cliProbe: cliProbe, apiProbe: apiProbe, settingsRepository: settings)
-
-        do {
-            _ = try await claude.refresh()
-            Issue.record("Expected refresh to throw")
-        } catch let error as ProbeError {
-            #expect(error == .rateLimited(retryAt: retryAt))
-        } catch {
-            Issue.record("Expected ProbeError, got \(error)")
-        }
-
-        // The CLI probe must never be invoked when the primary error is
-        // an upstream rate-limit; fallback would amplify the throttle.
-        verify(cliProbe).probe().called(0)
-    }
-
-    @Test
-    func `refresh surfaces primary API error when CLI fallback also fails`() async {
-        // API mode with CLI fallback enabled: API probe throws .rateLimited
-        // (the real root cause), CLI fallback throws .parseFailed (a red
-        // herring caused by the broken /usage stdout capture). The user
-        // should see the rate-limit error, not the parse failure.
-        let settings = FakeClaudeSettings(probeMode: .api, cliFallbackEnabled: true)
-
-        let retryAt = Date().addingTimeInterval(300)
-        let apiProbe = MockUsageProbe()
-        given(apiProbe).isAvailable().willReturn(true)
-        given(apiProbe).probe().willThrow(ProbeError.rateLimited(retryAt: retryAt))
-
-        let cliProbe = MockUsageProbe()
-        given(cliProbe).isAvailable().willReturn(true)
-        given(cliProbe).probe().willThrow(ProbeError.parseFailed("Could not find session usage"))
-
-        let claude = ClaudeProvider(cliProbe: cliProbe, apiProbe: apiProbe, settingsRepository: settings)
-
-        do {
-            _ = try await claude.refresh()
-            Issue.record("Expected refresh to throw")
-        } catch let error as ProbeError {
-            #expect(error == .rateLimited(retryAt: retryAt))
-            #expect(claude.lastError as? ProbeError == .rateLimited(retryAt: retryAt))
-        } catch {
-            Issue.record("Expected ProbeError, got \(error)")
-        }
-    }
-
     // MARK: - Background Refresh Floor (issue #204)
 
     @Test
-    func `background refresh floor is 15 minutes in API mode`() {
-        let settings = FakeClaudeSettings(probeMode: .api)
-        let claude = ClaudeProvider(
-            cliProbe: MockUsageProbe(),
-            apiProbe: MockUsageProbe(),
-            settingsRepository: settings
-        )
+    func `background refresh floor is 15 minutes`() {
+        let settings = makeSettingsRepository()
+        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
 
-        // API mode floors the background cadence to the API snapshot-cache TTL.
+        // Floored to the API snapshot-cache TTL so background polling never
+        // outpaces the cache and burns extra requests for no fresher data.
         #expect(claude.backgroundRefreshFloor == .seconds(900))
     }
-
-    @Test
-    func `background refresh floor is nil in CLI mode`() {
-        let settings = FakeClaudeSettings(probeMode: .cli)
-        let claude = ClaudeProvider(
-            cliProbe: MockUsageProbe(),
-            apiProbe: MockUsageProbe(),
-            settingsRepository: settings
-        )
-
-        // CLI mode imposes no floor — it keeps the user's chosen interval.
-        #expect(claude.backgroundRefreshFloor == nil)
-    }
-}
-
-// MARK: - Test Helpers
-
-private final class FakeClaudeSettings: ClaudeSettingsRepository, @unchecked Sendable {
-    var probeMode: ClaudeProbeMode
-    var cliFallbackEnabled: Bool
-
-    init(probeMode: ClaudeProbeMode = .cli, cliFallbackEnabled: Bool = true) {
-        self.probeMode = probeMode
-        self.cliFallbackEnabled = cliFallbackEnabled
-    }
-
-    func isEnabled(forProvider id: String) -> Bool { true }
-    func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool { true }
-    func setEnabled(_ enabled: Bool, forProvider id: String) {}
-    func customCardURL(forProvider id: String) -> String? { nil }
-    func setCustomCardURL(_ url: String?, forProvider id: String) {}
-    func claudeProbeMode() -> ClaudeProbeMode { probeMode }
-    func setClaudeProbeMode(_ mode: ClaudeProbeMode) { probeMode = mode }
-    func claudeCliFallbackEnabled() -> Bool { cliFallbackEnabled }
-    func setClaudeCliFallbackEnabled(_ enabled: Bool) { cliFallbackEnabled = enabled }
 }
