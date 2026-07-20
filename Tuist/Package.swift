@@ -27,7 +27,6 @@ let package = Package(
         // Add your own dependencies here:
         // .package(url: "https://github.com/Alamofire/Alamofire", from: "5.0.0"),
         // You can read more about dependencies here: https://docs.tuist.io/documentation/tuist/dependencies
-        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.8.1"),
         .package(url: "https://github.com/Kolos65/Mockable.git", from: "0.5.0"),
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.12.0"),
         // Exposes MenuBarExtra's underlying NSStatusItem so the menu-bar label

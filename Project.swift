@@ -75,7 +75,6 @@ let project = Project(
             dependencies: [
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),
-                .external(name: "Sparkle"),
                 .external(name: "MenuBarExtraAccess"),
             ],
             settings: .settings(
@@ -87,10 +86,7 @@ let project = Project(
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
                 ],
                 debug: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG ENABLE_SPARKLE",
-                ],
-                release: [
-                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "ENABLE_SPARKLE",
+                    "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG",
                 ]
             )
         ),

@@ -2,9 +2,6 @@ import SwiftUI
 import Domain
 import Infrastructure
 import MenuBarExtraAccess
-#if ENABLE_SPARKLE
-import Sparkle
-#endif
 
 extension Notification.Name {
     static let hookSettingsChanged = Notification.Name("com.tddworks.claudebar.hookSettingsChanged")
@@ -39,11 +36,6 @@ struct ClaudeBarApp: App {
 
     /// Sends session start/end notifications
     private let sessionAlertSender = SystemAlertSender()
-
-    #if ENABLE_SPARKLE
-    /// Sparkle updater for auto-updates
-    @State private var sparkleUpdater = SparkleUpdater()
-    #endif
 
     init() {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
@@ -202,18 +194,10 @@ struct ClaudeBarApp: App {
     var body: some Scene {
         MenuBarExtra {
             Group {
-                #if ENABLE_SPARKLE
                 MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
-                        if enabled { startHookServer() } else { stopHookServer() }
-                    }
-                    .appThemeProvider(themeModeId: settings.themeMode)
-                    .environment(\.sparkleUpdater, sparkleUpdater)
-                #else
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
-                        if enabled { startHookServer() } else { stopHookServer() }
-                    }
-                    .appThemeProvider(themeModeId: settings.themeMode)
-                #endif
+                    if enabled { startHookServer() } else { stopHookServer() }
+                }
+                .appThemeProvider(themeModeId: settings.themeMode)
             }
             // Opening/closing the dropdown flips `isMenuPresented`, which makes
             // SwiftUI re-evaluate the scene and wipe the AppKit-drawn button

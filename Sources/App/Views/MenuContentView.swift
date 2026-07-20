@@ -1,9 +1,6 @@
 import SwiftUI
 import Domain
 import Infrastructure
-#if ENABLE_SPARKLE
-import Sparkle
-#endif
 
 /// The main menu content view with adaptive theme support via AppThemeProvider.
 /// Uses the pluggable theme system for consistent styling across all themes.
@@ -15,9 +12,6 @@ struct MenuContentView: View {
 
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
-    #if ENABLE_SPARKLE
-    @Environment(\.sparkleUpdater) private var sparkleUpdater
-    #endif
     @State private var isHoveringRefresh = false
     @State private var animateIn = false
     @State private var showSettings = false
@@ -140,12 +134,6 @@ struct MenuContentView: View {
                 await refresh(providerId: selectedProviderId)
             }
 
-            // Check for updates when menu opens (no UI unless update found)
-            #if ENABLE_SPARKLE
-            if sparkleUpdater?.automaticallyChecksForUpdates == true {
-                sparkleUpdater?.checkForUpdatesInBackground()
-            }
-            #endif
         }
         .onChange(of: selectedProviderId) { _, newProviderId in
             // Refresh immediately when the user switches provider while the
@@ -321,14 +309,9 @@ struct MenuContentView: View {
         return selectedProviderStatus.badgeText
     }
 
-    /// Help text for settings button, includes update info if available
+    /// Help text for settings button
     private var updateAvailableHelpText: String {
-        #if ENABLE_SPARKLE
-        if let version = sparkleUpdater?.availableVersion, sparkleUpdater?.isUpdateAvailable == true {
-            return "Update available: v\(version)"
-        }
-        #endif
-        return "Settings"
+        "Settings"
     }
 
     // MARK: - Provider Pills
@@ -779,14 +762,6 @@ struct MenuContentView: View {
                     Image(systemName: "gearshape.fill")
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(theme.textSecondary)
-
-                    // Update available indicator
-                    #if ENABLE_SPARKLE
-                    if sparkleUpdater?.isUpdateAvailable == true {
-                        UpdateBadge(accentColor: theme.accentPrimary)
-                            .offset(x: 14, y: -14)
-                    }
-                    #endif
                 }
             }
             .buttonStyle(.plain)
