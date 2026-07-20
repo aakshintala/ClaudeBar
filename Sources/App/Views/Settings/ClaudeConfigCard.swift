@@ -11,8 +11,6 @@ struct ClaudeConfigCard: View {
 
     @State private var claudeConfigExpanded: Bool = false
     @State private var claudeBudgetExpanded: Bool = false
-    @State private var claudeProbeMode: ClaudeProbeMode = .cli
-    @State private var claudeCliFallbackEnabled: Bool = true
     @State private var budgetInput: String = ""
 
     var body: some View {
@@ -21,8 +19,6 @@ struct ClaudeConfigCard: View {
             budgetCard
         }
         .onAppear {
-            claudeProbeMode = settings.claude.claudeProbeMode()
-            claudeCliFallbackEnabled = settings.claude.claudeCliFallbackEnabled()
             if settings.claudeApiBudget > 0 {
                 budgetInput = String(describing: settings.claudeApiBudget)
             }
@@ -93,7 +89,7 @@ struct ClaudeConfigCard: View {
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
 
-                Text("Data fetching method")
+                Text("Anthropic API status")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -104,119 +100,40 @@ struct ClaudeConfigCard: View {
 
     private var configForm: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("PROBE MODE")
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "network")
+                    .font(.system(size: 10))
+                    .foregroundStyle(theme.accentPrimary)
+                    .frame(width: 16)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Anthropic API")
+                        .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
+
+                    Text("Calls the Anthropic API directly using OAuth credentials. Usage data is cached for 15 min to stay under rate limits.")
+                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                }
+            }
+
+            let credentialLoader = ClaudeCredentialLoader()
+            let hasCredentials = credentialLoader.loadCredentials() != nil
+
+            HStack(spacing: 6) {
+                Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
+
+                Text(hasCredentials ? "OAuth credentials found" : "No OAuth credentials found")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
-
-                Picker("", selection: $claudeProbeMode) {
-                    ForEach(ClaudeProbeMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: claudeProbeMode) { _, newValue in
-                    settings.claude.setClaudeProbeMode(newValue)
-                    // In API mode ClaudeBar caches usage data for 15 min to stay
-                    // under Anthropic's API rate limits, so a faster background
-                    // cadence is wasted (calls just return the cache). Snap an
-                    // enabled sub-15-min interval up to 15 min (issue #204); leave
-                    // "Off" alone so switching mode never turns on sync the user
-                    // disabled.
-                    if newValue == .api,
-                       let seconds = settings.refreshInterval.seconds,
-                       seconds < 900 {
-                        settings.refreshInterval = .fifteenMinutes
-                    }
-                    Task {
-                        await monitor.refresh(providerId: "claude")
-                    }
-                }
+                    .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
             }
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 10))
-                        .foregroundStyle(claudeProbeMode == .cli ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("CLI Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(claudeProbeMode == .cli ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Runs `claude /usage` command. Works with any auth method.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "network")
-                        .font(.system(size: 10))
-                        .foregroundStyle(claudeProbeMode == .api ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("API Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(claudeProbeMode == .api ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Calls Anthropic API directly. Faster, uses OAuth credentials.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-            }
-
-            if claudeProbeMode == .api {
-                let credentialLoader = ClaudeCredentialLoader()
-                let hasCredentials = credentialLoader.loadCredentials() != nil
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "clock.arrow.circlepath")
-                        .font(.system(size: 10))
-                        .foregroundStyle(theme.textTertiary)
-                        .frame(width: 16)
-
-                    Text("Usage data is cached for 15 min to stay under Anthropic's API rate limits, so background refresh is capped at 15 min in this mode.")
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-
-                HStack(spacing: 6) {
-                    Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
-
-                    Text(hasCredentials ? "OAuth credentials found" : "No OAuth credentials found")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
-                }
-
-                if !hasCredentials {
-                    Text("Run `claude` in terminal to authenticate, then credentials will be available.")
-                        .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-
-                Toggle(isOn: $claudeCliFallbackEnabled) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("CLI fallback")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(theme.textPrimary)
-                        Text("Fall back to `claude /usage` if OAuth API is unavailable.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-                .toggleStyle(.switch)
-                .tint(theme.accentPrimary)
-                .onChange(of: claudeCliFallbackEnabled) { _, newValue in
-                    settings.claude.setClaudeCliFallbackEnabled(newValue)
-                }
+            if !hasCredentials {
+                Text("Run `claude` in terminal to authenticate, then credentials will be available.")
+                    .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                    .foregroundStyle(theme.textTertiary)
             }
         }
     }

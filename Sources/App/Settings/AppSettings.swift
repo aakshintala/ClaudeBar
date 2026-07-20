@@ -287,7 +287,6 @@ public final class AppSettings {
     /// Access provider-specific settings for reading/writing in Settings UI.
     /// These are non-observable (loaded into @State) - only app-level settings are @Observable.
     public var provider: ProviderSettingsRepository { repository }
-    public var claude: ClaudeSettingsRepository { repository }
     public var codex: CodexSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
 

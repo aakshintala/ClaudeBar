@@ -3,7 +3,7 @@ import Domain
 
 /// UserDefaults-based implementation of ProviderSettingsRepository and its sub-protocols.
 /// Persists provider settings like isEnabled state and provider-specific configuration.
-public final class UserDefaultsProviderSettingsRepository: ClaudeSettingsRepository, CodexSettingsRepository, HookSettingsRepository, @unchecked Sendable {
+public final class UserDefaultsProviderSettingsRepository: CodexSettingsRepository, HookSettingsRepository, @unchecked Sendable {
     /// Shared singleton instance
     public static let shared = UserDefaultsProviderSettingsRepository()
 
@@ -41,27 +41,6 @@ public final class UserDefaultsProviderSettingsRepository: ClaudeSettingsReposit
         } else {
             userDefaults.removeObject(forKey: "provider.\(id).customCardURL")
         }
-    }
-
-    // MARK: - ClaudeSettingsRepository
-
-    public func claudeProbeMode() -> ClaudeProbeMode {
-        guard let rawValue = userDefaults.string(forKey: Keys.claudeProbeMode) else {
-            return .cli // Default to CLI mode
-        }
-        return ClaudeProbeMode(rawValue: rawValue) ?? .cli
-    }
-
-    public func setClaudeProbeMode(_ mode: ClaudeProbeMode) {
-        userDefaults.set(mode.rawValue, forKey: Keys.claudeProbeMode)
-    }
-
-    public func claudeCliFallbackEnabled() -> Bool {
-        userDefaults.object(forKey: Keys.claudeCliFallbackEnabled) as? Bool ?? true
-    }
-
-    public func setClaudeCliFallbackEnabled(_ enabled: Bool) {
-        userDefaults.set(enabled, forKey: Keys.claudeCliFallbackEnabled)
     }
 
     // MARK: - CodexSettingsRepository
@@ -105,9 +84,6 @@ public final class UserDefaultsProviderSettingsRepository: ClaudeSettingsReposit
         // Hook settings
         static let hookEnabled = "hookConfig.enabled"
         static let hookPort = "hookConfig.port"
-        // Claude settings
-        static let claudeProbeMode = "providerConfig.claudeProbeMode"
-        static let claudeCliFallbackEnabled = "providerConfig.claudeCliFallbackEnabled"
         // Codex settings
         static let codexProbeMode = "providerConfig.codexProbeMode"
     }

@@ -133,23 +133,4 @@ struct UserDefaultsProviderSettingsRepositoryTests {
         // Then
         #expect(enabled == true)
     }
-
-    // MARK: - Claude CLI Fallback
-
-    @Test
-    func `claudeCliFallbackEnabled defaults to true`() {
-        let repository = makeRepository()
-        defer { cleanupDefaults() }
-
-        #expect(repository.claudeCliFallbackEnabled() == true)
-    }
-
-    @Test
-    func `setClaudeCliFallbackEnabled persists value`() {
-        let repository = makeRepository()
-        defer { cleanupDefaults() }
-
-        repository.setClaudeCliFallbackEnabled(false)
-        #expect(repository.claudeCliFallbackEnabled() == false)
-    }
 }

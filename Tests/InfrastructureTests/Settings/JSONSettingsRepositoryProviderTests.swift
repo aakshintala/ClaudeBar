@@ -111,42 +111,6 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.customCardURL(forProvider: "gemini") == nil)
     }
 
-    // MARK: - Claude Settings
-
-    @Test
-    func `claudeProbeMode defaults to cli`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.claudeProbeMode() == .cli)
-    }
-
-    @Test
-    func `setClaudeProbeMode persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setClaudeProbeMode(.api)
-        #expect(repo.claudeProbeMode() == .api)
-    }
-
-    @Test
-    func `claudeCliFallbackEnabled defaults to true`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.claudeCliFallbackEnabled() == true)
-    }
-
-    @Test
-    func `setClaudeCliFallbackEnabled persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setClaudeCliFallbackEnabled(false)
-        #expect(repo.claudeCliFallbackEnabled() == false)
-    }
-
     // MARK: - Codex Settings
 
     @Test

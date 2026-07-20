@@ -9,7 +9,6 @@ import Domain
 /// Credentials (tokens, API keys) use UserDefaults for now (Keychain migration later).
 public final class JSONSettingsRepository:
     AppSettingsRepository,
-    ClaudeSettingsRepository,
     CodexSettingsRepository,
     HookSettingsRepository,
     @unchecked Sendable
@@ -200,28 +199,6 @@ public final class JSONSettingsRepository:
     public func setCustomCardURL(_ url: String?, forProvider id: String) {
         let value: Any? = (url?.isEmpty == false) ? url : nil
         store.write(value: value, key: "providers.\(id).customCardURL")
-    }
-
-    // MARK: - ClaudeSettingsRepository
-
-    public func claudeProbeMode() -> ClaudeProbeMode {
-        guard let raw: String = store.read(key: "claude.probeMode"),
-              let mode = ClaudeProbeMode(rawValue: raw) else {
-            return .cli
-        }
-        return mode
-    }
-
-    public func setClaudeProbeMode(_ mode: ClaudeProbeMode) {
-        store.write(value: mode.rawValue, key: "claude.probeMode")
-    }
-
-    public func claudeCliFallbackEnabled() -> Bool {
-        store.read(key: "claude.cliFallbackEnabled") ?? true
-    }
-
-    public func setClaudeCliFallbackEnabled(_ enabled: Bool) {
-        store.write(value: enabled, key: "claude.cliFallbackEnabled")
     }
 
     // MARK: - CodexSettingsRepository
