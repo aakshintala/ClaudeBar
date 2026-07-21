@@ -94,16 +94,6 @@ struct ClaudeBarApp: App {
         )
         statusItemDriver.startMonitoringLifecycle()
 
-        // Load user extensions from ~/.claudebar/extensions/
-        let extensionRegistry = ExtensionRegistry(
-            settingsRepository: settingsRepository,
-            configRepository: AppSettings.shared.extensionConfig
-        )
-        let extensionProviders = extensionRegistry.loadExtensions(into: monitor)
-        if !extensionProviders.isEmpty {
-            AppLog.providers.info("Loaded \(extensionProviders.count) extension provider(s): \(extensionProviders.map(\.name).joined(separator: ", "))")
-        }
-
         // Start hook server if hooks are enabled
         if settingsRepository.isHookEnabled() {
             // Reconcile installed hooks so newly-added events (e.g.

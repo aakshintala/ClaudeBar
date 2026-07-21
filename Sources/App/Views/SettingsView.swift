@@ -31,16 +31,6 @@ struct SettingsContentView: View {
         monitor.provider(for: ProviderID.codex)?.isEnabled ?? false
     }
 
-    /// Extension providers that are enabled and have config fields declared in their manifest.
-    private var enabledExtensionProvidersWithConfig: [ExtensionProvider] {
-        monitor.allProviders.compactMap { provider in
-            guard let extProvider = provider as? ExtensionProvider,
-                  extProvider.isEnabled,
-                  extProvider.manifest.hasConfig else { return nil }
-            return extProvider
-        }
-    }
-
     /// Maximum height for the settings view to ensure it fits on small screens
     private var maxSettingsHeight: CGFloat {
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
@@ -69,13 +59,6 @@ struct SettingsContentView: View {
                     if isCodexEnabled {
                         CodexConfigCard(monitor: monitor)
                             .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    ForEach(enabledExtensionProvidersWithConfig, id: \.id) { extProvider in
-                        ExtensionConfigCard(
-                            provider: extProvider,
-                            configRepository: AppSettings.shared.extensionConfig
-                        )
-                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     backgroundSyncCard
                     burnRateCard

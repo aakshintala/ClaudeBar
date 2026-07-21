@@ -289,11 +289,6 @@ public final class AppSettings {
     public var provider: ProviderSettingsRepository { repository }
     public var codex: CodexSettingsRepository { repository }
     public var hook: HookSettingsRepository { repository }
-
-    /// Extension config repository for dynamic extension provider settings.
-    public let extensionConfig: any ExtensionConfigRepository = JSONExtensionConfigRepository(
-        settingsStore: .shared
-    )
 }
 
 // MARK: - Notification Names

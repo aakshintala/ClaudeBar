@@ -26,9 +26,6 @@ public struct UsageSnapshot: Sendable, Equatable {
     /// Daily usage report from local session JSONL analysis (e.g., Claude Code)
     public let dailyUsageReport: DailyUsageReport?
 
-    /// Generic metrics from extension probes
-    public let extensionMetrics: [ExtensionMetric]?
-
     // MARK: - Initialization
 
     public init(
@@ -40,8 +37,7 @@ public struct UsageSnapshot: Sendable, Equatable {
         loginMethod: String? = nil,
         accountTier: AccountTier? = nil,
         costUsage: CostUsage? = nil,
-        dailyUsageReport: DailyUsageReport? = nil,
-        extensionMetrics: [ExtensionMetric]? = nil
+        dailyUsageReport: DailyUsageReport? = nil
     ) {
         self.providerId = providerId
         self.quotas = quotas
@@ -52,7 +48,6 @@ public struct UsageSnapshot: Sendable, Equatable {
         self.accountTier = accountTier
         self.costUsage = costUsage
         self.dailyUsageReport = dailyUsageReport
-        self.extensionMetrics = extensionMetrics
     }
 
     // MARK: - Domain Queries
@@ -88,17 +83,14 @@ public struct UsageSnapshot: Sendable, Equatable {
         }
     }
 
-    /// Whether any quota or metric carries group metadata (aggregating
-    /// providers like Oh My Pi tag rows with their upstream account).
+    /// Whether any quota carries group metadata (aggregating providers like
+    /// Oh My Pi tag rows with their upstream account).
     public var hasQuotaGroups: Bool {
         quotas.contains { $0.group != nil }
-            || (extensionMetrics ?? []).contains { $0.group != nil }
     }
 
     /// Quotas bucketed by their group, preserving first-appearance order.
-    /// Ungrouped quotas form one leading unnamed group. Grouped extension
-    /// metrics (accounts without usable quota data) become note-only
-    /// sections after the quota sections, or attach to a matching section.
+    /// Ungrouped quotas form one leading unnamed group.
     public var quotaGroups: [QuotaGroup] {
         var order: [String] = []
         var buckets: [String: [UsageQuota]] = [:]
@@ -108,22 +100,11 @@ public struct UsageSnapshot: Sendable, Equatable {
             buckets[key, default: []].append(quota)
         }
 
-        var notes: [String: String] = [:]
-        for metric in extensionMetrics ?? [] {
-            guard let group = metric.group else { continue }
-            if buckets[group] == nil, notes[group] == nil { order.append(group) }
-            if let existing = notes[group] {
-                notes[group] = "\(existing)\n\(metric.value)"
-            } else {
-                notes[group] = metric.value
-            }
-        }
-
         return order.map { key in
             QuotaGroup(
                 title: key.isEmpty ? nil : key,
                 quotas: buckets[key] ?? [],
-                note: notes[key]
+                note: nil
             )
         }
     }

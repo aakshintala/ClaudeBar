@@ -625,23 +625,6 @@ struct MenuContentView: View {
                     DailyUsageCardView(metric: .workingTime, report: report, delay: baseDelay + 0.16)
                 }
             }
-
-            // Show extension metrics cards (from extension probes)
-            if let extensionMetrics = snapshot.extensionMetrics?.filter({ $0.group == nil }),
-               !extensionMetrics.isEmpty {
-                let metricBaseDelay = Double(snapshot.quotas.count + 2) * 0.08
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
-                    ForEach(Array(extensionMetrics.enumerated()), id: \.element.label) { index, metric in
-                        ExtensionMetricCardView(metric: metric, delay: metricBaseDelay + Double(index) * 0.08)
-                    }
-                }
-            }
         }
         .padding(.top, 4)
     }
