@@ -56,148 +56,6 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.userHasChosenTheme() == true)
     }
 
-    // MARK: - Display
-
-    @Test
-    func `usageDisplayMode defaults to remaining`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.usageDisplayMode() == "remaining")
-    }
-
-    @Test
-    func `setUsageDisplayMode persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setUsageDisplayMode("used")
-        #expect(repo.usageDisplayMode() == "used")
-    }
-
-    @Test
-    func `menuBarPercentageEnabled defaults to false`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.menuBarPercentageEnabled() == false)
-    }
-
-    @Test
-    func `menuBarPercentageSelection defaults to claude session`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.menuBarPercentageProviderId() == "claude")
-        #expect(repo.menuBarPercentageQuotaKey() == "session")
-    }
-
-    @Test
-    func `setMenuBarPercentageSettings persists values`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setMenuBarPercentageEnabled(true)
-        repo.setMenuBarPercentageProviderId("codex")
-        repo.setMenuBarPercentageQuotaKey("weekly")
-
-        #expect(repo.menuBarPercentageEnabled() == true)
-        #expect(repo.menuBarPercentageProviderId() == "codex")
-        #expect(repo.menuBarPercentageQuotaKey() == "weekly")
-    }
-
-    @Test
-    func `menuBarSecondaryQuotaKey defaults to empty`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.menuBarSecondaryQuotaKey() == "")
-    }
-
-    @Test
-    func `setMenuBarSecondaryQuotaKey persists value`() {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
-        let fileURL = tempDir.appendingPathComponent("settings.json")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let store = JSONSettingsStore(fileURL: fileURL)
-        let repo1 = JSONSettingsRepository(store: store)
-        repo1.setMenuBarSecondaryQuotaKey("weekly")
-
-        let repo2 = JSONSettingsRepository(store: store)
-        #expect(repo2.menuBarSecondaryQuotaKey() == "weekly")
-    }
-
-    @Test
-    func `menuBarDurationEnabled defaults to false`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.menuBarDurationEnabled() == false)
-    }
-
-    @Test
-    func `setMenuBarDurationEnabled persists value`() {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
-        let fileURL = tempDir.appendingPathComponent("settings.json")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let store = JSONSettingsStore(fileURL: fileURL)
-        let repo1 = JSONSettingsRepository(store: store)
-        repo1.setMenuBarDurationEnabled(true)
-
-        let repo2 = JSONSettingsRepository(store: store)
-        #expect(repo2.menuBarDurationEnabled() == true)
-    }
-
-    @Test
-    func `menuBarStackedEnabled defaults to false`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.menuBarStackedEnabled() == false)
-    }
-
-    @Test
-    func `setMenuBarStackedEnabled persists value`() {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
-        let fileURL = tempDir.appendingPathComponent("settings.json")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let store = JSONSettingsStore(fileURL: fileURL)
-        let repo1 = JSONSettingsRepository(store: store)
-        repo1.setMenuBarStackedEnabled(true)
-
-        let repo2 = JSONSettingsRepository(store: store)
-        #expect(repo2.menuBarStackedEnabled() == true)
-    }
-
-    @Test
-    func `menuBarStackedSize defaults to small`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.menuBarStackedSize() == "small")
-    }
-
-    @Test
-    func `setMenuBarStackedSize persists value`() {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
-        let fileURL = tempDir.appendingPathComponent("settings.json")
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let store = JSONSettingsStore(fileURL: fileURL)
-        let repo1 = JSONSettingsRepository(store: store)
-        repo1.setMenuBarStackedSize("large")
-
-        let repo2 = JSONSettingsRepository(store: store)
-        #expect(repo2.menuBarStackedSize() == "large")
-    }
-
     // MARK: - Overview
 
     @Test
@@ -304,16 +162,10 @@ struct JSONSettingsRepositoryAppTests {
         let repo1 = JSONSettingsRepository(store: store)
         repo1.setThemeMode("cli")
         repo1.setOverviewModeEnabled(true)
-        repo1.setMenuBarPercentageEnabled(true)
-        repo1.setMenuBarPercentageProviderId("codex")
-        repo1.setMenuBarPercentageQuotaKey("model:gpt-5")
 
         // New repo, same store
         let repo2 = JSONSettingsRepository(store: store)
         #expect(repo2.themeMode() == "cli")
         #expect(repo2.overviewModeEnabled() == true)
-        #expect(repo2.menuBarPercentageEnabled() == true)
-        #expect(repo2.menuBarPercentageProviderId() == "codex")
-        #expect(repo2.menuBarPercentageQuotaKey() == "model:gpt-5")
     }
 }

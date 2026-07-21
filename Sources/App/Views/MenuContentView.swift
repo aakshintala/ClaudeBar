@@ -122,14 +122,7 @@ struct MenuContentView: View {
         }
     }
 
-    /// Upper bound for the scrollable content region — see
-    /// `PopoverContentHeight` for the policy and its tests.
-    private var contentMaxHeight: CGFloat {
-        PopoverContentHeight.maxHeight(
-            visibleScreenHeight: NSScreen.main?.visibleFrame.height ?? 800,
-            overviewMode: settings.overviewModeEnabled
-        )
-    }
+    private var contentMaxHeight: CGFloat { 500 }
 
     // MARK: - Background Orbs
 
@@ -795,18 +788,6 @@ struct WrappedStatCard: View {
     @State private var animateProgress = false
     @State private var settings = AppSettings.shared
 
-    private var displayMode: UsageDisplayMode {
-        settings.usageDisplayMode
-    }
-
-    /// Effective display mode: falls back to .used when pace is unknown
-    private var effectiveDisplayMode: UsageDisplayMode {
-        if displayMode == .pace && quota.pace == .unknown {
-            return .used
-        }
-        return displayMode
-    }
-
     private var statusColor: Color {
         theme.statusColor(for: quota.status)
     }
@@ -818,12 +799,7 @@ struct WrappedStatCard: View {
     private var valueCaption: String {
         if isCappedSpend { return "Spent" }
         if quota.isDollarBased { return "Remaining" }
-        return effectiveDisplayMode.displayLabel
-    }
-
-    /// The color used for the pace label/number
-    private var paceColor: Color {
-        quota.pace.displayColor
+        return "Remaining"
     }
 
     var body: some View {
@@ -844,14 +820,9 @@ struct WrappedStatCard: View {
 
                 Spacer(minLength: 4)
 
-                // Status badge - pace mode shows pace badge, others show status
-                if effectiveDisplayMode == .pace {
-                    Text(quota.pace.displayName.uppercased())
-                        .badge(paceColor)
-                } else {
-                    Text(quota.status.badgeText)
-                        .badge(statusColor)
-                }
+                // Status badge
+                Text(quota.status.badgeText)
+                    .badge(statusColor)
             }
 
             // Large value display with label (end-aligned)
@@ -878,14 +849,14 @@ struct WrappedStatCard: View {
                         .contentTransition(.numericText())
                 } else {
                     HStack(alignment: .firstTextBaseline, spacing: 1) {
-                        Text("\(Int(quota.displayPercent(mode: effectiveDisplayMode)))")
+                        Text("\(Int(quota.percentRemaining.rounded()))")
                             .font(.system(size: 32, weight: .bold, design: theme.fontDesign))
-                            .foregroundStyle(effectiveDisplayMode == .pace ? paceColor : theme.textPrimary)
+                            .foregroundStyle(theme.textPrimary)
                             .contentTransition(.numericText())
 
                         Text("%")
                             .font(.system(size: 16, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(effectiveDisplayMode == .pace ? paceColor.opacity(0.7) : theme.textTertiary)
+                            .foregroundStyle(theme.textTertiary)
                     }
                 }
 
@@ -894,25 +865,13 @@ struct WrappedStatCard: View {
                 Text(valueCaption)
                     .font(.system(size: isCappedSpend ? 10 : 12, weight: .medium, design: theme.fontDesign))
                     .fixedSize()
-                    .foregroundStyle(effectiveDisplayMode == .pace ? paceColor.opacity(0.8) : theme.textTertiary)
+                    .foregroundStyle(theme.textTertiary)
             }
 
-            // Pace insight line
-            if effectiveDisplayMode == .pace, let insight = quota.paceInsight {
-                HStack(spacing: 3) {
-                    Image(systemName: "lightbulb.fill")
-                        .font(.system(size: 7))
-                    Text(insight)
-                        .font(.system(size: 8, weight: .medium, design: theme.fontDesign))
-                }
-                .foregroundStyle(paceColor.opacity(0.8))
-                .lineLimit(1)
-            }
-
-            // Progress bar with gradient and pace tick
+            // Progress bar with gradient
             VStack(spacing: 1) {
                 GeometryReader { geo in
-                    let progressPercent = quota.displayProgressPercent(mode: effectiveDisplayMode)
+                    let progressPercent = quota.percentRemaining
                     ZStack(alignment: .leading) {
                         // Track
                         RoundedRectangle(cornerRadius: 3)
@@ -926,25 +885,7 @@ struct WrappedStatCard: View {
                     }
                 }
                 .frame(height: 5)
-
-                // Expected pace tick mark
-                if let expectedPercent = quota.expectedProgressPercent(mode: effectiveDisplayMode) {
-                    GeometryReader { geo in
-                        let tickX = geo.size.width * max(0, min(100, expectedPercent)) / 100
-                        Path { path in
-                            path.move(to: CGPoint(x: tickX - 3, y: 4))
-                            path.addLine(to: CGPoint(x: tickX + 3, y: 4))
-                            path.addLine(to: CGPoint(x: tickX, y: 0))
-                            path.closeSubpath()
-                        }
-                        .fill(theme.textTertiary)
-                        .opacity(animateProgress ? 1 : 0)
-                        .animation(.easeIn(duration: 0.3).delay(delay + 0.5), value: animateProgress)
-                    }
-                    .frame(height: 5)
-                }
             }
-            .help(quota.paceTickHelp(mode: effectiveDisplayMode) ?? "")
 
             // Reset info
             if let resetText = quota.resetTimestampDescription ?? quota.resetText ?? quota.resetDescription {

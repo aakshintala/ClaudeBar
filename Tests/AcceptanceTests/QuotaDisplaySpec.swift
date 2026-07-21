@@ -156,38 +156,6 @@ struct QuotaDisplaySpec {
         }
     }
 
-    // MARK: - #10: Remaining vs Used display mode
-
-    @Suite("Scenario: Toggle between Remaining and Used display")
-    @MainActor
-    struct DisplayMode {
-
-        @Test
-        func `Used mode shows inverted percentage`() {
-            // Given — 65% remaining
-            let quota = UsageQuota(
-                percentRemaining: 65,
-                quotaType: .session,
-                providerId: "claude"
-            )
-
-            // Then — remaining shows 65%, used shows 35%
-            #expect(quota.displayPercent(mode: .remaining) == 65)
-            #expect(quota.displayPercent(mode: .used) == 35)
-        }
-
-        @Test
-        func `depleted quota shows 100% used`() {
-            let quota = UsageQuota(
-                percentRemaining: 0,
-                quotaType: .session,
-                providerId: "claude"
-            )
-
-            #expect(quota.displayPercent(mode: .used) == 100)
-        }
-    }
-
     // MARK: - #13: Unavailable provider shows error
 
     @Suite("Scenario: Unavailable provider shows error message")

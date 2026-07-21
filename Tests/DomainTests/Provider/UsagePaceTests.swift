@@ -225,41 +225,6 @@ struct UsagePaceTests {
         #expect(quota.pace == .behind)
     }
 
-    // MARK: - Display Percent in Pace Mode
-
-    @Test
-    func `displayPercent in pace mode returns percentRemaining`() {
-        let resetsAt = Date().addingTimeInterval(3.75 * 3600)
-        let quota = UsageQuota(
-            percentRemaining: 30,
-            quotaType: .session,
-            providerId: "claude",
-            resetsAt: resetsAt
-        )
-
-        #expect(quota.displayPercent(mode: .pace) == 30)
-    }
-
-    @Test
-    func `displayPercent in pace mode returns percentRemaining when no resetsAt`() {
-        let quota = UsageQuota(
-            percentRemaining: 50,
-            quotaType: .session,
-            providerId: "claude"
-        )
-        #expect(quota.displayPercent(mode: .pace) == 50)
-    }
-
-    @Test
-    func `displayProgressPercent in pace mode returns percentRemaining`() {
-        let quota = UsageQuota(
-            percentRemaining: 30,
-            quotaType: .session,
-            providerId: "claude"
-        )
-        #expect(quota.displayProgressPercent(mode: .pace) == 30)
-    }
-
     // MARK: - Weekly Quota Pace
 
     @Test

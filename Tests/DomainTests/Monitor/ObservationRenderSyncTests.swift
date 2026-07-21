@@ -150,51 +150,6 @@ struct ObservationRenderSyncTests {
         #expect(recorder.rendered == ["initial", "initial"])
     }
 
-    @Test
-    func `menu bar label content stays in sync with provider refreshes`() async {
-        // Given — the real domain chain: provider snapshot → monitor → label
-        let settings = MockProviderSettingsRepository()
-        given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-        given(settings).isEnabled(forProvider: .any).willReturn(true)
-        given(settings).setEnabled(.any, forProvider: .any).willReturn()
-
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 64, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-        let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [provider]),
-            clock: NoOpClock()
-        )
-
-        let recorder = RenderRecorder()
-        let sync = ObservationRenderSync(
-            read: {
-                monitor.menuBarLabel(
-                    providerId: "claude",
-                    primaryQuotaKey: "session",
-                    showPercentage: true,
-                    showDuration: false,
-                    mode: .remaining
-                )?.text ?? "no label"
-            },
-            render: { recorder.record($0) }
-        )
-        sync.start()
-        #expect(recorder.rendered == ["no label"])
-
-        // When — a refresh replaces the provider snapshot
-        await monitor.refresh(providerId: "claude")
-        await waitUntil { recorder.rendered.count >= 2 }
-
-        // Then — the sink saw the new label without any view re-evaluation
-        #expect(recorder.rendered == ["no label", "64%"])
-    }
-
     private struct NoOpClock: Clock {
         func sleep(for duration: Duration) async throws {}
         func sleep(nanoseconds: UInt64) async throws {}
