@@ -647,11 +647,6 @@ struct SettingsContentView: View {
                 .scaleEffect(0.8)
                 .labelsHidden()
             }
-
-            if provider.isEnabled {
-                CustomCardURLField(providerId: provider.id)
-                    .padding(.leading, 30)
-            }
         }
         .padding(.vertical, 4)
     }

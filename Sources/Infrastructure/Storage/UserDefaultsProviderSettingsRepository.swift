@@ -31,18 +31,6 @@ public final class UserDefaultsProviderSettingsRepository: CodexSettingsReposito
         userDefaults.set(enabled, forKey: key)
     }
 
-    public func customCardURL(forProvider id: String) -> String? {
-        userDefaults.string(forKey: "provider.\(id).customCardURL")
-    }
-
-    public func setCustomCardURL(_ url: String?, forProvider id: String) {
-        if let url, !url.isEmpty {
-            userDefaults.set(url, forKey: "provider.\(id).customCardURL")
-        } else {
-            userDefaults.removeObject(forKey: "provider.\(id).customCardURL")
-        }
-    }
-
     // MARK: - CodexSettingsRepository
 
     public func codexProbeMode() -> CodexProbeMode {

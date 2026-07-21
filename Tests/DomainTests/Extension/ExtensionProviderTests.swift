@@ -43,8 +43,6 @@ struct ExtensionProviderTests {
         given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(false)
         given(settings).isEnabled(forProvider: .any).willReturn(false)
         given(settings).setEnabled(.any, forProvider: .any).willReturn()
-        given(settings).customCardURL(forProvider: .any).willReturn(nil)
-        given(settings).setCustomCardURL(.any, forProvider: .any).willReturn()
 
         let provider = ExtensionProvider(
             manifest: makeManifest(id: "test", name: "Test"),
@@ -226,8 +224,6 @@ struct ExtensionProviderTests {
         given(mock).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
         given(mock).isEnabled(forProvider: .any).willReturn(true)
         given(mock).setEnabled(.any, forProvider: .any).willReturn()
-        given(mock).customCardURL(forProvider: .any).willReturn(nil)
-        given(mock).setCustomCardURL(.any, forProvider: .any).willReturn()
         return mock
     }
 }

@@ -59,58 +59,6 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.isEnabled(forProvider: "codex") == true)
     }
 
-    // MARK: - Custom Card URL
-
-    @Test
-    func `customCardURL defaults to nil`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.customCardURL(forProvider: "claude") == nil)
-    }
-
-    @Test
-    func `setCustomCardURL persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCustomCardURL("https://claude.owo.nz/", forProvider: "claude")
-        #expect(repo.customCardURL(forProvider: "claude") == "https://claude.owo.nz/")
-    }
-
-    @Test
-    func `setCustomCardURL nil removes value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCustomCardURL("https://claude.owo.nz/", forProvider: "claude")
-        repo.setCustomCardURL(nil, forProvider: "claude")
-        #expect(repo.customCardURL(forProvider: "claude") == nil)
-    }
-
-    @Test
-    func `setCustomCardURL empty string removes value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCustomCardURL("https://claude.owo.nz/", forProvider: "claude")
-        repo.setCustomCardURL("", forProvider: "claude")
-        #expect(repo.customCardURL(forProvider: "claude") == nil)
-    }
-
-    @Test
-    func `customCardURL is per provider`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCustomCardURL("https://claude.owo.nz/", forProvider: "claude")
-        repo.setCustomCardURL("https://codex.example.com/", forProvider: "codex")
-
-        #expect(repo.customCardURL(forProvider: "claude") == "https://claude.owo.nz/")
-        #expect(repo.customCardURL(forProvider: "codex") == "https://codex.example.com/")
-        #expect(repo.customCardURL(forProvider: "gemini") == nil)
-    }
-
     // MARK: - Codex Settings
 
     @Test

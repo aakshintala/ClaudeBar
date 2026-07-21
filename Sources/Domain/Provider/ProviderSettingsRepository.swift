@@ -14,12 +14,6 @@ public protocol ProviderSettingsRepository: Sendable {
 
     /// Gets the enabled state for a provider with a custom default
     func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool
-
-    /// Gets the custom card URL for a provider (nil if not set)
-    func customCardURL(forProvider id: String) -> String?
-
-    /// Sets the custom card URL for a provider (empty string or nil to remove)
-    func setCustomCardURL(_ url: String?, forProvider id: String)
 }
 
 /// Codex-specific settings repository, extending base ProviderSettingsRepository.

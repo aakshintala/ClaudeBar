@@ -192,15 +192,6 @@ public final class JSONSettingsRepository:
         store.write(value: enabled, key: "providers.\(id).isEnabled")
     }
 
-    public func customCardURL(forProvider id: String) -> String? {
-        store.read(key: "providers.\(id).customCardURL")
-    }
-
-    public func setCustomCardURL(_ url: String?, forProvider id: String) {
-        let value: Any? = (url?.isEmpty == false) ? url : nil
-        store.write(value: value, key: "providers.\(id).customCardURL")
-    }
-
     // MARK: - CodexSettingsRepository
 
     public func codexProbeMode() -> CodexProbeMode {
