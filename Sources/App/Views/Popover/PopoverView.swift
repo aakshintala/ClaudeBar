@@ -61,7 +61,7 @@ struct PopoverView: View {
 
     private var header: some View {
         HStack {
-            Text("ClaudeBar")
+            Text("QuotaBar")
                 .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
                 .foregroundStyle(theme.textPrimary)
             Spacer()
@@ -97,7 +97,7 @@ struct PopoverView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(theme.textTertiary)
-            .help("Quit ClaudeBar")
+            .help("Quit QuotaBar")
             .keyboardShortcut("q")
         }
     }

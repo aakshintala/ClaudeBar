@@ -69,9 +69,10 @@ final class StatusBarIconDriver {
     }
 
     private static func makeStaticImage() -> NSImage? {
-        let configuration = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
-        return NSImage(systemSymbolName: "chart.bar.fill", accessibilityDescription: "ClaudeBar")?
-            .withSymbolConfiguration(configuration)
+        guard let image = NSImage(named: "MenuBarIcon") else { return nil }
+        image.isTemplate = true
+        image.accessibilityDescription = "QuotaBar"
+        return image
     }
 
     // MARK: - Background Refresh Lifecycle

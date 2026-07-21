@@ -12,8 +12,10 @@
     <string>com.aakshintala.subscriptionusagebar</string>
     <key>CFBundleInfoDictionaryVersion</key>
     <string>6.0</string>
+    <key>CFBundleDisplayName</key>
+    <string>QuotaBar</string>
     <key>CFBundleName</key>
-    <string>ClaudeBar</string>
+    <string>QuotaBar</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>

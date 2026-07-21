@@ -25,7 +25,7 @@ struct ClaudeBarApp: App {
     init() {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
-        AppLog.ui.info("ClaudeBar v\(version) (\(build)) initializing...")
+        AppLog.ui.info("QuotaBar v\(version) (\(build)) initializing...")
 
         // Create the shared settings repository (JSON-backed: ~/.claudebar/settings.json)
         // JSONSettingsRepository implements all sub-protocols:
@@ -72,7 +72,7 @@ struct ClaudeBarApp: App {
         // Note: Notification permission is requested in onAppear, not here
         // Menu bar apps need the run loop to be active before requesting permissions
 
-        AppLog.ui.info("ClaudeBar initialization complete")
+        AppLog.ui.info("QuotaBar initialization complete")
     }
 
     /// App settings for theme
