@@ -26,7 +26,7 @@ public final class JSONSettingsRepository:
     // MARK: - AppSettingsRepository
 
     public func themeMode() -> String {
-        store.read(key: "app.themeMode") ?? "system"
+        store.read(key: "app.themeMode") ?? "dark"
     }
 
     public func setThemeMode(_ mode: String) {

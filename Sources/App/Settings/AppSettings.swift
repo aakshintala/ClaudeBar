@@ -164,31 +164,7 @@ public final class AppSettings {
         // Launch at login - read from SMAppService (system service, not JSON)
         self.launchAtLogin = SMAppService.mainApp.status == .enabled
 
-        applySeasonalTheme()
         self.isInitializing = false
-    }
-
-    // MARK: - Seasonal Theme
-
-    public static func isChristmasPeriod(date: Date = Date()) -> Bool {
-        let calendar = Calendar.current
-        let components = calendar.dateComponents([.month, .day], from: date)
-        guard let month = components.month, let day = components.day else { return false }
-        return month == 12 && (24...26).contains(day)
-    }
-
-    private func applySeasonalTheme() {
-        let isChristmas = Self.isChristmasPeriod()
-
-        if isChristmas {
-            if !userHasChosenTheme {
-                themeMode = "christmas"
-            }
-        } else {
-            if themeMode == "christmas" && !userHasChosenTheme {
-                themeMode = "system"
-            }
-        }
     }
 
     // MARK: - Provider Settings Access

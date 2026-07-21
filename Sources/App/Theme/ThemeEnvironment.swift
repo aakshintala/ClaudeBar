@@ -50,12 +50,9 @@ public struct AppThemeProviderModifier: ViewModifier {
     }
 
     private var effectiveColorScheme: ColorScheme {
-        let mode = ThemeMode(rawValue: themeModeId)
-        switch mode {
+        switch ThemeMode(rawValue: themeModeId) {
         case .light: return .light
-        case .dark, .cli, .christmas: return .dark
-        case .system: return systemColorScheme
-        case .none: return systemColorScheme
+        case .dark, .none: return .dark
         }
     }
 

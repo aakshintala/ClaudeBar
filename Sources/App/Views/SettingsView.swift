@@ -75,7 +75,7 @@ struct SettingsContentView: View {
 
     /// Convert ThemeMode to string for settings storage
     private var currentThemeMode: ThemeMode {
-        ThemeMode(rawValue: settings.themeMode) ?? .system
+        ThemeMode(rawValue: settings.themeMode) ?? .dark
     }
 
     private var themeCard: some View {
@@ -89,7 +89,7 @@ struct SettingsContentView: View {
 
                     Image(systemName: currentThemeMode.icon)
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(theme.id == "cli" ? theme.textPrimary : .white)
+                        .foregroundStyle(.white)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -144,7 +144,7 @@ struct SettingsContentView: View {
 
                 Image(systemName: "square.grid.2x2")
                     .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(theme.id == "cli" ? theme.textPrimary : .white)
+                    .foregroundStyle(.white)
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -646,7 +646,7 @@ struct SettingsContentView: View {
 
                     Image(systemName: "flame")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(theme.id == "cli" ? theme.textPrimary : .white)
+                        .foregroundStyle(.white)
                 }
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -745,7 +745,7 @@ struct ThemeOptionButton: View {
 
                     Image(systemName: themeProvider.icon)
                         .font(.system(size: 11, weight: .bold))
-                        .foregroundStyle(themeProvider.id == "cli" ? Color.black : .white)
+                        .foregroundStyle(.white)
                 }
 
                 VStack(alignment: .leading, spacing: 1) {

@@ -279,7 +279,6 @@ import Domain
 #Preview("Update Badge") {
     let darkTheme = DarkTheme()
     let lightTheme = LightTheme()
-    let christmasTheme = ChristmasTheme()
 
     return HStack(spacing: 40) {
         // Dark mode - default
@@ -313,23 +312,6 @@ import Domain
             }
             .environment(\.colorScheme, .light)
             Text("Light")
-                .font(.caption)
-                .foregroundStyle(.white)
-        }
-
-        // Christmas mode
-        VStack(spacing: 12) {
-            ZStack {
-                Circle()
-                    .fill(christmasTheme.glassBackground)
-                    .frame(width: 32, height: 32)
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(christmasTheme.textSecondary)
-                UpdateBadge(accentColor: christmasTheme.accentPrimary)
-                    .offset(x: 14, y: -14)
-            }
-            Text("Christmas")
                 .font(.caption)
                 .foregroundStyle(.white)
         }

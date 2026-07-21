@@ -23,11 +23,11 @@ struct JSONSettingsRepositoryAppTests {
     // MARK: - Theme
 
     @Test
-    func `themeMode defaults to system`() {
+    func `themeMode defaults to dark`() {
         let (repo, dir) = makeRepository()
         defer { cleanup(dir) }
 
-        #expect(repo.themeMode() == "system")
+        #expect(repo.themeMode() == "dark")
     }
 
     @Test

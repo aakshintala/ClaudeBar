@@ -7,17 +7,11 @@ import Domain
 enum ThemeMode: String, CaseIterable {
     case light
     case dark
-    case system
-    case cli
-    case christmas
 
     var displayName: String {
         switch self {
         case .light: "Light"
         case .dark: "Dark"
-        case .system: "System"
-        case .cli: "CLI"
-        case .christmas: "Christmas"
         }
     }
 
@@ -25,20 +19,7 @@ enum ThemeMode: String, CaseIterable {
         switch self {
         case .light: "sun.max.fill"
         case .dark: "moon.stars.fill"
-        case .system: "circle.lefthalf.filled"
-        case .cli: "terminal.fill"
-        case .christmas: "snowflake"
         }
-    }
-
-    /// Whether this theme uses Christmas-specific colors
-    var isChristmas: Bool {
-        self == .christmas
-    }
-
-    /// Whether this theme uses CLI-specific colors
-    var isCLI: Bool {
-        self == .cli
     }
 }
 
@@ -47,7 +28,7 @@ enum ThemeMode: String, CaseIterable {
 // MARK: - Theme Environment Keys
 
 private struct ThemeModeKey: EnvironmentKey {
-    static let defaultValue: ThemeMode = .system
+    static let defaultValue: ThemeMode = .dark
 }
 
 extension EnvironmentValues {
@@ -809,10 +790,7 @@ struct ThemeSwitcherButton: View {
     private func cycleTheme() {
         switch themeMode {
         case .light: themeMode = .dark
-        case .dark: themeMode = .system
-        case .system: themeMode = .cli
-        case .cli: themeMode = .christmas
-        case .christmas: themeMode = .light
+        case .dark: themeMode = .light
         }
     }
 }
@@ -827,9 +805,6 @@ struct ThemeProvider: ViewModifier {
         switch themeMode {
         case .light: .light
         case .dark: .dark
-        case .system: systemColorScheme
-        case .cli: .dark  // CLI uses dark mode base
-        case .christmas: .dark  // Christmas uses dark mode base
         }
     }
 
