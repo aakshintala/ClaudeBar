@@ -67,22 +67,6 @@ public final class JSONSettingsRepository:
         store.write(value: interval, key: "app.backgroundSyncInterval")
     }
 
-    public func claudeApiBudgetEnabled() -> Bool {
-        store.read(key: "app.claudeApiBudgetEnabled") ?? false
-    }
-
-    public func setClaudeApiBudgetEnabled(_ enabled: Bool) {
-        store.write(value: enabled, key: "app.claudeApiBudgetEnabled")
-    }
-
-    public func claudeApiBudget() -> Double {
-        store.read(key: "app.claudeApiBudget") ?? 0
-    }
-
-    public func setClaudeApiBudget(_ amount: Double) {
-        store.write(value: amount, key: "app.claudeApiBudget")
-    }
-
     // MARK: - Burn Rate Warning
 
     public func burnRateWarningEnabled() -> Bool {

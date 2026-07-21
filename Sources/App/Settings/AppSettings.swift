@@ -80,22 +80,6 @@ public final class AppSettings {
         }
     }
 
-    // MARK: - Claude API Budget Settings
-
-    /// Whether Claude API budget tracking is enabled
-    public var claudeApiBudgetEnabled: Bool {
-        didSet {
-            repository.setClaudeApiBudgetEnabled(claudeApiBudgetEnabled)
-        }
-    }
-
-    /// The budget threshold for Claude API usage (in dollars)
-    public var claudeApiBudget: Decimal {
-        didSet {
-            repository.setClaudeApiBudget(NSDecimalNumber(decimal: claudeApiBudget).doubleValue)
-        }
-    }
-
     // MARK: - Burn Rate Warning Settings
 
     /// Whether burn rate-based warnings are enabled (default: false, uses absolute thresholds)
@@ -152,8 +136,6 @@ public final class AppSettings {
         // Load all values from repository
         self.themeMode = repository.themeMode()
         self.userHasChosenTheme = repository.userHasChosenTheme()
-        self.claudeApiBudgetEnabled = repository.claudeApiBudgetEnabled()
-        self.claudeApiBudget = Decimal(repository.claudeApiBudget())
         self.receiveBetaUpdates = repository.receiveBetaUpdates()
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
         self.burnRateThreshold = repository.burnRateThreshold()

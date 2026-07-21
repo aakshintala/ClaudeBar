@@ -5,7 +5,6 @@ import Domain
 /// Shows total cost, optional budget progress, and reset time for Pro Extra usage.
 struct CostStatCard: View {
     let costUsage: CostUsage
-    let externalBudget: Decimal?
     let delay: Double
 
     @Environment(\.appTheme) private var theme
@@ -13,29 +12,17 @@ struct CostStatCard: View {
     @State private var isHovering = false
     @State private var animateProgress = false
 
-    init(costUsage: CostUsage, budget: Decimal? = nil, delay: Double = 0) {
+    init(costUsage: CostUsage, delay: Double = 0) {
         self.costUsage = costUsage
-        self.externalBudget = budget
         self.delay = delay
     }
 
-    /// Extra usage uses only its server-provided monthly cap. API cost can
-    /// fall back to the budget configured in settings.
     private var effectiveBudget: Decimal? {
-        switch costUsage.kind {
-        case .extraUsage:
-            costUsage.budget
-        case .apiCost:
-            costUsage.budget ?? externalBudget
-        }
+        costUsage.budget
     }
 
     private var effectiveBudgetRemaining: Decimal? {
-        if let remaining = costUsage.budgetRemaining {
-            return remaining
-        }
-        guard let externalBudget else { return nil }
-        return max(0, externalBudget - costUsage.totalCost)
+        costUsage.budgetRemaining
     }
 
     private var headerTitle: String {
@@ -295,10 +282,10 @@ struct CostStatCard: View {
         CostStatCard(
             costUsage: CostUsage(
                 totalCost: 0.55,
+                budget: 10,
                 apiDuration: 379.7,
                 providerId: "claude"
-            ),
-            budget: 10
+            )
         )
         .padding()
     }

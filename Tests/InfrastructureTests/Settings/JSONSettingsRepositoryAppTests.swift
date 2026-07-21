@@ -103,33 +103,6 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.backgroundSyncInterval() == 120)
     }
 
-    // MARK: - Claude API Budget
-
-    @Test
-    func `claudeApiBudgetEnabled defaults to false`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.claudeApiBudgetEnabled() == false)
-    }
-
-    @Test
-    func `claudeApiBudget defaults to 0`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.claudeApiBudget() == 0)
-    }
-
-    @Test
-    func `setClaudeApiBudget persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setClaudeApiBudget(50.0)
-        #expect(repo.claudeApiBudget() == 50.0)
-    }
-
     // MARK: - Updates
 
     @Test

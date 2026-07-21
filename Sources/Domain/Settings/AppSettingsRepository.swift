@@ -29,14 +29,6 @@ public protocol AppSettingsRepository: Sendable {
     func backgroundSyncInterval() -> TimeInterval
     func setBackgroundSyncInterval(_ interval: TimeInterval)
 
-    // MARK: - Claude API Budget
-
-    func claudeApiBudgetEnabled() -> Bool
-    func setClaudeApiBudgetEnabled(_ enabled: Bool)
-
-    func claudeApiBudget() -> Double
-    func setClaudeApiBudget(_ amount: Double)
-
     // MARK: - Burn Rate Warning
 
     func burnRateWarningEnabled() -> Bool

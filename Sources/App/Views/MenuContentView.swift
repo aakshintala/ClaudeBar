@@ -548,8 +548,7 @@ struct MenuContentView: View {
 
             // Show Extra usage cost card if available (Pro with Extra usage enabled)
             if let costUsage = snapshot.costUsage {
-                let budget = settings.claudeApiBudgetEnabled ? settings.claudeApiBudget : nil
-                CostStatCard(costUsage: costUsage, budget: budget, delay: Double(snapshot.quotas.count) * 0.08)
+                CostStatCard(costUsage: costUsage, delay: Double(snapshot.quotas.count) * 0.08)
             }
         }
         .padding(.top, 4)
