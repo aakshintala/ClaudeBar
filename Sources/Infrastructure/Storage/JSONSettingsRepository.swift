@@ -59,6 +59,14 @@ public final class JSONSettingsRepository:
         store.write(value: interval, key: "app.backgroundSyncInterval")
     }
 
+    public func quotaAlertsEnabled() -> Bool {
+        store.read(key: "app.quotaAlertsEnabled") ?? true
+    }
+
+    public func setQuotaAlertsEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "app.quotaAlertsEnabled")
+    }
+
     // MARK: - ProviderSettingsRepository
 
     public func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool {

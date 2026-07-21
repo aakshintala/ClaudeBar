@@ -18,7 +18,9 @@ struct ClaudeBarApp: App {
     @State private var isMenuPresented = false
 
     /// Alerts users when quota status degrades
-    private let quotaAlerter = NotificationAlerter()
+    private let quotaAlerter = NotificationAlerter {
+        JSONSettingsRepository.shared.quotaAlertsEnabled()
+    }
 
     init() {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"

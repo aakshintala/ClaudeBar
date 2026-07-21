@@ -18,15 +18,18 @@ protocol AlertSender: Sendable {
 public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
 
     private let alertSender: AlertSender
+    private let isEnabled: @Sendable () -> Bool
 
     /// Public initializer - uses system alerts
-    public init() {
+    public init(isEnabled: @escaping @Sendable () -> Bool = { true }) {
         self.alertSender = SystemAlertSender()
+        self.isEnabled = isEnabled
     }
 
     /// Internal initializer for testing
-    init(alertSender: AlertSender) {
+    init(alertSender: AlertSender, isEnabled: @escaping @Sendable () -> Bool = { true }) {
         self.alertSender = alertSender
+        self.isEnabled = isEnabled
     }
 
     // MARK: - Public API
@@ -42,6 +45,11 @@ public final class NotificationAlerter: QuotaAlerter, @unchecked Sendable {
     // MARK: - QuotaAlerter
 
     public func alert(providerId: String, previousStatus: QuotaStatus, currentStatus: QuotaStatus) async {
+        guard isEnabled() else {
+            AppLog.notifications.debug("Quota alerts disabled, skipping alert")
+            return
+        }
+
         AppLog.notifications.debug("Status change: \(providerId) \(previousStatus) -> \(currentStatus)")
 
         // Only alert on degradation (getting worse)

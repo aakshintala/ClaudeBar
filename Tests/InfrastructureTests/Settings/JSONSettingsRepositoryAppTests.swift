@@ -84,6 +84,25 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.backgroundSyncInterval() == 120)
     }
 
+    // MARK: - Quota Alerts
+
+    @Test
+    func `quotaAlertsEnabled defaults to true`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        #expect(repo.quotaAlertsEnabled() == true)
+    }
+
+    @Test
+    func `setQuotaAlertsEnabled persists value`() {
+        let (repo1, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        repo1.setQuotaAlertsEnabled(false)
+        let repo2 = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+        #expect(repo2.quotaAlertsEnabled() == false)
+    }
+
     // MARK: - Persistence across instances
 
     @Test

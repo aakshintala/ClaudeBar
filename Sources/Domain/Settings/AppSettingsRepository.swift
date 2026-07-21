@@ -23,4 +23,9 @@ public protocol AppSettingsRepository: Sendable {
 
     func backgroundSyncInterval() -> TimeInterval
     func setBackgroundSyncInterval(_ interval: TimeInterval)
+
+    // MARK: - Quota Alerts
+
+    func quotaAlertsEnabled() -> Bool
+    func setQuotaAlertsEnabled(_ enabled: Bool)
 }

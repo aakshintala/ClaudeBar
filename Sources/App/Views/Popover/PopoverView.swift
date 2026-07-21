@@ -51,7 +51,9 @@ struct PopoverView: View {
         .task {
             if !hasRequestedNotificationPermission {
                 hasRequestedNotificationPermission = true
-                _ = await quotaAlerter.requestPermission()
+                if settings.quotaAlertsEnabled {
+                    _ = await quotaAlerter.requestPermission()
+                }
             }
             await refreshAll()
         }

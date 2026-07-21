@@ -9,23 +9,11 @@ struct SettingsContentView: View {
     @Environment(\.appTheme) private var theme
     @State private var settings = AppSettings.shared
 
-    @State private var providersExpanded: Bool = false
-    @State private var backgroundSyncExpanded: Bool = false
-
     private enum ProviderID {
         static let claude = "claude"
         static let codex = "codex"
     }
 
-    private var isClaudeEnabled: Bool {
-        monitor.provider(for: ProviderID.claude)?.isEnabled ?? false
-    }
-
-    private var isCodexEnabled: Bool {
-        monitor.provider(for: ProviderID.codex)?.isEnabled ?? false
-    }
-
-    /// Maximum height for the settings view to ensure it fits on small screens
     private var maxSettingsHeight: CGFloat {
         let screenHeight = NSScreen.main?.visibleFrame.height ?? 800
         return min(screenHeight * 0.8, 550)
@@ -33,32 +21,21 @@ struct SettingsContentView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // Header
             header
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
                 .padding(.bottom, 16)
 
-            // Scrollable Content
             ScrollView(.vertical, showsIndicators: true) {
                 VStack(spacing: 12) {
                     themeCard
                     providersCard
-                    if isClaudeEnabled {
-                        ClaudeConfigCard(monitor: monitor)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    if isCodexEnabled {
-                        CodexConfigCard(monitor: monitor)
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
-                    backgroundSyncCard
+                    generalCard
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
             }
 
-            // Footer
             footer
                 .padding(.horizontal, 16)
                 .padding(.bottom, 12)
@@ -66,162 +43,10 @@ struct SettingsContentView: View {
         .frame(maxHeight: maxSettingsHeight)
     }
 
-    // MARK: - Theme Card
-
-    /// Convert ThemeMode to string for settings storage
-    private var currentThemeMode: ThemeMode {
-        ThemeMode(rawValue: settings.themeMode) ?? .dark
-    }
-
-    private var themeCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header
-            HStack(spacing: 10) {
-                ZStack {
-                    Circle()
-                        .fill(theme.accentGradient)
-                        .frame(width: 32, height: 32)
-
-                    Image(systemName: currentThemeMode.icon)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Appearance")
-                        .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                        .foregroundStyle(theme.textPrimary)
-
-                    Text("Choose your theme")
-                        .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                        .foregroundStyle(theme.textTertiary)
-                }
-
-                Spacer()
-            }
-
-            // Theme options grid
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 8),
-                GridItem(.flexible(), spacing: 8)
-            ], spacing: 8) {
-                ForEach(ThemeRegistry.shared.allThemes, id: \.id) { registeredTheme in
-                    ThemeOptionButton(
-                        themeProvider: registeredTheme,
-                        isSelected: settings.themeMode == registeredTheme.id
-                    ) {
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            settings.themeMode = registeredTheme.id
-                        }
-                    }
-                }
-            }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                        .stroke(theme.glassBorder, lineWidth: 1)
-                )
-        )
-    }
-
-    // MARK: - Providers Card
-
-    private var providersCard: some View {
-        DisclosureGroup(isExpanded: $providersExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
-            // Provider toggles
-            VStack(spacing: 8) {
-                ForEach(monitor.allProviders, id: \.id) { provider in
-                    providerToggleRow(provider: provider)
-                }
-            }
-        } label: {
-            providersHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        providersExpanded.toggle()
-                    }
-                }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                        .stroke(theme.glassBorder, lineWidth: 1)
-                )
-        )
-    }
-
-    private var providersHeader: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(theme.accentGradient)
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: "cpu")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Providers")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Enable or disable AI providers")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            Spacer()
-        }
-    }
-
-    private func providerToggleRow(provider: any AIProvider) -> some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 10) {
-                // Provider icon
-                ProviderIconView(providerId: provider.id, size: 20)
-
-                Text(provider.name)
-                    .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Spacer()
-
-                Toggle("", isOn: Binding(
-                    get: { provider.isEnabled },
-                    set: { newValue in
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            monitor.setProviderEnabled(provider.id, enabled: newValue)
-                        }
-                    }
-                ))
-                .toggleStyle(.switch)
-                .tint(theme.accentPrimary)
-                .scaleEffect(0.8)
-                .labelsHidden()
-            }
-        }
-        .padding(.vertical, 4)
-    }
-
     // MARK: - Header
 
     private var header: some View {
         HStack {
-            // Back button
             Button {
                 showSettings = false
             } label: {
@@ -253,21 +78,98 @@ struct SettingsContentView: View {
 
             Spacer()
 
-            // Invisible placeholder to balance the header
             Color.clear
                 .frame(width: 60, height: 1)
         }
     }
 
-    // MARK: - Background Sync Card
+    // MARK: - Theme
 
-    private var backgroundSyncCard: some View {
-        DisclosureGroup(isExpanded: $backgroundSyncExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
+    private var themeCard: some View {
+        settingsCard(title: "Appearance", subtitle: "Choose your theme", icon: "paintbrush") {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: 8),
+                GridItem(.flexible(), spacing: 8)
+            ], spacing: 8) {
+                ForEach(ThemeRegistry.shared.allThemes, id: \.id) { registeredTheme in
+                    ThemeOptionButton(
+                        themeProvider: registeredTheme,
+                        isSelected: settings.themeMode == registeredTheme.id
+                    ) {
+                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                            settings.themeMode = registeredTheme.id
+                        }
+                    }
+                }
+            }
+        }
+    }
 
+    // MARK: - Providers
+
+    private var providersCard: some View {
+        settingsCard(title: "Providers", subtitle: "Enable or disable AI providers", icon: "cpu") {
+            VStack(spacing: 8) {
+                ForEach(monitor.allProviders, id: \.id) { provider in
+                    providerRow(provider: provider)
+
+                    if provider.id == ProviderID.claude, provider.isEnabled {
+                        ClaudeConfigCard(monitor: monitor)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                    if provider.id == ProviderID.codex, provider.isEnabled {
+                        CodexConfigCard(monitor: monitor)
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+            }
+        }
+    }
+
+    private func providerRow(provider: any AIProvider) -> some View {
+        HStack(spacing: 10) {
+            ProviderIconView(providerId: provider.id, size: 20)
+
+            Text(provider.name)
+                .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                .foregroundStyle(theme.textPrimary)
+
+            Spacer()
+
+            Toggle("", isOn: Binding(
+                get: { provider.isEnabled },
+                set: { newValue in
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        monitor.setProviderEnabled(provider.id, enabled: newValue)
+                    }
+                }
+            ))
+            .toggleStyle(.switch)
+            .tint(theme.accentPrimary)
+            .scaleEffect(0.8)
+            .labelsHidden()
+        }
+        .padding(.vertical, 4)
+    }
+
+    // MARK: - General
+
+    private var generalCard: some View {
+        settingsCard(title: "General", subtitle: "Alerts and background refresh", icon: "gearshape") {
             VStack(alignment: .leading, spacing: 14) {
+                Toggle(isOn: $settings.quotaAlertsEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Quota alerts")
+                            .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textPrimary)
+                        Text("Notify when quota status degrades")
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .tint(theme.accentPrimary)
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text("REFRESH INTERVAL")
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
@@ -280,70 +182,12 @@ struct SettingsContentView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+
+                    Text("Keep the menu-bar number fresh in the background. \"Off\" updates only when you open the menu.")
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
                 }
-
-                Text("Keep the menu-bar number fresh in the background. \"Off\" updates only when you open the menu. Never refreshes faster than once a minute.")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
             }
-        } label: {
-            backgroundSyncHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        backgroundSyncExpanded.toggle()
-                    }
-                }
-        }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                        .stroke(theme.glassBorder, lineWidth: 1)
-                )
-        )
-    }
-
-    private var backgroundSyncHeader: some View {
-        HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(
-                        LinearGradient(
-                            colors: [
-                                Color(red: 0.3, green: 0.6, blue: 0.9),
-                                Color(red: 0.2, green: 0.45, blue: 0.8)
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .frame(width: 32, height: 32)
-
-                Image(systemName: "arrow.triangle.2.circlepath")
-                    .font(.system(size: 12, weight: .bold))
-                    .foregroundStyle(.white)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Background Sync")
-                    .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textPrimary)
-
-                Text("Keep data fresh automatically")
-                    .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
-
-            Spacer()
-
-            // The on/off control now lives in the picker's "Off" case; show the
-            // current cadence here so it's visible while the card is collapsed.
-            Text(settings.refreshInterval.label)
-                .font(.system(size: 11, weight: .semibold, design: theme.fontDesign))
-                .foregroundStyle(theme.textSecondary)
         }
     }
 
@@ -371,6 +215,52 @@ struct SettingsContentView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    // MARK: - Card Helper
+
+    private func settingsCard<Content: View>(
+        title: String,
+        subtitle: String,
+        icon: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                ZStack {
+                    Circle()
+                        .fill(theme.accentGradient)
+                        .frame(width: 32, height: 32)
+
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
+
+                    Text(subtitle)
+                        .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
+                        .foregroundStyle(theme.textTertiary)
+                }
+
+                Spacer()
+            }
+
+            content()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                .fill(theme.cardGradient)
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.cardCornerRadius)
+                        .stroke(theme.glassBorder, lineWidth: 1)
+                )
+        )
     }
 }
 

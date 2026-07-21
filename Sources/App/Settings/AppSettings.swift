@@ -48,6 +48,13 @@ public final class AppSettings {
         }
     }
 
+    /// Whether quota-threshold notifications are enabled (default: true)
+    public var quotaAlertsEnabled: Bool {
+        didSet {
+            repository.setQuotaAlertsEnabled(quotaAlertsEnabled)
+        }
+    }
+
     /// The background-refresh cadence (Off / 1 / 5 / 15 min) as a single
     /// picker-friendly value. Computed over the legacy `backgroundSyncEnabled`
     /// + `backgroundSyncInterval` pair so `settings.json` stays backward
@@ -84,6 +91,7 @@ public final class AppSettings {
         self.userHasChosenTheme = repository.userHasChosenTheme()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
+        self.quotaAlertsEnabled = repository.quotaAlertsEnabled()
 
         self.isInitializing = false
     }
