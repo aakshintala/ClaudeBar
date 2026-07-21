@@ -9,10 +9,9 @@ struct ClaudeBarApp: App {
     /// This is the single source of truth for providers and their state
     @State private var monitor: QuotaMonitor
 
-    /// Drives the menu-bar pixels and the background-refresh lifecycle
-    /// imperatively, outside SwiftUI — the MenuBarExtra label hosting can
-    /// permanently stop re-evaluating after system sleep (issue #192).
-    private let statusItemDriver: StatusItemLabelDriver
+    /// Static menu-bar icon + sleep-safe background-refresh lifecycle,
+    /// driven imperatively outside SwiftUI (issue #192).
+    private let statusItemDriver: StatusBarIconDriver
 
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
     /// dropdown control if ever needed.
@@ -62,7 +61,7 @@ struct ClaudeBarApp: App {
         self.monitor = monitor
         AppLog.monitor.info("QuotaMonitor initialized")
 
-        statusItemDriver = StatusItemLabelDriver(
+        statusItemDriver = StatusBarIconDriver(
             monitor: monitor,
             settings: AppSettings.shared
         )
@@ -90,8 +89,8 @@ struct ClaudeBarApp: App {
             .onAppear { statusItemDriver.reassertPresentation() }
             .onDisappear { statusItemDriver.reassertPresentation() }
         } label: {
-            // Deliberately static: the menu-bar pixels are drawn by
-            // StatusItemLabelDriver into the status item's button image,
+            // Deliberately static: the menu-bar icon is drawn by
+            // StatusBarIconDriver into the status item's button image,
             // because this SwiftUI label hosting can permanently stop
             // re-evaluating after system sleep (issue #192). The placeholder
             // only gives the scene a label to anchor the dropdown to.

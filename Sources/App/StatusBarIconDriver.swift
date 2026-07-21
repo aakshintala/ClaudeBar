@@ -5,17 +5,16 @@ import Infrastructure
 /// Drives the menu-bar status item imperatively (AppKit), bypassing SwiftUI's
 /// `MenuBarExtra` label hosting entirely.
 ///
-/// After system sleep, the MenuBarExtra label hosting view can permanently
-/// stop receiving SwiftUI invalidations: the dropdown window keeps updating
-/// while the label — and any `.task` attached to it — goes dead until relaunch
-/// (issue #192). This driver owns the background-refresh lifecycle that used
-/// to live on that label via `.task(id:)`, and sets a static icon on the status
-/// item button so SwiftUI wipes don't leave the menu bar blank.
+/// Responsibilities: static icon on the status-item button, and sleep-safe
+/// background-refresh-loop restart only (issue #192). After system sleep, the
+/// MenuBarExtra label hosting view can permanently stop receiving SwiftUI
+/// invalidations; this driver keeps quota polling alive and re-asserts the
+/// icon when SwiftUI wipes the button image.
 ///
 /// Lives for the app's lifetime; the closure retain cycles this creates are
 /// intentional and harmless.
 @MainActor
-final class StatusItemLabelDriver {
+final class StatusBarIconDriver {
     private let monitor: QuotaMonitor
     private let settings: AppSettings
 
