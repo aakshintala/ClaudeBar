@@ -15,7 +15,7 @@ public final class AppSettings {
 
     // MARK: - Theme Settings
 
-    /// The current theme mode (light, dark, system, christmas)
+    /// The current theme mode (light, dark)
     public var themeMode: String {
         didSet {
             repository.setThemeMode(themeMode)
@@ -25,7 +25,7 @@ public final class AppSettings {
         }
     }
 
-    /// Whether the user has explicitly chosen a theme (vs auto-enabled Christmas)
+    /// Whether the user has explicitly chosen a theme
     public var userHasChosenTheme: Bool {
         didSet {
             repository.setUserHasChosenTheme(userHasChosenTheme)
