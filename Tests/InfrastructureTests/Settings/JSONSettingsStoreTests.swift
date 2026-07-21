@@ -114,7 +114,7 @@ struct JSONSettingsStoreTests {
         {
             "app": {
                 "themeMode": "dark",
-                "overviewMode": true
+                "quotaAlertsEnabled": true
             }
         }
         """
@@ -124,9 +124,9 @@ struct JSONSettingsStoreTests {
         store.write(value: "light", key: "app.themeMode")
 
         let theme: String? = store.read(key: "app.themeMode")
-        let overview: Bool? = store.read(key: "app.overviewMode")
+        let quotaAlerts: Bool? = store.read(key: "app.quotaAlertsEnabled")
         #expect(theme == "light")
-        #expect(overview == true)
+        #expect(quotaAlerts == true)
     }
 
     @Test

@@ -17,7 +17,7 @@ public enum MonitoringEvent: Sendable {
 /// `selectedProviderId`, …) is consumed by SwiftUI. This keeps the background
 /// monitoring loop from mutating observable state off the main actor — the
 /// crash in issue #182 — and lets the compiler reject any future off-main
-/// mutation. Mirrors `SessionMonitor`, which is already `@MainActor @Observable`.
+/// mutation.
 @MainActor
 @Observable
 public final class QuotaMonitor {

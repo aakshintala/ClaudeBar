@@ -65,9 +65,6 @@ public enum AppLog {
     
     /// Logger for update operations
     public static let updates = CategoryLogger(category: "updates")
-
-    /// Logger for hook operations (Claude Code session tracking)
-    public static let hooks = CategoryLogger(category: "hooks")
     
     /// Open the logs directory in Finder
     public static func openLogsDirectory() {

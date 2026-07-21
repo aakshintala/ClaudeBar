@@ -2,7 +2,7 @@ import SwiftUI
 import Domain
 import Infrastructure
 
-/// Main menu-bar popover content (replaces MenuContentView).
+/// Main menu-bar popover content.
 struct PopoverView: View {
     let monitor: QuotaMonitor
     let quotaAlerter: QuotaAlerter
