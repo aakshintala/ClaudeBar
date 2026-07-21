@@ -79,7 +79,7 @@ struct ClaudeBarApp: App {
     var body: some Scene {
         MenuBarExtra {
             Group {
-                MenuContentView(monitor: monitor, quotaAlerter: quotaAlerter)
+                PopoverView(monitor: monitor, quotaAlerter: quotaAlerter)
                     .appThemeProvider(themeModeId: settings.themeMode)
             }
             // Opening/closing the dropdown flips `isMenuPresented`, which makes
