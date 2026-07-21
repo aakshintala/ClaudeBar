@@ -1,5 +1,4 @@
 import SwiftUI
-import Infrastructure
 
 // MARK: - Theme Registry
 
@@ -28,12 +27,9 @@ public final class ThemeRegistry {
     /// Order of theme IDs for consistent display
     private var themeOrder: [String] = []
 
-    private let importedThemeStore = ImportedThemeStore()
-
     /// Initialize with built-in themes
     private init() {
         registerBuiltInThemes()
-        loadImportedThemes()
     }
 
     /// Register all built-in themes
@@ -89,46 +85,6 @@ public final class ThemeRegistry {
             return systemColorScheme == .dark ? (themes["dark"] ?? DarkTheme()) : (themes["light"] ?? LightTheme())
         }
         return themes[id] ?? defaultTheme
-    }
-
-    // MARK: - Imported Themes
-
-    /// Load imported themes from ~/.claudebar/themes/
-    private func loadImportedThemes() {
-        for (scheme, _) in importedThemeStore.loadAll() {
-            let props = TerminalThemeGenerator.generate(from: scheme)
-            let theme = ImportedTerminalTheme(props: props, scheme: scheme)
-            register(theme)
-        }
-    }
-
-    /// Import a `.itermcolors` file, persist the color scheme, and register the generated theme.
-    /// - Parameter url: Path to the `.itermcolors` file.
-    /// - Returns: The generated ``AppThemeProvider`` theme.
-    /// - Throws: ``ITermColorsParserError`` if the file cannot be parsed.
-    @discardableResult
-    public func importItermcolors(from url: URL) throws -> any AppThemeProvider {
-        let scheme = try ITermColorsParser.parse(from: url)
-        try importedThemeStore.save(scheme)
-        let props = TerminalThemeGenerator.generate(from: scheme)
-        let theme = ImportedTerminalTheme(props: props, scheme: scheme)
-        register(theme)
-        return theme
-    }
-
-    /// Remove an imported theme by its ID. Built-in themes are not affected.
-    /// - Parameter id: The theme ID (e.g., `"imported-dracula"`).
-    public func removeImportedTheme(id: String) {
-        guard let theme = themes[id], theme is ImportedTerminalTheme else { return }
-        let displayName = theme.displayName
-        themes.removeValue(forKey: id)
-        themeOrder.removeAll { $0 == id }
-        try? importedThemeStore.delete(name: displayName)
-    }
-
-    /// Whether a theme is imported (vs built-in).
-    public func isImported(id: String) -> Bool {
-        themes[id] is ImportedTerminalTheme
     }
 }
 

@@ -150,9 +150,6 @@ struct SettingsContentView: View {
                     }
                 }
             }
-
-            ThemeImportButton()
-                .frame(maxWidth: .infinity)
         }
         .padding(14)
         .background(
@@ -1225,10 +1222,6 @@ struct ThemeOptionButton: View {
     @Environment(\.appTheme) private var theme
     @State private var isHovering = false
 
-    private var isImported: Bool {
-        ThemeRegistry.shared.isImported(id: themeProvider.id)
-    }
-
     var body: some View {
         Button(action: action) {
             HStack(spacing: 8) {
@@ -1256,17 +1249,6 @@ struct ThemeOptionButton: View {
                 }
 
                 Spacer()
-
-                if isImported {
-                    Button {
-                        ThemeRegistry.shared.removeImportedTheme(id: themeProvider.id)
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 12))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                    .buttonStyle(.plain)
-                }
 
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
