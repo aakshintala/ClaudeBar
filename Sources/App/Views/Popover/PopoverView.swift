@@ -89,6 +89,16 @@ struct PopoverView: View {
                 .font(.system(size: 11, design: theme.fontDesign))
                 .foregroundStyle(theme.textTertiary)
             Spacer()
+            Button {
+                NSApplication.shared.terminate(nil)
+            } label: {
+                Text("Quit")
+                    .font(.system(size: 11, design: theme.fontDesign))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(theme.textTertiary)
+            .help("Quit ClaudeBar")
+            .keyboardShortcut("q")
         }
     }
 
