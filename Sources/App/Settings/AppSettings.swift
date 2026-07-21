@@ -100,13 +100,6 @@ public final class AppSettings {
         }
     }
 
-    /// Whether to show daily usage report cards (API Cost, Token Usage, Working Time)
-    public var showDailyUsageCards: Bool {
-        didSet {
-            repository.setShowDailyUsageCards(showDailyUsageCards)
-        }
-    }
-
     // MARK: - Overview Mode Settings
 
     /// Whether to show all enabled providers at once instead of one at a time
@@ -231,7 +224,6 @@ public final class AppSettings {
         self.receiveBetaUpdates = repository.receiveBetaUpdates()
         self.burnRateWarningEnabled = repository.burnRateWarningEnabled()
         self.burnRateThreshold = repository.burnRateThreshold()
-        self.showDailyUsageCards = repository.showDailyUsageCards()
         self.overviewModeEnabled = repository.overviewModeEnabled()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()

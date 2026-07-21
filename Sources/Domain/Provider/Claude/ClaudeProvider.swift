@@ -64,9 +64,6 @@ public final class ClaudeProvider: AIProvider {
     /// The settings repository for persisting provider settings
     private let settingsRepository: any ProviderSettingsRepository
 
-    /// Optional analyzer for daily usage from JSONL session data
-    private let dailyUsageAnalyzer: (any DailyUsageAnalyzing)?
-
     // MARK: - Initialization
 
     /// Creates a Claude provider.
@@ -74,17 +71,14 @@ public final class ClaudeProvider: AIProvider {
     ///   - probe: The probe used to fetch usage data
     ///   - passProbe: The probe used to fetch guest pass data (optional)
     ///   - settingsRepository: The repository for persisting settings
-    ///   - dailyUsageAnalyzer: Optional analyzer for daily usage from JSONL session data
     public init(
         probe: any UsageProbe,
         passProbe: (any ClaudePassProbing)? = nil,
-        settingsRepository: any ProviderSettingsRepository,
-        dailyUsageAnalyzer: (any DailyUsageAnalyzing)? = nil
+        settingsRepository: any ProviderSettingsRepository
     ) {
         self.probe = probe
         self.passProbe = passProbe
         self.settingsRepository = settingsRepository
-        self.dailyUsageAnalyzer = dailyUsageAnalyzer
         // Load persisted enabled state (defaults to true)
         self.isEnabled = settingsRepository.isEnabled(forProvider: "claude")
     }
@@ -104,11 +98,6 @@ public final class ClaudeProvider: AIProvider {
 
     /// Refreshes the usage data and updates the snapshot.
     /// Sets isSyncing during refresh and captures any errors.
-    ///
-    /// A `.background` refresh skips the daily-usage JSONL scan
-    /// (`attachDailyReport`), which the menu-bar label never shows; that scan
-    /// runs only when the dropdown is open, which always refreshes
-    /// interactively (issue #204).
     @discardableResult
     public func refresh(_ kind: RefreshKind) async throws -> UsageSnapshot {
         isSyncing = true
@@ -116,46 +105,13 @@ public final class ClaudeProvider: AIProvider {
 
         do {
             let newSnapshot = try await probe.probe()
-            snapshot = await report(for: newSnapshot, kind: kind)
+            snapshot = newSnapshot
             lastError = nil
             return snapshot!
         } catch {
             lastError = error
             throw error
         }
-    }
-
-    /// Attaches the daily-usage report for interactive refreshes only.
-    /// Background refreshes (the menu-bar poll) skip the JSONL scan to stay cheap
-    /// — the menu-bar label never renders the daily report, and the dropdown that
-    /// does always refreshes interactively (issue #204).
-    private func report(for snapshot: UsageSnapshot, kind: RefreshKind) async -> UsageSnapshot {
-        switch kind {
-        case .interactive:
-            return await attachDailyReport(to: snapshot)
-        case .background:
-            return snapshot
-        }
-    }
-
-    /// Attaches daily usage report to snapshot if analyzer is available.
-    private func attachDailyReport(to snapshot: UsageSnapshot) async -> UsageSnapshot {
-        guard let analyzer = dailyUsageAnalyzer,
-              let report = try? await analyzer.analyzeToday(),
-              !report.today.isEmpty || !report.previous.isEmpty else {
-            return snapshot
-        }
-        return UsageSnapshot(
-            providerId: snapshot.providerId,
-            quotas: snapshot.quotas,
-            capturedAt: snapshot.capturedAt,
-            accountEmail: snapshot.accountEmail,
-            accountOrganization: snapshot.accountOrganization,
-            loginMethod: snapshot.loginMethod,
-            accountTier: snapshot.accountTier,
-            costUsage: snapshot.costUsage,
-            dailyUsageReport: report
-        )
     }
 
     // MARK: - Guest Pass

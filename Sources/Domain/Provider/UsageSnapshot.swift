@@ -23,9 +23,6 @@ public struct UsageSnapshot: Sendable, Equatable {
     /// Cost-based usage data (for Claude API accounts)
     public let costUsage: CostUsage?
 
-    /// Daily usage report from local session JSONL analysis (e.g., Claude Code)
-    public let dailyUsageReport: DailyUsageReport?
-
     // MARK: - Initialization
 
     public init(
@@ -36,8 +33,7 @@ public struct UsageSnapshot: Sendable, Equatable {
         accountOrganization: String? = nil,
         loginMethod: String? = nil,
         accountTier: AccountTier? = nil,
-        costUsage: CostUsage? = nil,
-        dailyUsageReport: DailyUsageReport? = nil
+        costUsage: CostUsage? = nil
     ) {
         self.providerId = providerId
         self.quotas = quotas
@@ -47,7 +43,6 @@ public struct UsageSnapshot: Sendable, Equatable {
         self.loginMethod = loginMethod
         self.accountTier = accountTier
         self.costUsage = costUsage
-        self.dailyUsageReport = dailyUsageReport
     }
 
     // MARK: - Domain Queries

@@ -156,7 +156,6 @@ struct SettingsContentView: View {
             if settings.menuBarPercentageEnabled || settings.menuBarDurationEnabled {
                 menuBarControls
             }
-            dailyUsageCardsToggle
         }
         .padding(14)
         .background(
@@ -474,22 +473,6 @@ struct SettingsContentView: View {
 
         if force || !currentQuotaExists {
             settings.menuBarPercentageQuotaKey = firstQuota.quotaType.quotaKey
-        }
-    }
-
-    private var dailyUsageCardsToggle: some View {
-        HStack {
-            Text("Daily Usage Cards")
-                .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
-                .foregroundStyle(theme.textSecondary)
-
-            Spacer()
-
-            Toggle("", isOn: $settings.showDailyUsageCards)
-                .toggleStyle(.switch)
-                .tint(theme.accentPrimary)
-                .scaleEffect(0.8)
-                .labelsHidden()
         }
     }
 

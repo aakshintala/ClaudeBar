@@ -198,23 +198,6 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo2.menuBarStackedSize() == "large")
     }
 
-    @Test
-    func `showDailyUsageCards defaults to true`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.showDailyUsageCards() == true)
-    }
-
-    @Test
-    func `setShowDailyUsageCards persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setShowDailyUsageCards(false)
-        #expect(repo.showDailyUsageCards() == false)
-    }
-
     // MARK: - Overview
 
     @Test
@@ -320,7 +303,6 @@ struct JSONSettingsRepositoryAppTests {
         let store = JSONSettingsStore(fileURL: fileURL)
         let repo1 = JSONSettingsRepository(store: store)
         repo1.setThemeMode("cli")
-        repo1.setShowDailyUsageCards(false)
         repo1.setOverviewModeEnabled(true)
         repo1.setMenuBarPercentageEnabled(true)
         repo1.setMenuBarPercentageProviderId("codex")
@@ -329,7 +311,6 @@ struct JSONSettingsRepositoryAppTests {
         // New repo, same store
         let repo2 = JSONSettingsRepository(store: store)
         #expect(repo2.themeMode() == "cli")
-        #expect(repo2.showDailyUsageCards() == false)
         #expect(repo2.overviewModeEnabled() == true)
         #expect(repo2.menuBarPercentageEnabled() == true)
         #expect(repo2.menuBarPercentageProviderId() == "codex")

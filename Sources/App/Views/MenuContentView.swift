@@ -606,25 +606,6 @@ struct MenuContentView: View {
                 let budget = settings.claudeApiBudgetEnabled ? settings.claudeApiBudget : nil
                 CostStatCard(costUsage: costUsage, budget: budget, delay: Double(snapshot.quotas.count) * 0.08)
             }
-
-            // Show daily usage cards from JSONL session analysis (e.g., Claude Code)
-            // Controlled via Settings toggle or ~/.claudebar/settings.json
-            if settings.showDailyUsageCards, let report = snapshot.dailyUsageReport {
-                let baseDelay = Double(snapshot.quotas.count + 1) * 0.08
-                LazyVGrid(
-                    columns: [
-                        GridItem(.flexible(), spacing: 10),
-                        GridItem(.flexible(), spacing: 10)
-                    ],
-                    spacing: 10
-                ) {
-                    DailyUsageCardView(metric: .cost, report: report, delay: baseDelay)
-                    DailyUsageCardView(metric: .tokens, report: report, delay: baseDelay + 0.08)
-                }
-                if report.today.workingTime > 0 || report.previous.workingTime > 0 {
-                    DailyUsageCardView(metric: .workingTime, report: report, delay: baseDelay + 0.16)
-                }
-            }
         }
         .padding(.top, 4)
     }

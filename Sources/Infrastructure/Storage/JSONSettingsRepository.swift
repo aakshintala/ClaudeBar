@@ -106,14 +106,6 @@ public final class JSONSettingsRepository:
         store.write(value: quotaKey, key: "app.menuBarSecondaryQuotaKey")
     }
 
-    public func showDailyUsageCards() -> Bool {
-        store.read(key: "app.showDailyUsageCards") ?? true
-    }
-
-    public func setShowDailyUsageCards(_ show: Bool) {
-        store.write(value: show, key: "app.showDailyUsageCards")
-    }
-
     public func overviewModeEnabled() -> Bool {
         store.read(key: "app.overviewModeEnabled") ?? false
     }

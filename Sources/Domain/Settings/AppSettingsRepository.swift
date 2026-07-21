@@ -42,9 +42,6 @@ public protocol AppSettingsRepository: Sendable {
     func menuBarSecondaryQuotaKey() -> String
     func setMenuBarSecondaryQuotaKey(_ quotaKey: String)
 
-    func showDailyUsageCards() -> Bool
-    func setShowDailyUsageCards(_ show: Bool)
-
     // MARK: - Overview
 
     func overviewModeEnabled() -> Bool
