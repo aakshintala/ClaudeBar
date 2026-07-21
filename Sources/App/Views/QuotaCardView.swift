@@ -6,14 +6,8 @@ import Domain
 struct QuotaCardView: View {
     let quota: UsageQuota
 
-    @State private var settings = AppSettings.shared
-
-    /// Status considering burn rate setting
     private var effectiveStatus: QuotaStatus {
-        if settings.burnRateWarningEnabled {
-            return quota.paceAwareStatus(burnRateThreshold: settings.burnRateThreshold)
-        }
-        return quota.status
+        quota.status
     }
 
     /// Display color for dollar-based quotas based on dollar thresholds.

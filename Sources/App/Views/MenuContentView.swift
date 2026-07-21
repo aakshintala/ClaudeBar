@@ -53,12 +53,10 @@ struct MenuContentView: View {
                         .padding(.top, 16)
                         .padding(.bottom, 12)
 
-                    // Provider Pills (hidden in overview mode)
-                    if !settings.overviewModeEnabled {
-                        providerPills
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 16)
-                    }
+                    // Provider Pills
+                    providerPills
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 16)
 
                     // Main Content Area — hugs its content, but caps at the
                     // screen height and scrolls beyond it (aggregating
@@ -75,7 +73,7 @@ struct MenuContentView: View {
                     // Recreate the scroll view when the shown content
                     // changes, so a newly selected provider starts at the
                     // top instead of inheriting the previous scroll offset.
-                    .id(settings.overviewModeEnabled ? "overview" : monitor.selectedProviderId)
+                    .id(monitor.selectedProviderId)
 
                     // Bottom Action Bar
                     actionBar
@@ -100,12 +98,7 @@ struct MenuContentView: View {
                 animateIn = true
             }
             // Then fetch data in background
-            if settings.overviewModeEnabled {
-                await refreshAllEnabled()
-            } else {
-                await refresh(providerId: selectedProviderId)
-            }
-
+            await refresh(providerId: selectedProviderId)
         }
         .onChange(of: selectedProviderId) { _, newProviderId in
             // Refresh immediately when the user switches provider while the
@@ -166,24 +159,10 @@ struct MenuContentView: View {
 
     private var headerView: some View {
         HStack(spacing: 12) {
-            // Custom Provider Icon - shows AppLogo in overview mode, provider icon otherwise
+            // Custom Provider Icon
             // Avoid animation on provider icon to prevent constraint update loops in MenuBarExtra
             ZStack {
-                if settings.overviewModeEnabled, let logo = NSImage(named: "AppLogo") {
-                    Image(nsImage: logo)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 38, height: 38)
-                        .clipShape(Circle())
-                        .overlay(
-                            Circle()
-                                .stroke(theme.accentPrimary.opacity(0.3), lineWidth: 2)
-                        )
-                        .shadow(color: theme.accentPrimary.opacity(0.15), radius: 3, y: 1)
-                } else {
-                    ProviderIconView(providerId: selectedProviderId, size: 38)
-                }
-
+                ProviderIconView(providerId: selectedProviderId, size: 38)
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -212,9 +191,6 @@ struct MenuContentView: View {
     /// Status of the currently selected provider
     private var selectedProviderStatus: QuotaStatus {
         guard let snapshot = selectedProvider?.snapshot else { return .healthy }
-        if settings.burnRateWarningEnabled {
-            return snapshot.paceAwareOverallStatus(burnRateThreshold: settings.burnRateThreshold)
-        }
         return snapshot.overallStatus
     }
 
@@ -292,14 +268,7 @@ struct MenuContentView: View {
 
     @ViewBuilder
     private var metricsContent: some View {
-        if settings.overviewModeEnabled {
-            let providers = monitor.enabledProviders
-            if providers.isEmpty {
-                emptyState
-            } else {
-                overviewContent(providers: providers)
-            }
-        } else if let provider = selectedProvider, let snapshot = provider.snapshot {
+        if let provider = selectedProvider, let snapshot = provider.snapshot {
             VStack(spacing: 12) {
                 if let displayName = snapshot.accountEmail ?? snapshot.accountOrganization {
                     accountCard(displayName: displayName, snapshot: snapshot)
@@ -314,71 +283,6 @@ struct MenuContentView: View {
             emptyState
         }
     }
-
-    private func overviewContent(providers: [any AIProvider]) -> some View {
-        // Scrolling is owned by the shared middle-region ScrollView in
-        // `body`; nesting another vertical ScrollView here would break
-        // height negotiation and swallow gestures.
-        VStack(spacing: 12) {
-            ForEach(Array(providers.enumerated()), id: \.element.id) { index, provider in
-                if index > 0 {
-                    Divider()
-                        .background(theme.glassBorder)
-                }
-                providerSection(provider: provider)
-            }
-        }
-        .opacity(animateIn ? 1 : 0)
-        .animation(.easeOut(duration: 0.5).delay(0.2), value: animateIn)
-    }
-
-    private func providerSection(provider: any AIProvider) -> some View {
-        VStack(spacing: 8) {
-            providerSectionHeader(provider: provider)
-
-            if let snapshot = provider.snapshot {
-                statsGrid(snapshot: snapshot)
-            } else if provider.isSyncing {
-                LoadingSpinnerView()
-            } else {
-                compactErrorState(provider: provider)
-            }
-        }
-    }
-
-    private func providerSectionHeader(provider: any AIProvider) -> some View {
-        HStack(spacing: 8) {
-            ProviderIconView(providerId: provider.id, size: 20, showGlow: false)
-
-            Text(provider.name)
-                .font(.system(size: 13, weight: .semibold, design: theme.fontDesign))
-                .foregroundStyle(theme.textPrimary)
-
-            Spacer()
-
-            let status = provider.snapshot?.overallStatus ?? .healthy
-            Text(provider.isSyncing ? "Syncing..." : status.badgeText)
-                .badge(theme.statusColor(for: status))
-        }
-        .padding(.horizontal, 4)
-    }
-
-    private func compactErrorState(provider: any AIProvider) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 12))
-                .foregroundStyle(theme.statusWarning)
-
-            Text(provider.lastError?.localizedDescription ?? "Unavailable")
-                .font(.system(size: 11, weight: .medium, design: theme.fontDesign))
-                .foregroundStyle(theme.textTertiary)
-                .lineLimit(1)
-
-            Spacer()
-        }
-        .padding(.vertical, 4)
-    }
-
 
     private func accountCard(displayName: String, snapshot: UsageSnapshot) -> some View {
         HStack(spacing: 10) {
@@ -603,20 +507,14 @@ struct MenuContentView: View {
             .keyboardShortcut("d")
 
             // Refresh Button
-            let isCurrentlyRefreshing = settings.overviewModeEnabled
-                ? monitor.enabledProviders.contains { $0.isSyncing }
-                : selectedProvider?.isSyncing == true
+            let isCurrentlyRefreshing = selectedProvider?.isSyncing == true
             WrappedActionButton(
                 icon: isCurrentlyRefreshing ? "arrow.trianglehead.2.counterclockwise.rotate.90" : "arrow.clockwise",
                 label: isCurrentlyRefreshing ? "Syncing" : "Refresh",
                 gradient: theme.accentGradient,
                 isLoading: isCurrentlyRefreshing
             ) {
-                if settings.overviewModeEnabled {
-                    Task { await refreshAllEnabled() }
-                } else {
-                    Task { await refresh(providerId: selectedProviderId) }
-                }
+                Task { await refresh(providerId: selectedProviderId) }
             }
             .keyboardShortcut("r")
 
@@ -664,25 +562,6 @@ struct MenuContentView: View {
     }
 
     // MARK: - Actions
-
-    /// Refresh all enabled providers concurrently
-    private func refreshAllEnabled() async {
-        await withTaskGroup(of: Void.self) { group in
-            // The `isSyncing` guard reads main-actor provider state, so evaluate
-            // it here on the main actor (this closure inherits the caller's
-            // isolation). Each child task then awaits `refresh()`, whose heavy
-            // probe work still suspends off-main, keeping the refreshes concurrent.
-            for provider in monitor.enabledProviders where !provider.isSyncing {
-                group.addTask {
-                    do {
-                        try await provider.refresh()
-                    } catch {
-                        // Provider stores error in lastError
-                    }
-                }
-            }
-        }
-    }
 
     /// Refresh a specific provider by ID
     private func refresh(providerId: String) async {

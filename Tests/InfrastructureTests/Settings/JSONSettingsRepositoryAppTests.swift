@@ -56,25 +56,6 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.userHasChosenTheme() == true)
     }
 
-    // MARK: - Overview
-
-    @Test
-    func `overviewModeEnabled defaults to false`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.overviewModeEnabled() == false)
-    }
-
-    @Test
-    func `setOverviewModeEnabled persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setOverviewModeEnabled(true)
-        #expect(repo.overviewModeEnabled() == true)
-    }
-
     // MARK: - Background Sync
 
     @Test
@@ -103,25 +84,6 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.backgroundSyncInterval() == 120)
     }
 
-    // MARK: - Updates
-
-    @Test
-    func `receiveBetaUpdates defaults to false`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.receiveBetaUpdates() == false)
-    }
-
-    @Test
-    func `setReceiveBetaUpdates persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setReceiveBetaUpdates(true)
-        #expect(repo.receiveBetaUpdates() == true)
-    }
-
     // MARK: - Persistence across instances
 
     @Test
@@ -133,12 +95,12 @@ struct JSONSettingsRepositoryAppTests {
 
         let store = JSONSettingsStore(fileURL: fileURL)
         let repo1 = JSONSettingsRepository(store: store)
-        repo1.setThemeMode("cli")
-        repo1.setOverviewModeEnabled(true)
+        repo1.setThemeMode("light")
+        repo1.setBackgroundSyncInterval(300)
 
         // New repo, same store
         let repo2 = JSONSettingsRepository(store: store)
-        #expect(repo2.themeMode() == "cli")
-        #expect(repo2.overviewModeEnabled() == true)
+        #expect(repo2.themeMode() == "light")
+        #expect(repo2.backgroundSyncInterval() == 300)
     }
 }

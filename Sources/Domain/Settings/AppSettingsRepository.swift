@@ -16,11 +16,6 @@ public protocol AppSettingsRepository: Sendable {
     func userHasChosenTheme() -> Bool
     func setUserHasChosenTheme(_ chosen: Bool)
 
-    // MARK: - Overview
-
-    func overviewModeEnabled() -> Bool
-    func setOverviewModeEnabled(_ enabled: Bool)
-
     // MARK: - Background Sync
 
     func backgroundSyncEnabled() -> Bool
@@ -28,17 +23,4 @@ public protocol AppSettingsRepository: Sendable {
 
     func backgroundSyncInterval() -> TimeInterval
     func setBackgroundSyncInterval(_ interval: TimeInterval)
-
-    // MARK: - Burn Rate Warning
-
-    func burnRateWarningEnabled() -> Bool
-    func setBurnRateWarningEnabled(_ enabled: Bool)
-
-    func burnRateThreshold() -> Double
-    func setBurnRateThreshold(_ threshold: Double)
-
-    // MARK: - Updates
-
-    func receiveBetaUpdates() -> Bool
-    func setReceiveBetaUpdates(_ receive: Bool)
 }

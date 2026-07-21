@@ -41,14 +41,6 @@ public final class JSONSettingsRepository:
         store.write(value: chosen, key: "app.userHasChosenTheme")
     }
 
-    public func overviewModeEnabled() -> Bool {
-        store.read(key: "app.overviewModeEnabled") ?? false
-    }
-
-    public func setOverviewModeEnabled(_ enabled: Bool) {
-        store.write(value: enabled, key: "app.overviewModeEnabled")
-    }
-
     public func backgroundSyncEnabled() -> Bool {
         store.read(key: "app.backgroundSyncEnabled") ?? false
     }
@@ -65,32 +57,6 @@ public final class JSONSettingsRepository:
 
     public func setBackgroundSyncInterval(_ interval: TimeInterval) {
         store.write(value: interval, key: "app.backgroundSyncInterval")
-    }
-
-    // MARK: - Burn Rate Warning
-
-    public func burnRateWarningEnabled() -> Bool {
-        store.read(key: "app.burnRateWarningEnabled") ?? false
-    }
-
-    public func setBurnRateWarningEnabled(_ enabled: Bool) {
-        store.write(value: enabled, key: "app.burnRateWarningEnabled")
-    }
-
-    public func burnRateThreshold() -> Double {
-        store.read(key: "app.burnRateThreshold") ?? 1.5
-    }
-
-    public func setBurnRateThreshold(_ threshold: Double) {
-        store.write(value: threshold, key: "app.burnRateThreshold")
-    }
-
-    public func receiveBetaUpdates() -> Bool {
-        store.read(key: "app.receiveBetaUpdates") ?? false
-    }
-
-    public func setReceiveBetaUpdates(_ receive: Bool) {
-        store.write(value: receive, key: "app.receiveBetaUpdates")
     }
 
     // MARK: - ProviderSettingsRepository
