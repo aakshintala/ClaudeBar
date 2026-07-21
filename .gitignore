@@ -13,6 +13,7 @@ xcuserdata/
 # Build artifacts
 build/
 .serena/
+.superpowers/
 
 # Personal Claude Code settings (per-project, never commit)
 .claude/settings.local.json
