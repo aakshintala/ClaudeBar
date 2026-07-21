@@ -6,11 +6,10 @@ import Mockable
 
 /// Feature: Action Bar
 ///
-/// Users interact with action buttons: Dashboard, Refresh, Share, Settings, Quit.
+/// Users interact with action buttons: Dashboard, Refresh, Settings, Quit.
 ///
 /// Behaviors covered:
 /// - #24: User clicks Dashboard → opens provider's web dashboard in browser
-/// - #25: User clicks Share (Claude only) → shows referral link overlay
 @Suite("Feature: Action Bar")
 struct ActionBarSpec {
 
@@ -38,25 +37,6 @@ struct ActionBarSpec {
         func `Codex dashboard URL is OpenAI usage`() {
             let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: Self.makeSettings())
             #expect(codex.dashboardURL?.absoluteString == "https://platform.openai.com/usage")
-        }
-    }
-
-    // MARK: - #25: Claude guest passes
-
-    @Suite("Scenario: Share Claude Code guest passes")
-    @MainActor
-    struct GuestPasses {
-
-        @Test
-        func `Claude supports guest passes when pass probe is provided`() {
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
-
-            // Without pass probe
-            let withoutPass = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            #expect(withoutPass.supportsGuestPasses == false)
         }
     }
 }

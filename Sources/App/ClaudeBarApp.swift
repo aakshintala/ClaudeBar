@@ -55,7 +55,6 @@ struct ClaudeBarApp: App {
         let repository = AIProviders(providers: [
             ClaudeProvider(
                 probe: ClaudeAPIUsageProbe(),
-                passProbe: ClaudePassProbe(),
                 settingsRepository: settingsRepository
             ),
             CodexProvider(
