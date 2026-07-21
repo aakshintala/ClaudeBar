@@ -3,18 +3,11 @@ import Domain
 import Infrastructure
 import MenuBarExtraAccess
 
-extension Notification.Name {
-    static let hookSettingsChanged = Notification.Name("com.tddworks.claudebar.hookSettingsChanged")
-}
-
 @main
 struct ClaudeBarApp: App {
     /// The main domain service - monitors all AI providers
     /// This is the single source of truth for providers and their state
     @State private var monitor: QuotaMonitor
-
-    /// Monitors Claude Code sessions via hook events
-    @State private var sessionMonitor: SessionMonitor
 
     /// Drives the menu-bar pixels and the background-refresh lifecycle
     /// imperatively, outside SwiftUI — the MenuBarExtra label hosting can
@@ -25,17 +18,8 @@ struct ClaudeBarApp: App {
     /// dropdown control if ever needed.
     @State private var isMenuPresented = false
 
-    /// The hook HTTP server that receives events from Claude Code
-    private let hookServer = HookHTTPServer()
-
-    /// Task for the hook server event loop (allows cancellation on toggle off)
-    @State private var hookServerTask: Task<Void, Never>?
-
     /// Alerts users when quota status degrades
     private let quotaAlerter = NotificationAlerter()
-
-    /// Sends session start/end notifications
-    private let sessionAlertSender = SystemAlertSender()
 
     init() {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
@@ -46,7 +30,6 @@ struct ClaudeBarApp: App {
         // JSONSettingsRepository implements all sub-protocols:
         // - AppSettingsRepository (app-level display/sync settings)
         // - ProviderSettingsRepository + all provider sub-protocols
-        // - HookSettingsRepository
         let settingsRepository = JSONSettingsRepository.shared
 
         // Create all providers with their probes (rich domain models)
@@ -79,31 +62,11 @@ struct ClaudeBarApp: App {
         self.monitor = monitor
         AppLog.monitor.info("QuotaMonitor initialized")
 
-        let sessionMonitor = SessionMonitor()
-        self.sessionMonitor = sessionMonitor
-
-        // The driver owns the menu-bar pixels and the refresh-loop lifecycle
-        // (outside SwiftUI — see StatusItemLabelDriver). Pixels start flowing
-        // once `.menuBarExtraAccess` hands over the NSStatusItem.
         statusItemDriver = StatusItemLabelDriver(
             monitor: monitor,
-            settings: AppSettings.shared,
-            sessionMonitor: sessionMonitor
+            settings: AppSettings.shared
         )
         statusItemDriver.startMonitoringLifecycle()
-
-        // Start hook server if hooks are enabled
-        if settingsRepository.isHookEnabled() {
-            // Reconcile installed hooks so newly-added events (e.g.
-            // UserPromptSubmit, which revives a stopped session) register for
-            // existing users without re-toggling the setting. install() is
-            // idempotent — it replaces only ClaudeBar's own matcher entries
-            // per event and preserves hooks from other tools.
-            if HookInstaller.isInstalled() {
-                try? HookInstaller.install()
-            }
-            startHookServer()
-        }
 
         // Note: Notification permission is requested in onAppear, not here
         // Menu bar apps need the run loop to be active before requesting permissions
@@ -114,77 +77,11 @@ struct ClaudeBarApp: App {
     /// App settings for theme
     @State private var settings = AppSettings.shared
 
-    /// Current theme mode from settings
-    private var currentThemeMode: ThemeMode {
-        ThemeMode(rawValue: settings.themeMode) ?? .system
-    }
-
-    private func startHookServer() {
-        // Cancel any existing server task
-        hookServerTask?.cancel()
-        hookServer.stop()
-
-        hookServerTask = Task {
-            do {
-                let events = try await hookServer.start()
-                AppLog.hooks.info("Hook server started, listening for events")
-                for await event in events {
-                    // Ignore ClaudeBar's own background quota probe so routine
-                    // polling doesn't spam "Claude Code Finished: Probe"
-                    // notifications or pollute the recent-sessions list. (issue #172)
-                    guard !event.isClaudeBarProbe else { continue }
-                    await sessionMonitor.processEvent(event)
-                    await sendSessionNotification(for: event)
-                }
-            } catch {
-                AppLog.hooks.error("Failed to start hook server: \(error.localizedDescription)")
-            }
-        }
-    }
-
-    func stopHookServer() {
-        hookServerTask?.cancel()
-        hookServerTask = nil
-        hookServer.stop()
-    }
-
-    @MainActor private func sendSessionNotification(for event: SessionEvent) {
-        let projectName = (event.cwd as NSString).lastPathComponent
-
-        switch event.eventName {
-        case .sessionStart:
-            Task {
-                try? await sessionAlertSender.send(
-                    title: "Claude Code Started",
-                    body: "Session started in \(projectName)",
-                    categoryIdentifier: "SESSION_START"
-                )
-            }
-        case .sessionEnd:
-            let taskCount = sessionMonitor.recentSessions.first?.completedTaskCount ?? 0
-            let duration = sessionMonitor.recentSessions.first?.durationDescription ?? ""
-            let summary = taskCount > 0
-                ? "Completed \(taskCount) task\(taskCount == 1 ? "" : "s") in \(duration)"
-                : "Session ended after \(duration)"
-            Task {
-                try? await sessionAlertSender.send(
-                    title: "Claude Code Finished",
-                    body: "\(projectName) — \(summary)",
-                    categoryIdentifier: "SESSION_END"
-                )
-            }
-        default:
-            break
-        }
-    }
-
     var body: some Scene {
         MenuBarExtra {
             Group {
-                MenuContentView(monitor: monitor, sessionMonitor: sessionMonitor, quotaAlerter: quotaAlerter) { enabled in
-                    if enabled { startHookServer() } else { stopHookServer() }
-                }
-                .appThemeProvider(themeModeId: settings.themeMode)
+                MenuContentView(monitor: monitor, quotaAlerter: quotaAlerter)
+                    .appThemeProvider(themeModeId: settings.themeMode)
             }
             // Opening/closing the dropdown flips `isMenuPresented`, which makes
             // SwiftUI re-evaluate the scene and wipe the AppKit-drawn button
@@ -207,103 +104,4 @@ struct ClaudeBarApp: App {
         .menuBarExtraStyle(.window)
     }
 
-}
-
-private func sessionPhaseColor(_ phase: ClaudeSession.Phase) -> Color {
-    phase.color
-}
-
-/// The menu bar icon that reflects the overall quota status.
-/// When a Claude Code session is active, shows a terminal icon with phase color.
-/// Uses theme's `statusBarIconName` if set, otherwise shows status-based icons.
-struct StatusBarIcon: View {
-    let status: QuotaStatus
-    var activeSession: ClaudeSession? = nil
-
-    @Environment(\.appTheme) private var theme
-
-    var body: some View {
-        if let session = activeSession {
-            // Active session: show terminal icon with phase color
-            HStack(spacing: 3) {
-                Image(systemName: "terminal.fill")
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(sessionPhaseColor(session.phase))
-                Image(systemName: iconName)
-                    .symbolRenderingMode(.palette)
-                    .foregroundStyle(iconColor)
-            }
-        } else {
-            Image(systemName: iconName)
-                .symbolRenderingMode(.palette)
-                .foregroundStyle(iconColor)
-        }
-    }
-
-    private var iconName: String {
-        // Use theme's custom icon if provided
-        if let themeIcon = theme.statusBarIconName {
-            return themeIcon
-        }
-        // Otherwise use status-based icon
-        switch status {
-        case .depleted:
-            return "chart.bar.xaxis"
-        case .critical:
-            return "exclamationmark.triangle.fill"
-        case .warning, .healthy:
-            return "chart.bar.fill"
-        }
-    }
-
-    private var iconColor: Color {
-        theme.statusColor(for: status)
-    }
-}
-
-// MARK: - StatusBarIcon Preview
-
-#Preview("StatusBarIcon - All States") {
-    HStack(spacing: 30) {
-        VStack {
-            StatusBarIcon(status: .healthy)
-            Text("HEALTHY")
-                .font(.caption)
-                .foregroundStyle(.green)
-        }
-        VStack {
-            StatusBarIcon(status: .warning)
-            Text("WARNING")
-                .font(.caption)
-                .foregroundStyle(.orange)
-        }
-        VStack {
-            StatusBarIcon(status: .critical)
-            Text("CRITICAL")
-                .font(.caption)
-                .foregroundStyle(.red)
-        }
-        VStack {
-            StatusBarIcon(status: .depleted)
-            Text("DEPLETED")
-                .font(.caption)
-                .foregroundStyle(.red)
-        }
-        VStack {
-            StatusBarIcon(status: .healthy)
-                .appThemeProvider(themeModeId: "cli")
-            Text("CLI")
-                .font(.caption)
-                .foregroundStyle(CLITheme().accentPrimary)
-        }
-        VStack {
-            StatusBarIcon(status: .healthy)
-                .appThemeProvider(themeModeId: "christmas")
-            Text("CHRISTMAS")
-                .font(.caption)
-                .foregroundStyle(ChristmasTheme().accentPrimary)
-        }
-    }
-    .padding(40)
-    .background(Color.black)
 }

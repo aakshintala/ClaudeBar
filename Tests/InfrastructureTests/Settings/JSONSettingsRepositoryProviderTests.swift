@@ -78,40 +78,4 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.codexProbeMode() == .api)
     }
 
-    // MARK: - Hook Settings
-
-    @Test
-    func `isHookEnabled defaults to false`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.isHookEnabled() == false)
-    }
-
-    @Test
-    func `setHookEnabled persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setHookEnabled(true)
-        #expect(repo.isHookEnabled() == true)
-    }
-
-    @Test
-    func `hookPort defaults to 19847`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.hookPort() == HookConstants.defaultPort)
-    }
-
-    @Test
-    func `setHookPort persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setHookPort(8080)
-        #expect(repo.hookPort() == 8080)
-    }
-
 }

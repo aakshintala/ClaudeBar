@@ -6,9 +6,7 @@ import Infrastructure
 /// Uses the pluggable theme system for consistent styling across all themes.
 struct MenuContentView: View {
     let monitor: QuotaMonitor
-    let sessionMonitor: SessionMonitor
     let quotaAlerter: QuotaAlerter
-    var onHookSettingsChanged: ((Bool) -> Void)?
 
     @Environment(\.appTheme) private var theme
     @Environment(\.colorScheme) private var colorScheme
@@ -66,13 +64,6 @@ struct MenuContentView: View {
                             .padding(.bottom, 16)
                     }
 
-                    // Session Indicator (shown when Claude Code is active)
-                    if let session = sessionMonitor.activeSession {
-                        SessionIndicatorView(session: session)
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 8)
-                    }
-
                     // Main Content Area — hugs its content, but caps at the
                     // screen height and scrolls beyond it (aggregating
                     // providers can show a dozen cards; the action bar must
@@ -100,10 +91,6 @@ struct MenuContentView: View {
         .frame(width: 400)
         .fixedSize(horizontal: false, vertical: true)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .onReceive(NotificationCenter.default.publisher(for: .hookSettingsChanged)) { notification in
-            let enabled = notification.userInfo?["enabled"] as? Bool ?? false
-            onHookSettingsChanged?(enabled)
-        }
         .task {
             // Request alert permission once (after app run loop is active)
             if !hasRequestedNotificationPermission {

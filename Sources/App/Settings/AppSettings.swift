@@ -280,7 +280,6 @@ public final class AppSettings {
     /// These are non-observable (loaded into @State) - only app-level settings are @Observable.
     public var provider: ProviderSettingsRepository { repository }
     public var codex: CodexSettingsRepository { repository }
-    public var hook: HookSettingsRepository { repository }
 }
 
 // MARK: - Notification Names

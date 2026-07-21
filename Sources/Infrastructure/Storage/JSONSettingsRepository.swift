@@ -3,14 +3,13 @@ import Domain
 
 /// Unified JSON-backed settings repository.
 /// Implements all settings protocols: AppSettingsRepository + ProviderSettingsRepository
-/// (including all sub-protocols) + HookSettingsRepository.
+/// (including all sub-protocols).
 ///
 /// Backed by `JSONSettingsStore` reading/writing `~/.claudebar/settings.json`.
 /// Credentials (tokens, API keys) use UserDefaults for now (Keychain migration later).
 public final class JSONSettingsRepository:
     AppSettingsRepository,
     CodexSettingsRepository,
-    HookSettingsRepository,
     @unchecked Sendable
 {
     /// Shared instance using the default settings file
@@ -196,24 +195,5 @@ public final class JSONSettingsRepository:
 
     public func setCodexProbeMode(_ mode: CodexProbeMode) {
         store.write(value: mode.rawValue, key: "codex.probeMode")
-    }
-
-    // MARK: - HookSettingsRepository
-
-    public func isHookEnabled() -> Bool {
-        store.read(key: "hook.enabled") ?? false
-    }
-
-    public func setHookEnabled(_ enabled: Bool) {
-        store.write(value: enabled, key: "hook.enabled")
-    }
-
-    public func hookPort() -> Int {
-        let port: Int = store.read(key: "hook.port") ?? Int(HookConstants.defaultPort)
-        return port > 0 ? port : Int(HookConstants.defaultPort)
-    }
-
-    public func setHookPort(_ port: Int) {
-        store.write(value: port, key: "hook.port")
     }
 }

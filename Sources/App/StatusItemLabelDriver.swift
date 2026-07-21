@@ -25,7 +25,6 @@ import Infrastructure
 final class StatusItemLabelDriver {
     private let monitor: QuotaMonitor
     private let settings: AppSettings
-    private let sessionMonitor: SessionMonitor
 
     private var statusItem: NSStatusItem?
     private var labelSync: ObservationRenderSync<LabelContent>?
@@ -40,10 +39,9 @@ final class StatusItemLabelDriver {
     private var lastContent: LabelContent?
     private var imageWipeObservation: NSKeyValueObservation?
 
-    init(monitor: QuotaMonitor, settings: AppSettings, sessionMonitor: SessionMonitor) {
+    init(monitor: QuotaMonitor, settings: AppSettings) {
         self.monitor = monitor
         self.settings = settings
-        self.sessionMonitor = sessionMonitor
     }
 
     // No deinit: this object lives for the app's lifetime, so the wake
@@ -57,7 +55,6 @@ final class StatusItemLabelDriver {
     struct LabelContent: Equatable {
         var label: MenuBarLabel?
         var fallbackStatus: QuotaStatus
-        var sessionPhase: ClaudeSession.Phase?
         var themeModeId: String
         /// Whether a dual-window label should render as two stacked smaller
         /// lines instead of one long "A | B" line (opt-in setting).
@@ -133,7 +130,6 @@ final class StatusItemLabelDriver {
         return LabelContent(
             label: freshLabel ?? lastKnownLabel(whenFreshIsMissing: freshLabel),
             fallbackStatus: effectiveSelectedProviderStatus,
-            sessionPhase: sessionMonitor.activeSession?.phase,
             themeModeId: settings.themeMode,
             stacked: settings.menuBarStackedEnabled,
             stackedSize: settings.menuBarStackedSize
@@ -192,14 +188,6 @@ final class StatusItemLabelDriver {
     /// no quota data exists yet. Mirrors the old SwiftUI label exactly.
     static func compose(_ content: LabelContent, theme: any AppThemeProvider) -> NSImage {
         var parts: [NSImage] = []
-
-        // Only surface the session glyph while Claude is actively working. A
-        // finished/idle (.stopped) or .ended session must not leave a lone
-        // orange glyph sitting in the menu bar — that reads as a frozen crash
-        // (the user's report) since `Stop` fires at the end of every turn.
-        if let phase = content.sessionPhase, phase == .active || phase == .subagentsWorking {
-            parts.append(symbolImage("terminal.fill", color: NSColor(phase.color)))
-        }
 
         if let label = content.label {
             // Stacked mode only applies to a dual-window label: two windows
