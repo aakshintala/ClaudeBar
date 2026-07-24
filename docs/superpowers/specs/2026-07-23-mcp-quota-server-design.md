@@ -125,18 +125,26 @@ Wire shape:
     "status": "critical", "unavailable": null, "throttledUntil": null,
     "quotas": [
       {"key":"session","label":"Session","percentRemaining":68,
-       "resetsAt":"2026-07-23T11:44:00Z","status":"healthy"},
+       "resetsAt":"2026-07-23T11:44:00Z","resetText":null,"status":"healthy"},
       {"key":"weekly","label":"Weekly","percentRemaining":12,
-       "resetsAt":"2026-07-26T14:00:00Z","status":"critical"}
+       "resetsAt":"2026-07-26T14:00:00Z","resetText":null,"status":"critical"},
+      {"key":"model:opus","label":"Opus","percentRemaining":40,
+       "resetsAt":null,"resetText":"12/500 on-demand","status":"healthy"}
     ]
   }],
-  "disabledProviderIds": ["opencode"]
+  "disabledProviderIds": ["opencode-go"]
 }
 ```
 
 `capturedAt` is `null` for a provider that has never been probed.
 `unavailable` and `throttledUntil` are mutually exclusive and both `null` on the
-healthy path.
+healthy path. `resetText` carries raw probe strings (e.g. Cursor's
+`326/40000 requests`, `Unlimited`) that percentages alone cannot express; omit
+from the TS render when null.
+
+Quota `key` values use `QuotaType.quotaKey` — e.g. `.modelSpecific("opus")` →
+`model:opus`, `.timeLimit("Monthly")` → `time:Monthly`. `label` is
+`quotaType.displayName`.
 
 ### `QuotaFeedService` (Infrastructure/Server)
 
@@ -183,8 +191,8 @@ injected `now: @Sendable () -> Date`. This matches an existing idiom:
 
 ### `QuotaHTTPServer` (Infrastructure/Server)
 
-`NWListener` bound to `127.0.0.1` on the configured port. One route:
-`GET /quotas`. No third-party dependency — for a single GET with no request
+`NWListener` bound to loopback via `NWParameters.acceptLocalOnly` on the
+configured port. One route: `GET /quotas`. No third-party dependency — for a single GET with no request
 body this is read-until-`\r\n\r\n`, match the request line, write a
 fixed-shape response. An HTTP framework is not worth the dependency for one
 localhost endpoint.
@@ -213,13 +221,14 @@ is an LLM making a judgement call:
 claude (Max) - data 2m old
   session  68% left, resets in 1h42m  [healthy]
   weekly   12% left, resets in 3d4h   [critical]
+  Opus     40% left (12/500 on-demand)  [healthy]
 
 codex (Plus) - data 2m old
   weekly   81% left, resets in 5d     [healthy]
 
 cursor - unavailable: no credentials found
 
-(opencode disabled in QuotaBar)
+(opencode-go disabled in QuotaBar)
 ```
 
 Wired via `.mcp.json` pointing at a local `node` invocation. Not packaged.
@@ -279,7 +288,7 @@ and `powerStateProvider`, and `UsageProbe` is `@Mockable`. Tests build a **real*
 
 Pure mapping, fast:
 
-- `.modelSpecific("opus")` → key `opus`, label `Opus`
+- `.modelSpecific("opus")` → key `model:opus`, label `Opus`
 - `snapshot == nil` with no error → `capturedAt: null`
 - `lastError` present → populated `unavailable`
 - `ProbeError.rateLimited(retryAt:)` → `throttledUntil` shape, **not** the

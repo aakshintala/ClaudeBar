@@ -1,0 +1,15 @@
+{
+  "name": "quotabar-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Stdio MCP server that reads quota headroom from QuotaBar over localhost HTTP",
+  "main": "index.ts",
+  "scripts": {
+    "start": "node --experimental-strip-types index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "zod": "^3.24.0"
+  }
+}

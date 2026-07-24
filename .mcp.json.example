@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "quotabar": {
+      "command": "node",
+      "args": ["--experimental-strip-types", "mcp/index.ts"],
+      "env": {
+        "QUOTABAR_MCP_PORT": "8787"
+      }
+    }
+  }
+}

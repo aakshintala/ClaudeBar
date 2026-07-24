@@ -33,8 +33,13 @@ tuist build
 # Run all tests
 tuist test
 
-# Run a specific test target (DomainTests, InfrastructureTests, AcceptanceTests)
-tuist test DomainTests
+# Run a specific test target (Domain, Infrastructure, AcceptanceTests)
+tuist test ClaudeBar -- -only-testing:DomainTests
+
+# Or test individual schemes directly:
+tuist test Domain
+tuist test Infrastructure
+tuist test AcceptanceTests
 
 # Run tests with coverage
 tuist test --result-bundle-path TestResults.xcresult -- -enableCodeCoverage YES
