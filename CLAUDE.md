@@ -30,23 +30,40 @@ open ClaudeBar.xcworkspace
 # Build the project
 tuist build
 
-# Run all tests
-tuist test
-
-# Run a specific test target (Domain, Infrastructure, AcceptanceTests)
-tuist test ClaudeBar -- -only-testing:DomainTests
-
-# Or test individual schemes directly:
-tuist test Domain
-tuist test Infrastructure
-tuist test AcceptanceTests
-
-# Run tests with coverage
-tuist test --result-bundle-path TestResults.xcresult -- -enableCodeCoverage YES
-
 # Build release configuration
 tuist build ClaudeBar -C Release
 ```
+
+### Running Tests
+
+**Do not use `tuist test`.** It regenerates the project with a scheme set that
+drops the shared `ClaudeBar` scheme's test action, then exits **0** reporting
+"The scheme's test action has no tests to run, finishing early." It is a silent
+false pass — it will green-light a broken branch. This affects every scheme
+(`ClaudeBar`, `Domain`, `Infrastructure`, `AcceptanceTests`), not just one.
+
+Always `tuist generate` first, then drive `xcodebuild` directly:
+
+```bash
+# Regenerate schemes (required after tuist test has clobbered them)
+tuist generate --no-open
+
+# Run all tests (333 tests across DomainTests, InfrastructureTests, AcceptanceTests)
+xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar \
+  -destination 'platform=macOS'
+
+# Run a single test target
+xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar \
+  -destination 'platform=macOS' -only-testing:DomainTests
+
+# Run tests with coverage
+xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar \
+  -destination 'platform=macOS' -enableCodeCoverage YES \
+  -resultBundlePath TestResults.xcresult
+```
+
+Verify a run actually executed tests — look for `Test run with N tests ... passed`
+and `** TEST SUCCEEDED **`. A run that reports no test count ran nothing.
 
 **Key files:**
 - `Project.swift` - Tuist project definition (targets, dependencies, build settings)
