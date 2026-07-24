@@ -139,11 +139,11 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     /// Default TTL for the in-memory snapshot cache. Anthropic's
     /// /api/oauth/usage throttle has been observed handing out 1-hour
     /// Retry-After windows in response to even one call after a quiet
-    /// period (see deferred memory + anthropics/claude-code#30930), so
-    /// we err on the conservative side. 15 minutes drops the 60s monitor
-    /// cadence to ~4 calls/hour — well under any reasonable threshold —
-    /// while still keeping the displayed quotas fresh enough that a user
-    /// glancing at the menu bar isn't looking at hour-old data.
+    /// period (see anthropics/claude-code#30930), so we err on the
+    /// conservative side. With background refresh off, the cache is
+    /// consumed only by popover opens and MCP quota requests; the MCP
+    /// coalescing window caps agent-driven volume. Default TTL is
+    /// configurable via `claude.snapshotCacheTTL` (300s out of the box).
     public static let defaultSnapshotCacheTTL: TimeInterval = 15 * 60
 
     // API endpoints

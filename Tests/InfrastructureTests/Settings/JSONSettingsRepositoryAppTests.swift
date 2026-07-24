@@ -103,6 +103,55 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo2.quotaAlertsEnabled() == false)
     }
 
+    // MARK: - MCP
+
+    @Test
+    func `mcpEnabled defaults to false`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        #expect(repo.mcpEnabled() == false)
+    }
+
+    @Test
+    func `mcpPort defaults to 8787`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        #expect(repo.mcpPort() == 8787)
+    }
+
+    @Test
+    func `setMCPEnabled and setMCPPort persist`() {
+        let (repo1, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        repo1.setMCPEnabled(true)
+        repo1.setMCPPort(9000)
+
+        let repo2 = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+        #expect(repo2.mcpEnabled() == true)
+        #expect(repo2.mcpPort() == 9000)
+    }
+
+    // MARK: - Claude probe cache
+
+    @Test
+    func `claudeSnapshotCacheTTL defaults to 300`() {
+        let (repo, dir) = makeRepository()
+        defer { cleanup(dir) }
+        #expect(repo.claudeSnapshotCacheTTL() == 300)
+    }
+
+    @Test
+    func `setClaudeSnapshotCacheTTL persists`() {
+        let (repo1, dir) = makeRepository()
+        defer { cleanup(dir) }
+        let fileURL = dir.appendingPathComponent("settings.json")
+        repo1.setClaudeSnapshotCacheTTL(600)
+
+        let repo2 = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+        #expect(repo2.claudeSnapshotCacheTTL() == 600)
+    }
+
     // MARK: - Persistence across instances
 
     @Test

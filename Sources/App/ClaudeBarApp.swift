@@ -38,7 +38,9 @@ struct ClaudeBarApp: App {
         // Each probe checks isAvailable() for credentials/prerequisites
         let repository = AIProviders(providers: [
             ClaudeProvider(
-                probe: ClaudeAPIUsageProbe(),
+                probe: ClaudeAPIUsageProbe(
+                    snapshotCacheTTL: settingsRepository.claudeSnapshotCacheTTL()
+                ),
                 settingsRepository: settingsRepository
             ),
             CodexProvider(

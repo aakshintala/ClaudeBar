@@ -67,6 +67,30 @@ public final class JSONSettingsRepository:
         store.write(value: enabled, key: "app.quotaAlertsEnabled")
     }
 
+    public func mcpEnabled() -> Bool {
+        store.read(key: "mcp.enabled") ?? false
+    }
+
+    public func setMCPEnabled(_ enabled: Bool) {
+        store.write(value: enabled, key: "mcp.enabled")
+    }
+
+    public func mcpPort() -> Int {
+        store.read(key: "mcp.port") ?? 8787
+    }
+
+    public func setMCPPort(_ port: Int) {
+        store.write(value: port, key: "mcp.port")
+    }
+
+    public func claudeSnapshotCacheTTL() -> TimeInterval {
+        store.read(key: "claude.snapshotCacheTTL") ?? 300
+    }
+
+    public func setClaudeSnapshotCacheTTL(_ ttl: TimeInterval) {
+        store.write(value: ttl, key: "claude.snapshotCacheTTL")
+    }
+
     // MARK: - ProviderSettingsRepository
 
     public func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool {
