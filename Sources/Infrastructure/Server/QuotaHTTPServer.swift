@@ -114,10 +114,26 @@ public final class QuotaHTTPServer: @unchecked Sendable {
         var parser = QuotaHTTPIncrementalParser()
     }
 
-    private let port: UInt16
+    public let port: UInt16
     private let feedProvider: @Sendable () async -> Data
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "com.tddworks.ClaudeBar.quota-http")
+
+    /// NWListener reports bind failures (EADDRINUSE in particular) through its
+    /// state handler *after* `start()` has already returned successfully. Without
+    /// this callback the failure is invisible to the caller, which then reports a
+    /// healthy server while nothing is bound.
+    public var onFailure: (@Sendable (Error) -> Void)?
+
+    /// Set only once the listener actually reaches `.ready`. `listener != nil` is
+    /// not a readiness signal — it is true between `start()` and the state
+    /// machine's verdict, and stays true after an async failure.
+    private var isReadyFlag = false
+
+    /// `listener` and `isReadyFlag` are written from the NWListener state
+    /// handler (on `queue`) and read from the main actor. Without this lock the
+    /// readiness write is not guaranteed visible to the reader.
+    private let stateLock = NSLock()
 
     public init(port: UInt16, feedProvider: @escaping @Sendable () async -> Data) {
         self.port = port
@@ -153,13 +169,32 @@ public final class QuotaHTTPServer: @unchecked Sendable {
             listener.newConnectionHandler = { [weak self] connection in
                 self?.handle(connection: connection)
             }
-            listener.stateUpdateHandler = { (state: NWListener.State) in
-                if case .failed(let error) = state {
+            listener.stateUpdateHandler = { [weak self] (state: NWListener.State) in
+                guard let self else { return }
+                switch state {
+                case .ready:
+                    self.stateLock.withLock { self.isReadyFlag = true }
+                    AppLog.network.info("Quota HTTP server ready on 127.0.0.1:\(self.port)")
+                case .failed(let error):
+                    // Tear down rather than leaving a dead listener in place —
+                    // otherwise `isRunning` keeps reporting true forever.
                     AppLog.network.error("Quota HTTP server failed: \(error.localizedDescription)")
+                    let dead = self.stateLock.withLock { () -> NWListener? in
+                        self.isReadyFlag = false
+                        let l = self.listener
+                        self.listener = nil
+                        return l
+                    }
+                    dead?.cancel()
+                    self.onFailure?(error)
+                case .cancelled:
+                    self.stateLock.withLock { self.isReadyFlag = false }
+                default:
+                    break
                 }
             }
             listener.start(queue: queue)
-            self.listener = listener
+            stateLock.withLock { self.listener = listener }
             AppLog.network.info("Quota HTTP server listening on 127.0.0.1:\(port)")
         } catch {
             throw ServerError.failedToBind(error)
@@ -167,12 +202,19 @@ public final class QuotaHTTPServer: @unchecked Sendable {
     }
 
     public func stop() {
-        listener?.cancel()
-        listener = nil
+        let existing = stateLock.withLock { () -> NWListener? in
+            isReadyFlag = false
+            let l = listener
+            listener = nil
+            return l
+        }
+        existing?.cancel()
     }
 
+    /// True only while the listener has reached `.ready` and has not since
+    /// failed or been cancelled.
     public var isRunning: Bool {
-        listener != nil
+        stateLock.withLock { listener != nil && isReadyFlag }
     }
 
     private func handle(connection: NWConnection) {

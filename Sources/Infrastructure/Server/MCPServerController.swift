@@ -28,15 +28,34 @@ public final class MCPServerController {
     }
 
     private func start(port: Int) {
-        stop()
-
         guard (1...65_535).contains(port) else {
+            stop()
             bindError = "Port must be between 1 and 65535"
             AppLog.network.error("MCP quota server: invalid port \(port)")
             return
         }
 
+        // Idempotent: re-binding a port we already hold would cancel the live
+        // listener and race the kernel to reclaim the same port, which loses to
+        // EADDRINUSE. SwiftUI can deliver the same state change more than once,
+        // so this must be safe to call repeatedly.
+        if let existing = server, existing.port == UInt16(port), existing.isRunning {
+            AppLog.network.debug("MCP quota server already running on port \(port)")
+            return
+        }
+
+        stop()
+
         let server = QuotaHTTPServer(port: UInt16(port), feedService: feedService)
+        server.onFailure = { [weak self] error in
+            Task { @MainActor in
+                guard let self, self.server === server else { return }
+                self.server = nil
+                self.bindError = "Could not bind port \(port) — it may already be in use"
+                AppLog.network.error("MCP quota server lost port \(port): \(error.localizedDescription)")
+            }
+        }
+
         do {
             try server.start()
             self.server = server

@@ -175,9 +175,10 @@ struct SettingsContentView: View {
                 }
                 .toggleStyle(.switch)
                 .tint(theme.accentPrimary)
-                .onChange(of: settings.mcpEnabled) { _, enabled in
-                    mcpServerController.sync(enabled: enabled, port: settings.mcpPort)
-                }
+                // No .onChange here on purpose. ClaudeBarApp owns the server
+                // lifecycle; a second observer of the same property delivered
+                // sync() twice, and the duplicate bind lost the port to
+                // EADDRINUSE. The toggle only writes the setting.
 
                 if let bindError = mcpServerController.bindError {
                     Text(bindError)
