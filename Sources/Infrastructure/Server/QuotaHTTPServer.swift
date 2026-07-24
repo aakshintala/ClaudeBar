@@ -93,11 +93,11 @@ public enum QuotaHTTPRequestHandler {
         }
 
         let header = """
-        HTTP/1.1 \(statusCode) \(statusText)\r
-        Content-Type: \(contentType)\r
-        Content-Length: \(body.count)\r
-        Connection: close\r
-        \r
+        HTTP/1.1 \(statusCode) \(statusText)\r\n\
+        Content-Type: \(contentType)\r\n\
+        Content-Length: \(body.count)\r\n\
+        Connection: close\r\n\
+        \r\n
         """
         var data = Data(header.utf8)
         data.append(body)
@@ -143,11 +143,10 @@ public final class QuotaHTTPServer: @unchecked Sendable {
 
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
+        parameters.acceptLocalOnly = true
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
             throw ServerError.failedToBind(NSError(domain: "QuotaHTTPServer", code: 1))
         }
-
-        parameters.requiredLocalEndpoint = NWEndpoint.hostPort(host: .ipv4(.loopback), port: nwPort)
 
         do {
             let listener = try NWListener(using: parameters, on: nwPort)
