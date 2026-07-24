@@ -4,7 +4,15 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 
 const DEFAULT_PORT = 8787;
+
+/** The MCP tool may wait: an agent asked, and the app's own refresh deadline is
+ *  20s. Kept above it so the server's graceful degradation wins the race. */
 const FETCH_TIMEOUT_MS = 25_000;
+
+/** The SessionStart hook may NOT wait — it blocks the session from starting.
+ *  A cold coalescing window can trigger a full refresh, so bail fast and emit
+ *  nothing rather than freeze every new session behind a probe. */
+const PRINT_TIMEOUT_MS = 3_000;
 
 type ProviderQuota = {
   key: string;
@@ -77,31 +85,54 @@ function padLabel(label: string, width = 8): string {
   return label.length >= width ? label : label + " ".repeat(width - label.length);
 }
 
+/** Buckets that warrant detail: the reset time is what turns a number into a
+ *  decision ("session resets in an hour, wait" vs "weekly resets in days,
+ *  move the work"). Healthy buckets don't need it, so they stay on one line. */
+function needsDetail(q: ProviderQuota): boolean {
+  return q.status !== "healthy";
+}
+
 function renderProvider(p: ProviderFeed): string[] {
   const lines: string[] = [];
   const tier = p.tier ? ` (${p.tier})` : "";
 
   if (p.throttledUntil) {
-    const until = formatClock(p.throttledUntil);
-    const age = formatAge(p.ageSeconds);
     lines.push(
-      `${p.id}${tier} - throttled until ${until}, showing last known data (${age})`
+      `${p.id}${tier} - throttled until ${formatClock(p.throttledUntil)}, ` +
+        `showing last known data (${formatAge(p.ageSeconds)})`
     );
   } else if (p.unavailable) {
-    lines.push(`${p.id}${tier} - unavailable: ${p.unavailable}`);
-    return lines;
+    return [`${p.id}${tier} - unavailable: ${p.unavailable}`];
   } else if (p.capturedAt == null) {
-    lines.push(`${p.id}${tier} - no data yet`);
-    return lines;
-  } else {
+    return [`${p.id}${tier} - no data yet`];
+  }
+
+  const detailed = p.quotas.filter(needsDetail);
+
+  // Everything healthy and nothing to explain: collapse the provider to a
+  // single scannable line so a routine session start stays ~1 line/provider.
+  if (detailed.length === 0 && !p.throttledUntil) {
+    const summary = p.quotas
+      .map((q) => `${q.label.toLowerCase()} ${Math.round(q.percentRemaining)}%`)
+      .join(" · ");
+    return [`${p.id}${tier} - ${summary || "no quotas reported"}`];
+  }
+
+  if (!p.throttledUntil) {
     lines.push(`${p.id}${tier} - data ${formatAge(p.ageSeconds)}`);
   }
 
   for (const q of p.quotas) {
     const pct = Math.round(q.percentRemaining);
+    const textPart = q.resetText ? ` (${q.resetText})` : "";
+
+    if (!needsDetail(q)) {
+      lines.push(`  ${padLabel(q.label)} ${pct}% left${textPart}`);
+      continue;
+    }
+
     const reset = formatUntil(q.resetsAt);
     const resetPart = reset ? `, resets in ${reset}` : "";
-    const textPart = q.resetText ? ` (${q.resetText})` : "";
     lines.push(
       `  ${padLabel(q.label)} ${pct}% left${textPart}${resetPart}  [${q.status}]`
     );
@@ -135,16 +166,19 @@ function renderFeed(feed: QuotaFeed, filter?: string): string {
     lines.pop();
   }
 
-  for (const id of feed.disabledProviderIds) {
-    lines.push(`(${id} disabled in QuotaBar)`);
+  if (feed.disabledProviderIds.length > 0) {
+    lines.push("");
+    lines.push(
+      `(disabled in QuotaBar: ${feed.disabledProviderIds.join(", ")})`
+    );
   }
 
   return lines.join("\n");
 }
 
-async function fetchFeed(): Promise<QuotaFeed> {
+async function fetchFeed(timeoutMs = FETCH_TIMEOUT_MS): Promise<QuotaFeed> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(`http://127.0.0.1:${port()}/quotas`, {
       signal: controller.signal,
@@ -165,6 +199,22 @@ async function fetchFeed(): Promise<QuotaFeed> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+// `--print` renders the same feed to stdout for the SessionStart hook, so the
+// hook and the MCP tool can never drift apart. Any failure exits 0 silently:
+// a hook that errors or stalls would degrade every session it runs in.
+if (process.argv.includes("--print")) {
+  try {
+    const feed = await fetchFeed(PRINT_TIMEOUT_MS);
+    const text = renderFeed(feed);
+    if (text.trim()) {
+      console.log(`Quota headroom (QuotaBar):\n${text}`);
+    }
+  } catch {
+    // Intentionally silent — no output is better than noise at session start.
+  }
+  process.exit(0);
 }
 
 const server = new McpServer({
