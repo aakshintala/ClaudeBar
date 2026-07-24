@@ -201,15 +201,24 @@ async function fetchFeed(timeoutMs = FETCH_TIMEOUT_MS): Promise<QuotaFeed> {
   }
 }
 
-// `--print` renders the same feed to stdout for the SessionStart hook, so the
-// hook and the MCP tool can never drift apart. Any failure exits 0 silently:
-// a hook that errors or stalls would degrade every session it runs in.
+// `--print` renders the same feed for the SessionStart hook, so the hook and the
+// MCP tool can never drift apart. Emits the documented hook envelope rather than
+// bare text, since `additionalContext` is what actually reaches the model.
+// Any failure produces no output and exits 0: a hook that errors or stalls would
+// degrade every session it runs in.
 if (process.argv.includes("--print")) {
   try {
     const feed = await fetchFeed(PRINT_TIMEOUT_MS);
     const text = renderFeed(feed);
     if (text.trim()) {
-      console.log(`Quota headroom (QuotaBar):\n${text}`);
+      process.stdout.write(
+        JSON.stringify({
+          hookSpecificOutput: {
+            hookEventName: "SessionStart",
+            additionalContext: `Quota headroom (QuotaBar):\n${text}`,
+          },
+        }) + "\n"
+      );
     }
   } catch {
     // Intentionally silent — no output is better than noise at session start.
