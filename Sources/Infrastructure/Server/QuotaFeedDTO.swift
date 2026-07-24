@@ -118,7 +118,7 @@ public enum QuotaFeedDTOMapper {
         }
 
         let quotas = snapshot?.quotas.map(mapQuota) ?? []
-        let status = snapshot?.overallStatus.feedKey ?? "healthy"
+        let status = snapshot?.paceAwareOverallStatus(burnRateThreshold: 1.5).feedKey ?? "healthy"
 
         return QuotaFeedProviderDTO(
             id: provider.id,
@@ -140,7 +140,7 @@ public enum QuotaFeedDTOMapper {
             percentRemaining: quota.percentRemaining,
             resetsAt: quota.resetsAt,
             resetText: quota.resetText,
-            status: quota.status.feedKey
+            status: quota.paceAwareStatus(burnRateThreshold: 1.5).feedKey
         )
     }
 

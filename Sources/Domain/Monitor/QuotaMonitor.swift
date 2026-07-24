@@ -98,7 +98,7 @@ public final class QuotaMonitor {
     /// Handles snapshot update and alerts user if status changed
     private func handleSnapshotUpdate(provider: any AIProvider, snapshot: UsageSnapshot) async {
         let previousStatus = previousStatuses[provider.id] ?? .healthy
-        let newStatus = snapshot.overallStatus
+        let newStatus = snapshot.paceAwareOverallStatus(burnRateThreshold: 1.5)
 
         previousStatuses[provider.id] = newStatus
 
@@ -194,7 +194,7 @@ public final class QuotaMonitor {
     /// Returns the overall status across enabled providers (worst status wins)
     public var overallStatus: QuotaStatus {
         providers.enabled
-            .compactMap(\.snapshot?.overallStatus)
+            .compactMap { $0.snapshot?.paceAwareOverallStatus(burnRateThreshold: 1.5) }
             .max() ?? .healthy
     }
 
@@ -207,7 +207,7 @@ public final class QuotaMonitor {
 
     /// Status of the currently selected provider (for menu bar icon)
     public var selectedProviderStatus: QuotaStatus {
-        selectedProvider?.snapshot?.overallStatus ?? .healthy
+        selectedProvider?.snapshot?.paceAwareOverallStatus(burnRateThreshold: 1.5) ?? .healthy
     }
 
     /// Whether any provider is currently refreshing

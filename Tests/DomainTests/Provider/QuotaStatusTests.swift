@@ -150,9 +150,16 @@ struct QuotaStatusTests {
     }
 
     @Test
-    func `pace aware status is critical regardless of burn rate`() {
-        // Below 20% remaining is always critical (absolute safety net)
+    func `pace aware status is healthy when low remaining but burn rate is slow`() {
+        // 15% remaining @ 90% elapsed → burn rate 0.94, well under threshold → healthy
         let status = QuotaStatus.from(percentRemaining: 15, percentTimeElapsed: 90, burnRateThreshold: 1.5)
+        #expect(status == .healthy)
+    }
+
+    @Test
+    func `pace aware status is critical when low remaining and burn rate exceeds threshold`() {
+        // 15% remaining @ 10% elapsed → burn rate 8.5 → critical (accelerating toward zero)
+        let status = QuotaStatus.from(percentRemaining: 15, percentTimeElapsed: 10, burnRateThreshold: 1.5)
         #expect(status == .critical)
     }
 
