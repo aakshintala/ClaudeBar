@@ -13,6 +13,9 @@ struct ClaudeBarApp: App {
     /// driven imperatively outside SwiftUI (issue #192).
     private let statusItemDriver: StatusBarIconDriver
 
+    /// Localhost HTTP server for MCP quota feed consumers.
+    private let mcpServerController: MCPServerController
+
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
     /// dropdown control if ever needed.
     @State private var isMenuPresented = false
@@ -63,7 +66,13 @@ struct ClaudeBarApp: App {
             alerter: quotaAlerter
         )
         self.monitor = monitor
+        self.mcpServerController = MCPServerController(monitor: monitor)
         AppLog.monitor.info("QuotaMonitor initialized")
+
+        mcpServerController.sync(
+            enabled: settingsRepository.mcpEnabled(),
+            port: settingsRepository.mcpPort()
+        )
 
         statusItemDriver = StatusBarIconDriver(
             monitor: monitor,
@@ -83,7 +92,11 @@ struct ClaudeBarApp: App {
     var body: some Scene {
         MenuBarExtra {
             Group {
-                PopoverView(monitor: monitor, quotaAlerter: quotaAlerter)
+                PopoverView(
+                    monitor: monitor,
+                    quotaAlerter: quotaAlerter,
+                    mcpServerController: mcpServerController
+                )
                     .appThemeProvider(themeModeId: settings.themeMode)
             }
             // Opening/closing the dropdown flips `isMenuPresented`, which makes
@@ -92,6 +105,14 @@ struct ClaudeBarApp: App {
             // re-assert the menu-bar pixels on both edges.
             .onAppear { statusItemDriver.reassertPresentation() }
             .onDisappear { statusItemDriver.reassertPresentation() }
+            .onChange(of: settings.mcpEnabled) { _, enabled in
+                mcpServerController.sync(enabled: enabled, port: settings.mcpPort)
+            }
+            .onChange(of: settings.mcpPort) { _, port in
+                if settings.mcpEnabled {
+                    mcpServerController.sync(enabled: true, port: port)
+                }
+            }
         } label: {
             // Deliberately static: the menu-bar icon is drawn by
             // StatusBarIconDriver into the status item's button image,

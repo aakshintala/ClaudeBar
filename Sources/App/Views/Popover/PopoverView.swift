@@ -6,6 +6,7 @@ import Infrastructure
 struct PopoverView: View {
     let monitor: QuotaMonitor
     let quotaAlerter: QuotaAlerter
+    let mcpServerController: MCPServerController
 
     @Environment(\.appTheme) private var theme
     @State private var showSettings = false
@@ -20,7 +21,11 @@ struct PopoverView: View {
             theme.backgroundGradient.ignoresSafeArea()
 
             if showSettings {
-                SettingsContentView(showSettings: $showSettings, monitor: monitor)
+                SettingsContentView(
+                    showSettings: $showSettings,
+                    monitor: monitor,
+                    mcpServerController: mcpServerController
+                )
             } else {
                 VStack(spacing: 0) {
                     header

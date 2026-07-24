@@ -6,6 +6,7 @@ import Infrastructure
 struct SettingsContentView: View {
     @Binding var showSettings: Bool
     let monitor: QuotaMonitor
+    let mcpServerController: MCPServerController
     @Environment(\.appTheme) private var theme
     @State private var settings = AppSettings.shared
 
@@ -31,6 +32,7 @@ struct SettingsContentView: View {
                     themeCard
                     providersCard
                     generalCard
+                    mcpCard
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
@@ -150,6 +152,44 @@ struct SettingsContentView: View {
             .labelsHidden()
         }
         .padding(.vertical, 4)
+    }
+
+    // MARK: - MCP
+
+    private var mcpCard: some View {
+        settingsCard(
+            title: "MCP Quota Server",
+            subtitle: "Expose quotas to Claude Code agents",
+            icon: "antenna.radiowaves.left.and.right"
+        ) {
+            VStack(alignment: .leading, spacing: 10) {
+                Toggle(isOn: $settings.mcpEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Enable MCP server")
+                            .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textPrimary)
+                        Text("http://127.0.0.1:\(settings.mcpPort)/quotas")
+                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                            .foregroundStyle(theme.textTertiary)
+                    }
+                }
+                .toggleStyle(.switch)
+                .tint(theme.accentPrimary)
+                .onChange(of: settings.mcpEnabled) { _, enabled in
+                    mcpServerController.sync(enabled: enabled, port: settings.mcpPort)
+                }
+
+                if let bindError = mcpServerController.bindError {
+                    Text(bindError)
+                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.statusCritical)
+                }
+
+                Text("Agents call get_quotas via the bundled mcp/index.ts stdio server. Coalesces refreshes to once per minute.")
+                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(theme.textTertiary)
+            }
+        }
     }
 
     // MARK: - General
@@ -330,7 +370,11 @@ struct ThemeOptionButton: View {
 #Preview("Settings - Dark") {
     ZStack {
         DarkTheme().backgroundGradient
-        SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+        SettingsContentView(
+            showSettings: .constant(true),
+            monitor: QuotaMonitor(providers: AIProviders(providers: [])),
+            mcpServerController: MCPServerController(monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+        )
     }
     .appThemeProvider(themeModeId: "dark")
     .frame(width: 380, height: 420)
@@ -339,7 +383,11 @@ struct ThemeOptionButton: View {
 #Preview("Settings - Light") {
     ZStack {
         LightTheme().backgroundGradient
-        SettingsContentView(showSettings: .constant(true), monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+        SettingsContentView(
+            showSettings: .constant(true),
+            monitor: QuotaMonitor(providers: AIProviders(providers: [])),
+            mcpServerController: MCPServerController(monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+        )
     }
     .appThemeProvider(themeModeId: "light")
     .frame(width: 380, height: 420)

@@ -55,6 +55,20 @@ public final class AppSettings {
         }
     }
 
+    /// Whether the local MCP quota HTTP server is enabled (default: false)
+    public var mcpEnabled: Bool {
+        didSet {
+            repository.setMCPEnabled(mcpEnabled)
+        }
+    }
+
+    /// Port for the MCP quota HTTP server (default: 8787)
+    public var mcpPort: Int {
+        didSet {
+            repository.setMCPPort(mcpPort)
+        }
+    }
+
     /// The background-refresh cadence (Off / 1 / 5 / 15 min) as a single
     /// picker-friendly value. Computed over the legacy `backgroundSyncEnabled`
     /// + `backgroundSyncInterval` pair so `settings.json` stays backward
@@ -92,6 +106,8 @@ public final class AppSettings {
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
         self.quotaAlertsEnabled = repository.quotaAlertsEnabled()
+        self.mcpEnabled = repository.mcpEnabled()
+        self.mcpPort = repository.mcpPort()
 
         self.isInitializing = false
     }
