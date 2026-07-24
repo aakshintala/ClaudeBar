@@ -159,13 +159,19 @@ public final class QuotaHTTPServer: @unchecked Sendable {
 
         let parameters = NWParameters.tcp
         parameters.allowLocalEndpointReuse = true
-        parameters.acceptLocalOnly = true
         guard let nwPort = NWEndpoint.Port(rawValue: port) else {
             throw ServerError.failedToBind(NSError(domain: "QuotaHTTPServer", code: 1))
         }
 
+        // Pin the socket to 127.0.0.1. `acceptLocalOnly` is NOT sufficient: it
+        // means "local network", so the listener answers on the LAN address and
+        // anyone on the same Wi-Fi can read this machine's quota and tier data.
+        // `requiredLocalEndpoint` already carries the port, so it must not be
+        // combined with `NWListener(using:on:)` — that pairing returns EINVAL.
+        parameters.requiredLocalEndpoint = .hostPort(host: .ipv4(.loopback), port: nwPort)
+
         do {
-            let listener = try NWListener(using: parameters, on: nwPort)
+            let listener = try NWListener(using: parameters)
             listener.newConnectionHandler = { [weak self] connection in
                 self?.handle(connection: connection)
             }

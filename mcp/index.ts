@@ -85,6 +85,17 @@ function padLabel(label: string, width = 8): string {
   return label.length >= width ? label : label + " ".repeat(width - label.length);
 }
 
+/** `resetText` is overloaded upstream: Cursor puts real usage counts in it
+ *  ("21479/27222 requests") while Claude and Codex put a reset description
+ *  ("Resets in 1h 24m"). The latter duplicates the reset we compute from
+ *  `resetsAt` — and disagrees by a minute, which reads as a bug. Keep only the
+ *  variants that carry information the percentage cannot. */
+function informativeResetText(quota: ProviderQuota): string | null {
+  const text = quota.resetText?.trim();
+  if (!text) return null;
+  return /^resets?\b/i.test(text) ? null : text;
+}
+
 /** Buckets that warrant detail: the reset time is what turns a number into a
  *  decision ("session resets in an hour, wait" vs "weekly resets in days,
  *  move the work"). Healthy buckets don't need it, so they stay on one line. */
@@ -113,7 +124,11 @@ function renderProvider(p: ProviderFeed): string[] {
   // single scannable line so a routine session start stays ~1 line/provider.
   if (detailed.length === 0 && !p.throttledUntil) {
     const summary = p.quotas
-      .map((q) => `${q.label.toLowerCase()} ${Math.round(q.percentRemaining)}%`)
+      .map((q) => {
+        const extra = informativeResetText(q);
+        return `${q.label.toLowerCase()} ${Math.round(q.percentRemaining)}%` +
+          (extra ? ` (${extra})` : "");
+      })
       .join(" · ");
     return [`${p.id}${tier} - ${summary || "no quotas reported"}`];
   }
@@ -124,7 +139,8 @@ function renderProvider(p: ProviderFeed): string[] {
 
   for (const q of p.quotas) {
     const pct = Math.round(q.percentRemaining);
-    const textPart = q.resetText ? ` (${q.resetText})` : "";
+    const extra = informativeResetText(q);
+    const textPart = extra ? ` (${extra})` : "";
 
     if (!needsDetail(q)) {
       lines.push(`  ${padLabel(q.label)} ${pct}% left${textPart}`);
