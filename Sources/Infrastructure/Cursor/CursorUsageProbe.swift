@@ -267,7 +267,9 @@ public struct CursorUsageProbe: UsageProbe {
                     quotaType: .timeLimit("Monthly"),
                     providerId: "cursor",
                     resetsAt: resetsAt,
-                    resetText: "\(effectiveUsed)/\(effectiveLimit) requests"
+                    resetText: "\(effectiveUsed)/\(effectiveLimit) requests",
+                    unitsUsed: effectiveUsed,
+                    unitsLimit: effectiveLimit
                 ))
             }
         }
@@ -285,7 +287,9 @@ public struct CursorUsageProbe: UsageProbe {
                     quotaType: .timeLimit("On-Demand"),
                     providerId: "cursor",
                     resetsAt: resetsAt,
-                    resetText: "\(used)/\(limit) on-demand"
+                    resetText: "\(used)/\(limit) on-demand",
+                    unitsUsed: used,
+                    unitsLimit: limit
                 ))
             }
         }
@@ -305,7 +309,9 @@ public struct CursorUsageProbe: UsageProbe {
                     quotaType: .timeLimit("Team"),
                     providerId: "cursor",
                     resetsAt: resetsAt,
-                    resetText: "\(used)/\(limit) team credits"
+                    resetText: "\(used)/\(limit) team credits",
+                    unitsUsed: used,
+                    unitsLimit: limit
                 ))
             }
         }

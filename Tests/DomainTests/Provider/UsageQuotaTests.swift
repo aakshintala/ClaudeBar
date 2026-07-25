@@ -325,6 +325,76 @@ struct UsageQuotaTests {
         #expect(quota.formattedDollarCap == "$500")
     }
 
+    // MARK: - Unit Counts
+
+    @Test
+    func `quota stores request counts`() {
+        let quota = UsageQuota(
+            percentRemaining: 99,
+            quotaType: .timeLimit("Monthly"),
+            providerId: "cursor",
+            unitsUsed: 326,
+            unitsLimit: 40000
+        )
+
+        #expect(quota.unitsUsed == 326)
+        #expect(quota.unitsLimit == 40000)
+    }
+
+    @Test
+    func `formattedUnits renders the raw fraction without grouping`() {
+        let quota = UsageQuota(
+            percentRemaining: 21,
+            quotaType: .timeLimit("Monthly"),
+            providerId: "cursor",
+            unitsUsed: 21479,
+            unitsLimit: 27222
+        )
+
+        #expect(quota.formattedUnits == "21479/27222")
+    }
+
+    @Test
+    func `formattedUnits is nil when either count is missing`() {
+        let noLimit = UsageQuota(
+            percentRemaining: 50,
+            quotaType: .timeLimit("Monthly"),
+            providerId: "cursor",
+            unitsUsed: 10
+        )
+        let noUsed = UsageQuota(
+            percentRemaining: 50,
+            quotaType: .timeLimit("Monthly"),
+            providerId: "cursor",
+            unitsLimit: 2000
+        )
+
+        #expect(noLimit.formattedUnits == nil)
+        #expect(noUsed.formattedUnits == nil)
+    }
+
+    @Test
+    func `formattedUnits is nil for a zero limit`() {
+        let quota = UsageQuota(
+            percentRemaining: 100,
+            quotaType: .timeLimit("Monthly"),
+            providerId: "cursor",
+            unitsUsed: 0,
+            unitsLimit: 0
+        )
+
+        #expect(quota.formattedUnits == nil)
+    }
+
+    @Test
+    func `percentage quotas carry no counts`() {
+        let quota = UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")
+
+        #expect(quota.unitsUsed == nil)
+        #expect(quota.unitsLimit == nil)
+        #expect(quota.formattedUnits == nil)
+    }
+
     // MARK: - Burn Rate
 
     @Test

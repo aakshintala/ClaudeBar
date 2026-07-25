@@ -35,6 +35,14 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// Co-occurs with `dollarUsed`; nil for percentage and balance meters.
     public let dollarCap: Decimal?
 
+    /// Requests consumed for a count-based meter (e.g. Cursor's 326 of 40000).
+    /// Co-occurs with `unitsLimit`; nil for percentage and monetary meters.
+    public let unitsUsed: Int?
+
+    /// Total requests available for a count-based meter.
+    /// Co-occurs with `unitsUsed`; nil for percentage and monetary meters.
+    public let unitsLimit: Int?
+
     /// Section this quota belongs to when an aggregating provider spans
     /// several upstream accounts (e.g. "Claude", "Claude · work").
     /// nil for providers whose quotas render as one flat list.
@@ -58,6 +66,8 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         dollarRemaining: Decimal? = nil,
         dollarUsed: Decimal? = nil,
         dollarCap: Decimal? = nil,
+        unitsUsed: Int? = nil,
+        unitsLimit: Int? = nil,
         group: String? = nil,
         compactTitle: String? = nil
     ) {
@@ -70,6 +80,8 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         self.dollarRemaining = dollarRemaining
         self.dollarUsed = dollarUsed
         self.dollarCap = dollarCap
+        self.unitsUsed = unitsUsed
+        self.unitsLimit = unitsLimit
         self.group = group
         self.compactTitle = compactTitle
     }
@@ -112,6 +124,14 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// Formatted cap for capped monetary quotas (e.g. "$500").
     public var formattedDollarCap: String? {
         formatDollars(dollarCap, minimumFractionDigits: 0)
+    }
+
+    /// The used/total fraction for a count-based meter (e.g. "326/40000"), nil
+    /// otherwise. Deliberately ungrouped — the popover row is narrow and
+    /// separators buy nothing at these magnitudes.
+    public var formattedUnits: String? {
+        guard let unitsUsed, let unitsLimit, unitsLimit > 0 else { return nil }
+        return "\(unitsUsed)/\(unitsLimit)"
     }
 
     private func formatDollars(_ amount: Decimal?, minimumFractionDigits: Int) -> String? {

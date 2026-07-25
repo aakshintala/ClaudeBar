@@ -14,7 +14,7 @@ struct QuotaBucketRow: View {
 
             Spacer(minLength: 8)
 
-            Text(percentageText)
+            Text(headlineText)
                 .font(.system(size: 13, weight: .semibold, design: .monospaced))
                 .foregroundStyle(theme.statusColor(for: quota.status))
 
@@ -27,8 +27,11 @@ struct QuotaBucketRow: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var percentageText: String {
-        "\(Int(quota.percentRemaining.rounded()))%"
+    /// Count-based meters (Cursor) show the raw used/total fraction — the
+    /// percentage is derivable from it, the fraction isn't derivable from the
+    /// percentage. Everything else falls back to the percentage.
+    private var headlineText: String {
+        quota.formattedUnits ?? "\(Int(quota.percentRemaining.rounded()))%"
     }
 
     private var resetText: String {
