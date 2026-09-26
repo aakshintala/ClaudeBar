@@ -21,10 +21,7 @@ struct FeedServerControllerTests {
     }
 
     private func makeMonitor() -> QuotaMonitor {
-        let settings = MockProviderSettingsRepository()
-        given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-        given(settings).isEnabled(forProvider: .any).willReturn(true)
-        given(settings).setEnabled(.any, forProvider: .any).willReturn()
+        let settings = MockRepositoryFactory.makeSettingsRepository()
 
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)

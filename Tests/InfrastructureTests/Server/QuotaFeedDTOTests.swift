@@ -16,11 +16,7 @@ struct QuotaFeedDTOTests {
     private static let fixedNow = Date(timeIntervalSince1970: 1_700_000_000)
 
     private func makeSettings(enabled: Bool = true) -> MockProviderSettingsRepository {
-        let mock = MockProviderSettingsRepository()
-        given(mock).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-        given(mock).isEnabled(forProvider: .any).willReturn(enabled)
-        given(mock).setEnabled(.any, forProvider: .any).willReturn()
-        return mock
+        MockRepositoryFactory.makeSettingsRepository(enabled: enabled)
     }
 
     @Test

@@ -7,13 +7,6 @@ import Testing
 @Suite("FileLogger")
 struct FileLoggerTests {
 
-    private func makeTemporaryDirectory() throws -> URL {
-        let dir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("file-logger-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        return dir
-    }
-
     @Test
     func `log writes a line to the log file`() throws {
         let dir = try makeTemporaryDirectory()

@@ -8,43 +8,6 @@ struct ClaudeCredentialLoaderTests {
 
     // MARK: - Test Helpers
 
-    private func makeTemporaryDirectory() throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claude-credential-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
-
-    private func createCredentialsFile(
-        at directory: URL,
-        accessToken: String = "test-access-token",
-        refreshToken: String = "test-refresh-token",
-        expiresAt: Double? = nil,
-        subscriptionType: String? = nil
-    ) throws {
-        let claudeDir = directory.appendingPathComponent(".claude", isDirectory: true)
-        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
-
-        var oauthDict: [String: Any] = [
-            "accessToken": accessToken,
-            "refreshToken": refreshToken
-        ]
-        if let expiresAt {
-            oauthDict["expiresAt"] = expiresAt
-        }
-        if let subscriptionType {
-            oauthDict["subscriptionType"] = subscriptionType
-        }
-
-        let credentials: [String: Any] = [
-            "claudeAiOauth": oauthDict
-        ]
-
-        let data = try JSONSerialization.data(withJSONObject: credentials, options: [.prettyPrinted])
-        let filePath = claudeDir.appendingPathComponent(".credentials.json")
-        try data.write(to: filePath)
-    }
-
     // MARK: - Credential Loading Tests
 
     @Test

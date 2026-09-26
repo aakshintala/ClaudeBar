@@ -33,10 +33,7 @@ struct QuotaDisplaySpec {
         }
 
         private static func makeSettings() -> MockProviderSettingsRepository {
-            let mock = MockProviderSettingsRepository()
-            given(mock).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(mock).isEnabled(forProvider: .any).willReturn(true)
-            given(mock).setEnabled(.any, forProvider: .any).willReturn()
+            let mock = MockRepositoryFactory.makeSettingsRepository()
             return mock
         }
 
@@ -122,10 +119,7 @@ struct QuotaDisplaySpec {
             let probe = MockUsageProbe()
             given(probe).isAvailable().willReturn(false)
 
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+            let settings = MockRepositoryFactory.makeSettingsRepository()
 
             let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
@@ -147,10 +141,7 @@ struct QuotaDisplaySpec {
             given(probe).isAvailable().willReturn(true)
             given(probe).probe().willThrow(ProbeError.sessionExpired())
 
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+            let settings = MockRepositoryFactory.makeSettingsRepository()
 
             let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(

@@ -9,13 +9,6 @@ struct CodexAPIUsageProbeTests {
 
     // MARK: - Test Helpers
 
-    private func makeTemporaryDirectory() throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("codex-api-probe-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
-
     private func createAuthFile(
         at directory: URL,
         accessToken: String = "test-access-token",
@@ -112,15 +105,10 @@ struct CodexAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: [
-                "x-codex-primary-used-percent": "25.5",
-                "x-codex-secondary-used-percent": "45.0"
-            ]
-        )!
+        let response = httpResponse("https://chatgpt.com", statusCode: 200, headerFields: [
+            "x-codex-primary-used-percent": "25.5",
+            "x-codex-secondary-used-percent": "45.0"
+        ])
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -165,12 +153,7 @@ struct CodexAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://chatgpt.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -209,12 +192,7 @@ struct CodexAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://chatgpt.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -246,14 +224,9 @@ struct CodexAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: [
-                "x-codex-credits-balance": "750.0"
-            ]
-        )!
+        let response = httpResponse("https://chatgpt.com", statusCode: 200, headerFields: [
+            "x-codex-credits-balance": "750.0"
+        ])
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -279,7 +252,7 @@ struct CodexAPIUsageProbeTests {
 
         let mockNetwork = MockNetworkClient()
         let responseJSON = #"{"credits": {"has_credits": true, "unlimited": false, "balance": "1234.5"}}"#.data(using: .utf8)!
-        let response = HTTPURLResponse(url: URL(string: "https://chatgpt.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        let response = httpResponse("https://chatgpt.com", statusCode: 200)
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
         let probe = CodexAPIUsageProbe(credentialLoader: CodexCredentialLoader(homeDirectory: tempDir.path), networkClient: mockNetwork)
@@ -300,12 +273,7 @@ struct CodexAPIUsageProbeTests {
         let mockNetwork = MockNetworkClient()
         let responseJSON = "{}".data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://chatgpt.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -328,12 +296,7 @@ struct CodexAPIUsageProbeTests {
         try createAuthFile(at: tempDir)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 401,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://chatgpt.com", statusCode: 401)
 
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
@@ -353,12 +316,7 @@ struct CodexAPIUsageProbeTests {
         try createAuthFile(at: tempDir)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://chatgpt.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn(("not json".data(using: .utf8)!, response))
 
@@ -396,12 +354,7 @@ struct CodexAPIUsageProbeTests {
         try createAuthFile(at: tempDir)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 500,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://chatgpt.com", statusCode: 500)
 
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
@@ -418,13 +371,6 @@ struct CodexAPIUsageProbeTests {
 
 @Suite("CodexAPIUsageProbe Token Refresh Tests")
 struct CodexAPIUsageProbeTokenRefreshTests {
-
-    private func makeTemporaryDirectory() throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("codex-api-probe-refresh-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
 
     private func createAuthFile(
         at directory: URL,
@@ -473,12 +419,7 @@ struct CodexAPIUsageProbeTokenRefreshTests {
         }
         """.data(using: .utf8)!
 
-        let refreshHTTP = HTTPURLResponse(
-            url: URL(string: "https://auth.openai.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let refreshHTTP = httpResponse("https://auth.openai.com", statusCode: 200)
 
         // Second call: usage request with new token
         let usageResponse = """
@@ -489,12 +430,7 @@ struct CodexAPIUsageProbeTokenRefreshTests {
         }
         """.data(using: .utf8)!
 
-        let usageHTTP = HTTPURLResponse(
-            url: URL(string: "https://chatgpt.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let usageHTTP = httpResponse("https://chatgpt.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willProduce { request in
             let url = request.url?.absoluteString ?? ""
@@ -531,12 +467,7 @@ struct CodexAPIUsageProbeTokenRefreshTests {
         { "error": { "code": "refresh_token_expired" } }
         """.data(using: .utf8)!
 
-        let errorHTTP = HTTPURLResponse(
-            url: URL(string: "https://auth.openai.com")!,
-            statusCode: 400,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let errorHTTP = httpResponse("https://auth.openai.com", statusCode: 400)
 
         given(mockNetwork).request(.any).willReturn((errorResponse, errorHTTP))
 

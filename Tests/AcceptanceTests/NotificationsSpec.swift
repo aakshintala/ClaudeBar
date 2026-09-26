@@ -23,11 +23,7 @@ struct NotificationsSpec {
     }
 
     private func makeSettings() -> MockProviderSettingsRepository {
-        let mock = MockProviderSettingsRepository()
-        given(mock).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-        given(mock).isEnabled(forProvider: .any).willReturn(true)
-        given(mock).setEnabled(.any, forProvider: .any).willReturn()
-        return mock
+        MockRepositoryFactory.makeSettingsRepository()
     }
 
     // MARK: - #19–21: Quota degrades → notification sent
@@ -44,10 +40,7 @@ struct NotificationsSpec {
         @Test
         func `quota drops from healthy to critical triggers alert`() async {
             // Given — Claude was previously healthy (no snapshot = healthy default)
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+            let settings = MockRepositoryFactory.makeSettingsRepository()
 
             let mockAlerter = MockQuotaAlerter()
             given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
@@ -93,10 +86,7 @@ struct NotificationsSpec {
         @Test
         func `refresh button that finds a degraded quota triggers alert`() async {
             // Given — Codex healthy, then critical on the next probe
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+            let settings = MockRepositoryFactory.makeSettingsRepository()
 
             let mockAlerter = MockQuotaAlerter()
             given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
@@ -152,10 +142,7 @@ struct NotificationsSpec {
         @Test
         func `repeated healthy refreshes do not trigger alert`() async {
             // Given
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+            let settings = MockRepositoryFactory.makeSettingsRepository()
 
             let mockAlerter = MockQuotaAlerter()
             given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
@@ -202,10 +189,7 @@ struct NotificationsSpec {
         @Test
         func `one provider failure does not block others from refreshing`() async {
             // Given
-            let settings = MockProviderSettingsRepository()
-            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(settings).isEnabled(forProvider: .any).willReturn(true)
-            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+            let settings = MockRepositoryFactory.makeSettingsRepository()
 
             let claudeProbe = MockUsageProbe()
             given(claudeProbe).isAvailable().willReturn(true)

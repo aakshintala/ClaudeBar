@@ -22,10 +22,7 @@ struct RefreshSpec {
     }
 
     private static func makeSettings() -> MockProviderSettingsRepository {
-        let mock = MockProviderSettingsRepository()
-        given(mock).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-        given(mock).isEnabled(forProvider: .any).willReturn(true)
-        given(mock).setEnabled(.any, forProvider: .any).willReturn()
+        let mock = MockRepositoryFactory.makeSettingsRepository()
         return mock
     }
 

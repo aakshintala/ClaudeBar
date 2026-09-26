@@ -8,13 +8,6 @@ struct CodexCredentialLoaderTests {
 
     // MARK: - Test Helpers
 
-    private func makeTemporaryDirectory() throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("codex-credential-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
-
     private func createAuthFile(
         at directory: URL,
         accessToken: String = "test-access-token",

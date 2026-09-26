@@ -92,7 +92,7 @@ let project = Project(
             product: .unitTests,
             bundleId: "com.aakshintala.subscriptionusagebar.domain-tests",
             deploymentTargets: .macOS("15.0"),
-            sources: ["Tests/DomainTests/**"],
+            sources: ["Tests/DomainTests/**", "Tests/Support/**"],
             dependencies: [
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),
@@ -112,7 +112,7 @@ let project = Project(
             product: .unitTests,
             bundleId: "com.aakshintala.subscriptionusagebar.infrastructure-tests",
             deploymentTargets: .macOS("15.0"),
-            sources: ["Tests/InfrastructureTests/**"],
+            sources: ["Tests/InfrastructureTests/**", "Tests/Support/**"],
             dependencies: [
                 .target(name: "Infrastructure"),
                 .target(name: "Domain"),
@@ -132,7 +132,7 @@ let project = Project(
             product: .unitTests,
             bundleId: "com.aakshintala.subscriptionusagebar.acceptance-tests",
             deploymentTargets: .macOS("15.0"),
-            sources: ["Tests/AcceptanceTests/**"],
+            sources: ["Tests/AcceptanceTests/**", "Tests/Support/**"],
             dependencies: [
                 .target(name: "Domain"),
                 .target(name: "Infrastructure"),

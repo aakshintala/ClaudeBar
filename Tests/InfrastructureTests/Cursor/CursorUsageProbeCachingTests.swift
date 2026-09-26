@@ -41,12 +41,7 @@ struct CursorUsageProbeCachingTests {
     }
 
     private func jsonResponse(_ body: String, statusCode: Int = 200) -> (Data, URLResponse) {
-        let response = HTTPURLResponse(
-            url: URL(string: "https://cursor.com/api/usage-summary")!,
-            statusCode: statusCode,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://cursor.com/api/usage-summary", statusCode: statusCode)
         return (Data(body.utf8), response)
     }
 

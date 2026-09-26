@@ -9,13 +9,6 @@ struct OpenCodeUsageProbeTests {
 
     // MARK: - Test Helpers
 
-    private func makeTemporaryDirectory() throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("opencode-probe-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
-
     private func createAuthFile(at directory: URL, key: String = "test-api-key") throws {
         let opencodeDir = directory.appendingPathComponent("opencode", isDirectory: true)
         try FileManager.default.createDirectory(at: opencodeDir, withIntermediateDirectories: true)
@@ -33,12 +26,7 @@ struct OpenCodeUsageProbeTests {
     }
 
     private func jsonResponse(_ body: String, statusCode: Int = 200) -> (Data, URLResponse) {
-        let response = HTTPURLResponse(
-            url: URL(string: "https://opencode.ai/zen/go/v1/usage")!,
-            statusCode: statusCode,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://opencode.ai/zen/go/v1/usage", statusCode: statusCode)
         return (Data(body.utf8), response)
     }
 

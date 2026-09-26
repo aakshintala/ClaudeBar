@@ -9,43 +9,6 @@ struct ClaudeAPIUsageProbeTests {
 
     // MARK: - Test Helpers
 
-    private func makeTemporaryDirectory() throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claude-api-probe-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
-
-    private func createCredentialsFile(
-        at directory: URL,
-        accessToken: String = "test-access-token",
-        refreshToken: String = "test-refresh-token",
-        expiresAt: Double? = nil,
-        subscriptionType: String? = nil
-    ) throws {
-        let claudeDir = directory.appendingPathComponent(".claude", isDirectory: true)
-        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
-
-        var oauthDict: [String: Any] = [
-            "accessToken": accessToken,
-            "refreshToken": refreshToken
-        ]
-        if let expiresAt {
-            oauthDict["expiresAt"] = expiresAt
-        }
-        if let subscriptionType {
-            oauthDict["subscriptionType"] = subscriptionType
-        }
-
-        let credentials: [String: Any] = [
-            "claudeAiOauth": oauthDict
-        ]
-
-        let data = try JSONSerialization.data(withJSONObject: credentials, options: [.prettyPrinted])
-        let filePath = claudeDir.appendingPathComponent(".credentials.json")
-        try data.write(to: filePath)
-    }
-
     private func probe(responseJSON: String, subscriptionType: String = "claude_pro") async throws -> UsageSnapshot {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
@@ -58,12 +21,7 @@ struct ClaudeAPIUsageProbeTests {
         )
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
         given(mockNetwork).request(.any).willReturn((Data(responseJSON.utf8), response))
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
@@ -114,12 +72,7 @@ struct ClaudeAPIUsageProbeTests {
           "five_hour": { "utilization": 25.0, "resets_at": "2025-01-15T10:00:00Z" }
         }
         """.data(using: .utf8)!
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
@@ -151,12 +104,7 @@ struct ClaudeAPIUsageProbeTests {
           "five_hour": { "utilization": 25.0, "resets_at": "2025-01-15T10:00:00Z" }
         }
         """.data(using: .utf8)!
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
@@ -184,12 +132,7 @@ struct ClaudeAPIUsageProbeTests {
         try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 429,
-            httpVersion: nil,
-            headerFields: ["Retry-After": "120"]
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 429, headerFields: ["Retry-After": "120"])
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
@@ -218,12 +161,7 @@ struct ClaudeAPIUsageProbeTests {
         try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 429,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 429)
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
@@ -252,12 +190,7 @@ struct ClaudeAPIUsageProbeTests {
         try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 429,
-            httpVersion: nil,
-            headerFields: ["Retry-After": "600"]
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 429, headerFields: ["Retry-After": "600"])
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
@@ -352,12 +285,7 @@ struct ClaudeAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -391,12 +319,7 @@ struct ClaudeAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -427,12 +350,7 @@ struct ClaudeAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -477,12 +395,7 @@ struct ClaudeAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -531,12 +444,7 @@ struct ClaudeAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -573,12 +481,7 @@ struct ClaudeAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -613,12 +516,7 @@ struct ClaudeAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -658,12 +556,7 @@ struct ClaudeAPIUsageProbeTests {
         }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -935,12 +828,7 @@ struct ClaudeAPIUsageProbeTests {
         let mockNetwork = MockNetworkClient()
         let responseJSON = "{}".data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -969,12 +857,7 @@ struct ClaudeAPIUsageProbeTests {
         { "five_hour": { "utilization": 10.0 } }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -998,12 +881,7 @@ struct ClaudeAPIUsageProbeTests {
         { "five_hour": { "utilization": 10.0 } }
         """.data(using: .utf8)!
 
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn((responseJSON, response))
 
@@ -1025,12 +903,7 @@ struct ClaudeAPIUsageProbeTests {
         try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 401,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 401)
 
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
@@ -1051,12 +924,7 @@ struct ClaudeAPIUsageProbeTests {
         try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 403,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 403)
 
         given(mockNetwork).request(.any).willReturn((Data(), response))
 
@@ -1078,12 +946,7 @@ struct ClaudeAPIUsageProbeTests {
         try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
 
         let mockNetwork = MockNetworkClient()
-        let response = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         given(mockNetwork).request(.any).willReturn(("not json".data(using: .utf8)!, response))
 
@@ -1120,43 +983,6 @@ struct ClaudeAPIUsageProbeTests {
 @Suite("ClaudeAPIUsageProbe Token Refresh Tests")
 struct ClaudeAPIUsageProbeTokenRefreshTests {
 
-    private func makeTemporaryDirectory() throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claude-api-probe-refresh-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
-
-    private func createCredentialsFile(
-        at directory: URL,
-        accessToken: String = "test-access-token",
-        refreshToken: String = "test-refresh-token",
-        expiresAt: Double? = nil,
-        subscriptionType: String? = nil
-    ) throws {
-        let claudeDir = directory.appendingPathComponent(".claude", isDirectory: true)
-        try FileManager.default.createDirectory(at: claudeDir, withIntermediateDirectories: true)
-
-        var oauthDict: [String: Any] = [
-            "accessToken": accessToken,
-            "refreshToken": refreshToken
-        ]
-        if let expiresAt {
-            oauthDict["expiresAt"] = expiresAt
-        }
-        if let subscriptionType {
-            oauthDict["subscriptionType"] = subscriptionType
-        }
-
-        let credentials: [String: Any] = [
-            "claudeAiOauth": oauthDict
-        ]
-
-        let data = try JSONSerialization.data(withJSONObject: credentials, options: [.prettyPrinted])
-        let filePath = claudeDir.appendingPathComponent(".credentials.json")
-        try data.write(to: filePath)
-    }
-
     @Test
     func `probe refreshes token when expired and retries`() async throws {
         let tempDir = try makeTemporaryDirectory()
@@ -1177,24 +1003,14 @@ struct ClaudeAPIUsageProbeTokenRefreshTests {
         }
         """.data(using: .utf8)!
 
-        let refreshHTTP = HTTPURLResponse(
-            url: URL(string: "https://platform.claude.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let refreshHTTP = httpResponse("https://platform.claude.com", statusCode: 200)
 
         // Second call: usage request with new token
         let usageResponse = """
         { "five_hour": { "utilization": 10.0 } }
         """.data(using: .utf8)!
 
-        let usageHTTP = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let usageHTTP = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         // Setup mock to return refresh response first, then usage response
         given(mockNetwork).request(.any).willProduce { request in
@@ -1230,12 +1046,7 @@ struct ClaudeAPIUsageProbeTokenRefreshTests {
         { "error": "invalid_grant", "error_description": "Refresh token has been revoked" }
         """.data(using: .utf8)!
 
-        let errorHTTP = HTTPURLResponse(
-            url: URL(string: "https://platform.claude.com")!,
-            statusCode: 400,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let errorHTTP = httpResponse("https://platform.claude.com", statusCode: 400)
 
         given(mockNetwork).request(.any).willReturn((errorResponse, errorHTTP))
 
@@ -1271,26 +1082,20 @@ struct ClaudeAPIUsageProbeTokenRefreshTests {
                     let errorResponse = """
                     { "error": "invalid_grant", "error_description": "Refresh token has been revoked" }
                     """.data(using: .utf8)!
-                    return (errorResponse, HTTPURLResponse(
-                        url: URL(string: "https://platform.claude.com")!,
-                        statusCode: 400, httpVersion: nil, headerFields: nil)!)
+                    return (errorResponse, httpResponse("https://platform.claude.com", statusCode: 400))
                 } else {
                     // Second refresh attempt (with fresh file credentials): success
                     let refreshResponse = """
                     { "access_token": "brand-new-token", "refresh_token": "brand-new-refresh", "expires_in": 3600 }
                     """.data(using: .utf8)!
-                    return (refreshResponse, HTTPURLResponse(
-                        url: URL(string: "https://platform.claude.com")!,
-                        statusCode: 200, httpVersion: nil, headerFields: nil)!)
+                    return (refreshResponse, httpResponse("https://platform.claude.com", statusCode: 200))
                 }
             } else {
                 // Usage request succeeds
                 let usageResponse = """
                 { "five_hour": { "utilization": 15.0 } }
                 """.data(using: .utf8)!
-                return (usageResponse, HTTPURLResponse(
-                    url: URL(string: "https://api.anthropic.com")!,
-                    statusCode: 200, httpVersion: nil, headerFields: nil)!)
+                return (usageResponse, httpResponse("https://api.anthropic.com", statusCode: 200))
             }
         }
 
@@ -1337,15 +1142,13 @@ struct ClaudeAPIUsageProbeTokenRefreshTests {
                     // First refresh attempt with stale token fails
                     // Simulate CLI updating the file concurrently
                     let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-                    try! self.createCredentialsFile(at: tempDir, accessToken: "brand-new-token",
+                    try! createCredentialsFile(at: tempDir, accessToken: "brand-new-token",
                                                     refreshToken: "brand-new-refresh", expiresAt: futureExpiry)
 
                     let errorResponse = """
                     { "error": "invalid_grant", "error_description": "Token revoked" }
                     """.data(using: .utf8)!
-                    return (errorResponse, HTTPURLResponse(
-                        url: URL(string: "https://platform.claude.com")!,
-                        statusCode: 400, httpVersion: nil, headerFields: nil)!)
+                    return (errorResponse, httpResponse("https://platform.claude.com", statusCode: 400))
                 } else {
                     // Should not reach here — brand-new token from file is not expired
                     fatalError("Should not refresh a valid non-expired token")
@@ -1355,9 +1158,7 @@ struct ClaudeAPIUsageProbeTokenRefreshTests {
                 let usageResponse = """
                 { "five_hour": { "utilization": 20.0 } }
                 """.data(using: .utf8)!
-                return (usageResponse, HTTPURLResponse(
-                    url: URL(string: "https://api.anthropic.com")!,
-                    statusCode: 200, httpVersion: nil, headerFields: nil)!)
+                return (usageResponse, httpResponse("https://api.anthropic.com", statusCode: 200))
             }
         }
 
@@ -1376,13 +1177,6 @@ struct ClaudeAPIUsageProbeTokenRefreshTests {
 
 @Suite("ClaudeAPIUsageProbe Setup-Token Tests")
 struct ClaudeAPIUsageProbeSetupTokenTests {
-
-    private func makeTemporaryDirectory() throws -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claude-api-probe-setup-token-tests-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
-        return tempDir
-    }
 
     @Test
     func `probe skips refresh when no refresh token and fetches successfully`() async throws {
@@ -1404,12 +1198,7 @@ struct ClaudeAPIUsageProbeSetupTokenTests {
         }
         """.data(using: .utf8)!
 
-        let usageHTTP = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let usageHTTP = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         // Only the usage call should be made — NO refresh call
         given(mockNetwork).request(.any).willReturn((usageResponse, usageHTTP))
@@ -1446,12 +1235,7 @@ struct ClaudeAPIUsageProbeSetupTokenTests {
         }
         """.data(using: .utf8)!
 
-        let usageHTTP = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 200,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let usageHTTP = httpResponse("https://api.anthropic.com", statusCode: 200)
 
         var capturedAuthorizationHeader: String?
         given(mockNetwork).request(.any).willProduce { request in
@@ -1478,12 +1262,7 @@ struct ClaudeAPIUsageProbeSetupTokenTests {
         )
 
         let mockNetwork = MockNetworkClient()
-        let unauthorizedHTTP = HTTPURLResponse(
-            url: URL(string: "https://api.anthropic.com")!,
-            statusCode: 401,
-            httpVersion: nil,
-            headerFields: nil
-        )!
+        let unauthorizedHTTP = httpResponse("https://api.anthropic.com", statusCode: 401)
 
         given(mockNetwork).request(.any).willReturn((Data(), unauthorizedHTTP))
 
