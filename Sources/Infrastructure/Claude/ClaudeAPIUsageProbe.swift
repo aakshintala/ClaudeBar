@@ -1,47 +1,33 @@
 import Foundation
 import Domain
+import Synchronization
 
-/// Thread-safe TTL cache for a successful `UsageSnapshot`. Quota numbers
-/// move on multi-hour timescales (5h session, 7d weekly), so returning the
-/// most recent successful snapshot for a short window costs nothing in
-/// freshness and dramatically reduces requests against the rate-limited
-/// usage endpoint.
-private final class SnapshotCache: @unchecked Sendable {
-    private var cached: UsageSnapshot?
-    private var cachedAt: Date?
+/// Thread-safe value with a time-to-live. Holds the last successful
+/// `UsageSnapshot` (quota numbers move on multi-hour timescales, so a short
+/// window costs no freshness and spares the rate-limited endpoint) and the
+/// loaded OAuth credentials (so external changes such as a CLI re-login are
+/// picked up within the TTL). Expiry is inclusive, so a TTL of 0 never hits.
+private final class TTLBox<Value: Sendable>: Sendable {
     private let ttl: TimeInterval
-    private let lock = NSLock()
+    private let entry = Mutex<(value: Value, storedAt: Date)?>(nil)
 
-    /// Creates a snapshot cache with the given maximum lifetime for a cached
-    /// entry. A `ttl` of `0` effectively disables caching (every `get` misses).
     init(ttl: TimeInterval) {
         self.ttl = ttl
     }
 
-    /// Returns the cached snapshot if it was stored within `ttl` of `now`;
-    /// otherwise evicts the stale entry and returns `nil` so the caller knows
-    /// to re-fetch.
-    func get(now: Date = Date()) -> UsageSnapshot? {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let cached, let cachedAt else { return nil }
-        // Inclusive comparison so `ttl == 0` is always immediately stale.
-        // With `>`, a 0-TTL cache would still hit within the same instant.
-        if now.timeIntervalSince(cachedAt) >= ttl {
-            self.cached = nil
-            self.cachedAt = nil
-            return nil
+    func get(now: Date = Date()) -> Value? {
+        entry.withLock { entry in
+            guard let current = entry, now.timeIntervalSince(current.storedAt) < ttl else {
+                entry = nil
+                return nil
+            }
+            return current.value
         }
-        return cached
     }
 
-    /// Stores a fresh snapshot and stamps it with `now`, replacing any prior
-    /// entry. The next `get` call within `ttl` of `now` will hit this entry.
-    func set(_ snapshot: UsageSnapshot, now: Date = Date()) {
-        lock.lock()
-        defer { lock.unlock() }
-        self.cached = snapshot
-        self.cachedAt = now
+    /// Stores `value` stamped with `now`; `nil` clears the box.
+    func set(_ value: Value?, now: Date = Date()) {
+        entry.withLock { $0 = value.map { ($0, now) } }
     }
 }
 
@@ -74,46 +60,6 @@ private final class RateLimitState: @unchecked Sendable {
     }
 }
 
-/// Thread-safe in-memory cache for Claude OAuth credentials with TTL.
-/// Avoids repeated Keychain/CLI lookups on every probe cycle while ensuring
-/// external credential changes (e.g. CLI re-login) are picked up.
-private final class CredentialCache: @unchecked Sendable {
-    private var cached: ClaudeCredentialResult?
-    private var cachedAt: Date?
-    private let lock = NSLock()
-
-    /// Cache TTL: 5 minutes. Forces reload from file to detect external changes.
-    /// 缓存生存时间：5分钟，确保能感知 CLI 等外部凭证变更
-    static let ttl: TimeInterval = 5 * 60
-
-    func get() -> ClaudeCredentialResult? {
-        lock.lock()
-        defer { lock.unlock() }
-        // Invalidate if TTL expired
-        // TTL 过期时自动失效，下次从文件重新加载
-        if let cachedAt, Date().timeIntervalSince(cachedAt) > Self.ttl {
-            cached = nil
-            self.cachedAt = nil
-            return nil
-        }
-        return cached
-    }
-
-    func set(_ credentials: ClaudeCredentialResult) {
-        lock.lock()
-        defer { lock.unlock() }
-        cached = credentials
-        cachedAt = Date()
-    }
-
-    func clear() {
-        lock.lock()
-        defer { lock.unlock() }
-        cached = nil
-        cachedAt = nil
-    }
-}
-
 /// Claude API-based usage probe that fetches quota data directly from Anthropic's OAuth API.
 ///
 /// This probe uses the user's OAuth credentials (from `~/.claude/.credentials.json` or Keychain)
@@ -125,9 +71,9 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     private let credentialLoader: ClaudeCredentialLoader
     private let networkClient: any NetworkClient
     private let timeout: TimeInterval
-    private let cache = CredentialCache()
+    private let cache = TTLBox<ClaudeCredentialResult>(ttl: 5 * 60)
     private let rateLimit = RateLimitState()
-    private let snapshotCache: SnapshotCache
+    private let snapshotCache: TTLBox<UsageSnapshot>
 
     /// Fallback retry window applied when the API returns 429 without a
     /// usable `Retry-After` header. Five minutes is conservative enough to
@@ -160,7 +106,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         self.credentialLoader = credentialLoader
         self.networkClient = networkClient
         self.timeout = timeout
-        self.snapshotCache = SnapshotCache(ttl: snapshotCacheTTL)
+        self.snapshotCache = TTLBox(ttl: snapshotCacheTTL)
     }
 
     public func isAvailable() async -> Bool {
@@ -207,7 +153,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 } catch let refreshError {
                     // Clear cache so next probe reloads from file (CLI may have re-authenticated)
                     // 清除缓存，下次 probe 会从文件重新加载（CLI 可能已重新登录）
-                    cache.clear()
+                    cache.set(nil)
 
                     // Try reloading from file — CLI may have updated credentials externally
                     // 尝试从文件重新加载——CLI 可能已在外部更新了凭证
@@ -222,7 +168,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                                 credentials = try await refreshToken(credentials)
                             } catch {
                                 AppLog.probes.error("Claude API: Retry with fresh credentials also failed: \(error.localizedDescription)")
-                                cache.clear()
+                                cache.set(nil)
                                 throw error
                             }
                         }
@@ -240,7 +186,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         }
 
         // Fetch usage data
-        let usageData: UsageResponse
+        let usageData: Data
         do {
             usageData = try await fetchUsage(accessToken: credentials.oauth.accessToken)
         } catch let error as ProbeError where error == .authenticationRequired {
@@ -254,19 +200,19 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 } catch {
                     // Clear cache on auth failure so next probe reloads from file
                     // 认证失败时清除缓存，下次 probe 从文件重新加载
-                    cache.clear()
+                    cache.set(nil)
                     AppLog.probes.error("Claude API: Retry after refresh failed: \(error.localizedDescription)")
                     throw error
                 }
             } else {
                 // No refresh token (setup-token) — can't recover from 401/403
                 AppLog.probes.error("Claude API: Got 401/403 with no refresh token available")
-                cache.clear()
+                cache.set(nil)
                 throw error
             }
         }
 
-        let snapshot = parseUsageResponse(usageData, subscriptionType: credentials.oauth.subscriptionType)
+        let snapshot = try Self.parse(usageData, subscriptionType: credentials.oauth.subscriptionType, now: Date())
         snapshotCache.set(snapshot)
         return snapshot
     }
@@ -308,17 +254,17 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             }
 
             // Check for specific OAuth errors
-            if let errorResponse = try? JSONDecoder().decode(TokenErrorResponse.self, from: data) {
+            if let errorResponse = try? Self.decoder.decode(TokenErrorResponse.self, from: data) {
                 AppLog.probes.error("Claude API: Token refresh failed - error: \(errorResponse.error ?? "unknown"), description: \(errorResponse.errorDescription ?? "none")")
 
                 if errorResponse.error == "invalid_grant" {
                     AppLog.probes.error("Claude API: Session expired (invalid_grant) - run `claude` to re-authenticate")
-                    cache.clear()
+                    cache.set(nil)
                     throw ProbeError.sessionExpired(hint: "Run `claude` in terminal to log in again.")
                 }
             }
             AppLog.probes.error("Claude API: Token expired or invalid (HTTP \(httpResponse.statusCode))")
-            cache.clear()
+            cache.set(nil)
             throw ProbeError.sessionExpired(hint: "Run `claude` in terminal to log in again.")
         }
 
@@ -328,7 +274,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         }
 
         // Parse refresh response
-        let refreshResponse = try JSONDecoder().decode(TokenRefreshResponse.self, from: data)
+        let refreshResponse = try Self.decoder.decode(TokenRefreshResponse.self, from: data)
 
         guard let newAccessToken = refreshResponse.accessToken, !newAccessToken.isEmpty else {
             AppLog.probes.error("Claude API: No access token in refresh response")
@@ -355,7 +301,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
 
     // MARK: - Usage Fetch
 
-    private func fetchUsage(accessToken: String) async throws -> UsageResponse {
+    private func fetchUsage(accessToken: String) async throws -> Data {
         var request = URLRequest(url: Self.usageURL)
         request.httpMethod = "GET"
         request.setValue("Bearer \(accessToken.trimmingCharacters(in: .whitespacesAndNewlines))", forHTTPHeaderField: "Authorization")
@@ -367,102 +313,52 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
 
         AppLog.probes.debug("Claude API: Fetching usage...")
 
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await networkClient.request(request)
-        } catch {
-            AppLog.probes.error("Claude API: Network error: \(error.localizedDescription)")
-            throw ProbeError.executionFailed("Network error: \(error.localizedDescription)")
-        }
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ProbeError.executionFailed("Invalid response")
-        }
-
-        AppLog.probes.debug("Claude API: Response status \(httpResponse.statusCode)")
-
-        switch httpResponse.statusCode {
-        case 200:
-            break
-        case 401, 403:
-            throw ProbeError.authenticationRequired
-        case 429:
+        let (data, _) = try await networkClient.send(request, label: "Claude API") { httpResponse in
+            guard httpResponse.statusCode == 429 else { return nil }
             let retryAfter = Self.parseRetryAfter(
                 httpResponse.value(forHTTPHeaderField: "Retry-After")
             ) ?? Self.defaultRetryAfter
             let retryAt = Date().addingTimeInterval(retryAfter)
             rateLimit.set(retryAt: retryAt)
             AppLog.probes.warning("Claude API: Rate limited (HTTP 429), retrying after \(Int(retryAfter))s")
-            throw ProbeError.rateLimited(retryAt: retryAt)
-        default:
-            AppLog.probes.error("Claude API: HTTP error \(httpResponse.statusCode)")
-            throw ProbeError.executionFailed("HTTP error: \(httpResponse.statusCode)")
+            return .rateLimited(retryAt: retryAt)
         }
 
-        // Log raw response for debugging
         if let rawString = String(data: data, encoding: .utf8) {
             AppLog.probes.debug("Claude API: Raw response: \(rawString.prefix(500))")
         }
-
-        do {
-            return try JSONDecoder().decode(UsageResponse.self, from: data)
-        } catch {
-            AppLog.probes.error("Claude API: Failed to parse response: \(error.localizedDescription)")
-            throw ProbeError.parseFailed("Failed to parse usage response: \(error.localizedDescription)")
-        }
+        return data
     }
 
     // MARK: - Response Parsing
 
-    private func parseUsageResponse(_ response: UsageResponse, subscriptionType: String?) -> UsageSnapshot {
-        var quotas: [UsageQuota] = []
+    private static let decoder: JSONDecoder = {
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return decoder
+    }()
 
-        // Parse 5-hour session quota
-        if let fiveHour = response.fiveHour, let utilization = fiveHour.utilization {
-            let percentRemaining = 100.0 - utilization
-            let resetsAt = parseISODate(fiveHour.resetsAt)
-            quotas.append(UsageQuota(
-                percentRemaining: percentRemaining,
-                quotaType: .session,
-                providerId: "claude",
-                resetsAt: resetsAt
-            ))
+    /// Parses an `/api/oauth/usage` response body into a snapshot.
+    static func parse(_ data: Data, subscriptionType: String?, now: Date) throws -> UsageSnapshot {
+        let response: UsageResponse
+        do {
+            response = try decoder.decode(UsageResponse.self, from: data)
+        } catch {
+            AppLog.probes.error("Claude API: Failed to parse response: \(error.localizedDescription)")
+            throw ProbeError.parseFailed("Failed to parse usage response: \(error.localizedDescription)")
         }
 
-        // Parse 7-day weekly quota
-        if let sevenDay = response.sevenDay, let utilization = sevenDay.utilization {
-            let percentRemaining = 100.0 - utilization
-            let resetsAt = parseISODate(sevenDay.resetsAt)
-            quotas.append(UsageQuota(
-                percentRemaining: percentRemaining,
-                quotaType: .weekly,
-                providerId: "claude",
-                resetsAt: resetsAt
-            ))
-        }
-
-        // Parse model-specific quotas
-        if let sonnet = response.sevenDaySonnet, let utilization = sonnet.utilization {
-            let percentRemaining = 100.0 - utilization
-            let resetsAt = parseISODate(sonnet.resetsAt)
-            quotas.append(UsageQuota(
-                percentRemaining: percentRemaining,
-                quotaType: .modelSpecific("sonnet"),
-                providerId: "claude",
-                resetsAt: resetsAt
-            ))
-        }
-
-        if let opus = response.sevenDayOpus, let utilization = opus.utilization {
-            let percentRemaining = 100.0 - utilization
-            let resetsAt = parseISODate(opus.resetsAt)
-            quotas.append(UsageQuota(
-                percentRemaining: percentRemaining,
-                quotaType: .modelSpecific("opus"),
-                providerId: "claude",
-                resetsAt: resetsAt
-            ))
+        let windows: [(UsageQuotaData?, QuotaType)] = [
+            (response.fiveHour, .session),
+            (response.sevenDay, .weekly),
+            (response.sevenDaySonnet, .modelSpecific("sonnet")),
+            (response.sevenDayOpus, .modelSpecific("opus")),
+        ]
+        var quotas = windows.compactMap { window, quotaType in
+            window?.utilization.map {
+                UsageQuota(percentRemaining: 100 - $0, quotaType: quotaType, providerId: "claude",
+                           resetsAt: parseISO8601(window?.resetsAt))
+            }
         }
 
         // Parse model-scoped limits from the generic `limits` array (e.g. Fable).
@@ -474,9 +370,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         for entry in response.limits ?? [] {
             guard entry.kind == "weekly_scoped",
                   // Key on the first word of the display name ("Fable 5" -> "fable")
-                  // — must stay in sync with the key the CLI probe hardcodes so a
-                  // persisted "model:<name>" menu-bar selection survives switching
-                  // probe modes.
+                  // so a persisted "model:<name>" menu-bar selection stays stable.
                   let modelName = entry.scope?.model?.displayName?
                       .split(separator: " ").first.map({ $0.lowercased() }),
                   !modelName.isEmpty,
@@ -487,40 +381,21 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             guard !quotas.contains(where: { $0.quotaType == quotaType }) else {
                 continue
             }
-            let resetsAt = parseISODate(entry.resetsAt)
             quotas.append(UsageQuota(
                 percentRemaining: 100.0 - percent,
                 quotaType: quotaType,
                 providerId: "claude",
-                resetsAt: resetsAt
+                resetsAt: parseISO8601(entry.resetsAt)
             ))
         }
 
         // Prefer the current spend payload, then fall back to legacy
         // extra_usage. A shape with a present-but-invalid cap is dropped
         // (falls through) rather than reclassified as uncapped.
-        let costUsage: CostUsage?
-        if let pair = response.spend?.costPair {
-            costUsage = CostUsage(
-                totalCost: pair.used,
-                budget: pair.cap,
-                providerId: "claude",
-                kind: .extraUsage,
-                capturedAt: Date()
-            )
-        } else if let pair = response.extraUsage?.costPair {
-            costUsage = CostUsage(
-                totalCost: pair.used,
-                budget: pair.cap,
-                providerId: "claude",
-                kind: .extraUsage,
-                capturedAt: Date()
-            )
-        } else {
-            costUsage = nil
+        let costUsage = (response.spend?.costPair ?? response.extraUsage?.costPair).map {
+            CostUsage(totalCost: $0.used, budget: $0.cap, providerId: "claude", kind: .extraUsage, capturedAt: now)
         }
 
-        // Determine account tier from subscription type
         let accountTier = parseAccountTier(subscriptionType)
 
         AppLog.probes.info("Claude API: Parsed \(quotas.count) quotas, tier=\(accountTier?.badgeText ?? "unknown")")
@@ -528,7 +403,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         return UsageSnapshot(
             providerId: "claude",
             quotas: quotas,
-            capturedAt: Date(),
+            capturedAt: now,
             accountTier: accountTier,
             costUsage: costUsage
         )
@@ -558,21 +433,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         return delta > 0 ? delta : nil
     }
 
-    private func parseISODate(_ isoString: String?) -> Date? {
-        guard let isoString else { return nil }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: isoString) {
-            return date
-        }
-
-        // Try without fractional seconds
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: isoString)
-    }
-
-    private func parseAccountTier(_ subscriptionType: String?) -> AccountTier? {
+    private static func parseAccountTier(_ subscriptionType: String?) -> AccountTier? {
         guard let subscriptionType else { return nil }
 
         switch subscriptionType.lowercased() {
@@ -588,7 +449,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     }
 }
 
-// MARK: - Response Models
+// MARK: - Response Models (snake_case keys, decoded with `.convertFromSnakeCase`)
 
 private struct UsageResponse: Decodable {
     let fiveHour: UsageQuotaData?
@@ -598,16 +459,6 @@ private struct UsageResponse: Decodable {
     let extraUsage: ExtraUsageData?
     let spend: SpendData?
     let limits: [LimitEntry]?
-
-    enum CodingKeys: String, CodingKey {
-        case fiveHour = "five_hour"
-        case sevenDay = "seven_day"
-        case sevenDaySonnet = "seven_day_sonnet"
-        case sevenDayOpus = "seven_day_opus"
-        case extraUsage = "extra_usage"
-        case spend
-        case limits
-    }
 }
 
 /// Entry in the newer generic `limits` array. Model-scoped limits (e.g. Fable)
@@ -618,13 +469,6 @@ private struct LimitEntry: Decodable {
     let percent: Double?
     let resetsAt: String?
     let scope: LimitScope?
-
-    enum CodingKeys: String, CodingKey {
-        case kind
-        case percent
-        case resetsAt = "resets_at"
-        case scope
-    }
 }
 
 private struct LimitScope: Decodable {
@@ -633,20 +477,11 @@ private struct LimitScope: Decodable {
 
 private struct LimitScopeModel: Decodable {
     let displayName: String?
-
-    enum CodingKeys: String, CodingKey {
-        case displayName = "display_name"
-    }
 }
 
 private struct UsageQuotaData: Decodable {
     let utilization: Double?
     let resetsAt: String?
-
-    enum CodingKeys: String, CodingKey {
-        case utilization
-        case resetsAt = "resets_at"
-    }
 }
 
 private struct SpendData: Decodable {
@@ -677,12 +512,6 @@ private struct MoneyData: Decodable {
         guard let amountMinor, amountMinor >= 0, let exponent, exponent >= 0 else { return nil }
         return Decimal(sign: .plus, exponent: -exponent, significand: amountMinor)
     }
-
-    enum CodingKeys: String, CodingKey {
-        case amountMinor = "amount_minor"
-        case currency
-        case exponent
-    }
 }
 
 private struct ExtraUsageData: Decodable {
@@ -694,18 +523,10 @@ private struct ExtraUsageData: Decodable {
     /// Same cap semantics as `SpendData.costPair`: absent/null limit means
     /// uncapped; a present-but-invalid limit invalidates the shape.
     var costPair: (used: Decimal, cap: Decimal?)? {
-        guard isEnabled == true, let used = usedAmount else { return nil }
+        guard isEnabled == true, let used = scaledAmount(usedCredits) else { return nil }
         guard monthlyLimit != nil else { return (used, nil) }
-        guard let cap = monthlyLimitAmount else { return nil }
+        guard let cap = scaledAmount(monthlyLimit) else { return nil }
         return (used, cap)
-    }
-
-    var usedAmount: Decimal? {
-        scaledAmount(usedCredits)
-    }
-
-    var monthlyLimitAmount: Decimal? {
-        scaledAmount(monthlyLimit)
     }
 
     private func scaledAmount(_ amount: Decimal?) -> Decimal? {
@@ -714,33 +535,15 @@ private struct ExtraUsageData: Decodable {
         guard places >= 0 else { return nil }
         return Decimal(sign: .plus, exponent: -places, significand: amount)
     }
-
-    enum CodingKeys: String, CodingKey {
-        case isEnabled = "is_enabled"
-        case usedCredits = "used_credits"
-        case monthlyLimit = "monthly_limit"
-        case decimalPlaces = "decimal_places"
-    }
 }
 
 private struct TokenRefreshResponse: Decodable {
     let accessToken: String?
     let refreshToken: String?
     let expiresIn: Int?
-
-    enum CodingKeys: String, CodingKey {
-        case accessToken = "access_token"
-        case refreshToken = "refresh_token"
-        case expiresIn = "expires_in"
-    }
 }
 
 private struct TokenErrorResponse: Decodable {
     let error: String?
     let errorDescription: String?
-
-    enum CodingKeys: String, CodingKey {
-        case error
-        case errorDescription = "error_description"
-    }
 }

@@ -42,7 +42,7 @@ struct QuotaFeedDTOTests {
                     unitsLimit: 500
                 ),
                 UsageQuota(
-                    percentRemaining: 100,
+                    percentRemaining: nil,
                     quotaType: .timeLimit("Credits"),
                     providerId: "claude",
                     balanceRemaining: 750,

@@ -247,9 +247,9 @@ struct OpenCodeUsageProbeTests {
     }
 
     @Test
-    func `parseDate handles fractional and non fractional ISO8601`() {
-        #expect(OpenCodeUsageProbe.parseDate("2026-09-01T22:38:55.674Z") != nil)
-        #expect(OpenCodeUsageProbe.parseDate("2026-09-01T22:38:55Z") != nil)
-        #expect(OpenCodeUsageProbe.parseDate(nil) == nil)
+    func `parseISO8601 handles fractional and non fractional ISO8601`() {
+        #expect(parseISO8601("2026-09-01T22:38:55.674Z") != nil)
+        #expect(parseISO8601("2026-09-01T22:38:55Z") != nil)
+        #expect(parseISO8601(nil) == nil)
     }
 }

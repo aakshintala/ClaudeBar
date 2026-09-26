@@ -60,7 +60,7 @@ struct CursorUsageProbeParsingTests {
 
         let quota = snapshot.quotas[0]
         #expect(quota.quotaType == .timeLimit("Monthly"))
-        #expect(abs(quota.percentRemaining - 99.185) < 0.01)
+        #expect(abs(quota.percentRemaining! - 99.185) < 0.01)
         #expect(quota.unitsUsed == 326)
         #expect(quota.unitsLimit == 40000)
         #expect(quota.formattedUnits == "326/40000")
@@ -96,7 +96,7 @@ struct CursorUsageProbeParsingTests {
 
         let quota = snapshot.quotas[0]
         #expect(quota.quotaType == .timeLimit("Monthly"))
-        #expect(abs(quota.percentRemaining - 75.4) < 0.1)
+        #expect(abs(quota.percentRemaining! - 75.4) < 0.1)
         #expect(quota.formattedUnits == "123/500")
         #expect(quota.resetsAt != nil)
     }
@@ -130,12 +130,12 @@ struct CursorUsageProbeParsingTests {
 
         let plan = snapshot.quotas.first { $0.quotaType == .timeLimit("Monthly") }
         #expect(plan != nil)
-        #expect(abs(plan!.percentRemaining - 20.0) < 0.1)
+        #expect(abs(plan!.percentRemaining! - 20.0) < 0.1)
         #expect(plan!.formattedUnits == "400/500")
 
         let onDemand = snapshot.quotas.first { $0.quotaType == .timeLimit("On-Demand") }
         #expect(onDemand != nil)
-        #expect(abs(onDemand!.percentRemaining - 75.0) < 0.1)
+        #expect(abs(onDemand!.percentRemaining! - 75.0) < 0.1)
         #expect(onDemand!.unitsUsed == 25)
         #expect(onDemand!.unitsLimit == 100)
         #expect(onDemand!.formattedUnits == "25/100")
@@ -203,7 +203,7 @@ struct CursorUsageProbeParsingTests {
         let quota = snapshot.quotas[0]
         #expect(quota.quotaType == .timeLimit("Monthly"))
         // 28.32% used of the full 9770 capacity -> 71.68% remaining (was incorrectly 0)
-        #expect(abs(quota.percentRemaining - 71.68) < 0.1)
+        #expect(abs(quota.percentRemaining! - 71.68) < 0.1)
         // The counts must track the *effective* capacity, not the maxed-out base 2000/2000.
         #expect(quota.unitsUsed == 2767)
         #expect(quota.unitsLimit == 9770)
@@ -280,7 +280,7 @@ struct CursorUsageProbeParsingTests {
 
         #expect(snapshot.accountTier == .custom("FREE"))
         #expect(snapshot.quotas.count == 1)
-        #expect(abs(snapshot.quotas[0].percentRemaining - 40.0) < 0.1)
+        #expect(abs(snapshot.quotas[0].percentRemaining! - 40.0) < 0.1)
     }
 
     // MARK: - Enterprise Plan
@@ -340,7 +340,7 @@ struct CursorUsageProbeParsingTests {
         let individualQuota = snapshot.quotas.first { $0.quotaType == .timeLimit("Monthly") }
         #expect(individualQuota != nil)
         // 6.9% used of 300 -> ~93.1% remaining
-        #expect(abs(individualQuota!.percentRemaining - 93.1) < 0.5)
+        #expect(abs(individualQuota!.percentRemaining! - 93.1) < 0.5)
 
         let teamQuota = snapshot.quotas.first { $0.quotaType == .timeLimit("Team") }
         #expect(teamQuota != nil)
@@ -382,7 +382,7 @@ struct CursorUsageProbeParsingTests {
         let quota = snapshot.quotas[0]
         #expect(quota.quotaType == .timeLimit("Monthly"))
         // 50% used -> 50% remaining
-        #expect(abs(quota.percentRemaining - 50.0) < 0.5)
+        #expect(abs(quota.percentRemaining! - 50.0) < 0.5)
         // limit is 0; the counts come from breakdown.total
         #expect(quota.formattedUnits == "92/184")
     }
@@ -485,7 +485,7 @@ struct CursorUsageProbeParsingTests {
         let snapshot = try CursorUsageProbe.parseUsageSummary(json)
 
         #expect(snapshot.quotas.count == 1)
-        #expect(abs(snapshot.quotas[0].percentRemaining - 75.4) < 0.1)
+        #expect(abs(snapshot.quotas[0].percentRemaining! - 75.4) < 0.1)
     }
 
     // MARK: - Account Tier Detection

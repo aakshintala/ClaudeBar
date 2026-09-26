@@ -136,6 +136,18 @@ struct UsageSnapshotTests {
         #expect(snapshot.overallStatus == .depleted)
     }
 
+    @Test
+    func `balance-only meters never affect overall status or lowest quota`() {
+        let credits = UsageQuota(percentRemaining: nil, quotaType: .timeLimit("Credits"), providerId: "codex",
+                                 balanceRemaining: 0, balanceUnit: .credits)
+        let session = UsageQuota(percentRemaining: 15, quotaType: .session, providerId: "codex")
+
+        #expect(UsageSnapshot(providerId: "codex", quotas: [credits], capturedAt: Date()).overallStatus == .healthy)
+        let mixed = UsageSnapshot(providerId: "codex", quotas: [credits, session], capturedAt: Date())
+        #expect(mixed.overallStatus == session.status)
+        #expect(mixed.lowestQuota == session)
+    }
+
     // MARK: - Finding Lowest Quota
 
     @Test

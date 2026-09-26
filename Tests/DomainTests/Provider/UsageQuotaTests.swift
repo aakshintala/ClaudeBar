@@ -154,17 +154,6 @@ struct UsageQuotaTests {
     // MARK: - Comparing Quotas
 
     @Test
-    func `quotas can be sorted by percentage remaining`() {
-        // Given
-        let highQuota = UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude")
-        let lowQuota = UsageQuota(percentRemaining: 20, quotaType: .session, providerId: "claude")
-
-        // When & Then
-        #expect(highQuota > lowQuota)
-        #expect(lowQuota < highQuota)
-    }
-
-    @Test
     func `quotas with same percentage are equal`() {
         // Given
         let quota1 = UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")
@@ -178,7 +167,7 @@ struct UsageQuotaTests {
 
     @Test
     func `a balance with no cap is balance-only`() {
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .timeLimit("Credits"), providerId: "codex",
+        let quota = UsageQuota(percentRemaining: nil, quotaType: .timeLimit("Credits"), providerId: "codex",
                                balanceRemaining: 750, balanceUnit: .credits)
 
         #expect(quota.isBalanceOnly)

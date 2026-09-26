@@ -53,14 +53,15 @@ public struct UsageSnapshot: Sendable, Equatable {
 
     /// The overall status is the worst status among all quotas.
     /// This is a domain rule: overall health reflects the most critical issue.
+    /// Balance-only meters have no percentage and never count.
     public var overallStatus: QuotaStatus {
-        quotas.map(\.status).max() ?? .healthy
+        quotas.filter { !$0.isBalanceOnly }.map(\.status).max() ?? .healthy
     }
 
-    /// The quota with the lowest remaining percentage.
-    /// Useful for determining which limit to highlight.
+    /// The quota with the lowest remaining percentage, ignoring balance-only
+    /// meters. Useful for determining which limit to highlight.
     public var lowestQuota: UsageQuota? {
-        quotas.min(by: { $0.percentRemaining < $1.percentRemaining })
+        quotas.compactMap { q in q.percentRemaining.map { (q, $0) } }.min(by: { $0.1 < $1.1 })?.0
     }
 
 }

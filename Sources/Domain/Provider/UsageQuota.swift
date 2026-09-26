@@ -2,9 +2,10 @@ import Foundation
 
 /// Represents a single usage quota measurement for an AI provider.
 /// This is a rich domain model that encapsulates quota-related behavior.
-public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
-    /// The percentage of quota remaining (can be negative when over quota, capped at 100)
-    public let percentRemaining: Double
+public struct UsageQuota: Sendable, Equatable, Hashable {
+    /// The percentage of quota remaining (can be negative when over quota, capped
+    /// at 100); nil for a balance-only meter, which has no meaningful percentage.
+    public let percentRemaining: Double?
 
     /// The type of quota (session, weekly, model-specific)
     public let quotaType: QuotaType
@@ -16,7 +17,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     public let resetsAt: Date?
 
     /// Money or credits left. With no `balanceCap` this is a balance-only
-    /// meter, whose `percentRemaining` is a placeholder (see `isBalanceOnly`).
+    /// meter (see `isBalanceOnly`).
     public let balanceRemaining: Decimal?
 
     /// Amount spent against `balanceCap`.
@@ -39,7 +40,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     // MARK: - Initialization
 
     public init(
-        percentRemaining: Double,
+        percentRemaining: Double?,
         quotaType: QuotaType,
         providerId: String,
         resetsAt: Date? = nil,
@@ -50,7 +51,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         unitsUsed: Int? = nil,
         unitsLimit: Int? = nil
     ) {
-        self.percentRemaining = min(100, percentRemaining)  // Allow negative, cap at 100
+        self.percentRemaining = percentRemaining.map { min(100, $0) }  // Allow negative, cap at 100
         self.quotaType = quotaType
         self.providerId = providerId
         self.resetsAt = resetsAt
@@ -66,18 +67,20 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
 
     /// The current health status: pace-aware when the reset time is known,
     /// absolute thresholds otherwise. Popover, alerts and the feed all read this.
+    /// A balance-only meter has no percentage and is always healthy.
     public var status: QuotaStatus {
-        QuotaStatus.from(percentRemaining: percentRemaining, percentTimeElapsed: percentTimeElapsed)
+        guard let percentRemaining else { return .healthy }
+        return QuotaStatus.from(percentRemaining: percentRemaining, percentTimeElapsed: percentTimeElapsed)
     }
 
-    /// The percentage that has been used (0-100)
-    public var percentUsed: Double {
-        100 - percentRemaining
+    /// The percentage that has been used (0-100); nil for a balance-only meter.
+    public var percentUsed: Double? {
+        percentRemaining.map { 100 - $0 }
     }
 
     /// A balance with no cap (e.g. Codex credits): no meaningful percentage.
     public var isBalanceOnly: Bool {
-        balanceRemaining != nil && balanceCap == nil
+        percentRemaining == nil
     }
 
     /// The used/total fraction for a count-based meter (e.g. "326/40000"), nil
@@ -95,7 +98,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// A burn rate of 2.0 means consuming 2x faster than sustainable.
     /// Returns nil when reset time is unknown.
     public var burnRate: Double? {
-        guard let percentTimeElapsed, percentTimeElapsed > 0 else { return nil }
+        guard let percentUsed, let percentTimeElapsed, percentTimeElapsed > 0 else { return nil }
         return percentUsed / percentTimeElapsed
     }
 
@@ -129,12 +132,6 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         if s >= 3600  { return "\(s / 3600)h" }
         if s >= 60    { return "\(s / 60)m" }
         return "soon"
-    }
-
-    // MARK: - Comparable
-
-    public static func < (lhs: UsageQuota, rhs: UsageQuota) -> Bool {
-        lhs.percentRemaining < rhs.percentRemaining
     }
 }
 

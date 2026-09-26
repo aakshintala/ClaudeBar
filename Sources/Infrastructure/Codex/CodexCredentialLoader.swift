@@ -94,19 +94,7 @@ public struct CodexCredentialLoader: Sendable {
     /// Checks if the token needs to be refreshed based on `last_refresh` date.
     /// Refresh is needed if `last_refresh` is nil or older than 8 days.
     public func needsRefresh(lastRefresh: String?) -> Bool {
-        guard let lastRefresh else { return true }
-
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        var lastDate = formatter.date(from: lastRefresh)
-
-        if lastDate == nil {
-            // Try without fractional seconds
-            formatter.formatOptions = [.withInternetDateTime]
-            lastDate = formatter.date(from: lastRefresh)
-        }
-
-        guard let lastDate else { return true }
+        guard let lastDate = parseISO8601(lastRefresh) else { return true }
 
         let nowMs = Date().timeIntervalSince1970 * 1000
         let lastMs = lastDate.timeIntervalSince1970 * 1000

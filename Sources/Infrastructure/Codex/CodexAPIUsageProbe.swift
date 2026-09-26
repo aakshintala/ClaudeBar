@@ -176,33 +176,7 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
         request.timeoutInterval = timeout
 
         AppLog.probes.debug("Codex API: Fetching usage...")
-
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await networkClient.request(request)
-        } catch {
-            AppLog.probes.error("Codex API: Network error: \(error.localizedDescription)")
-            throw ProbeError.executionFailed("Network error: \(error.localizedDescription)")
-        }
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ProbeError.executionFailed("Invalid response")
-        }
-
-        AppLog.probes.debug("Codex API: Response status \(httpResponse.statusCode)")
-
-        switch httpResponse.statusCode {
-        case 200:
-            break
-        case 401, 403:
-            throw ProbeError.authenticationRequired
-        default:
-            AppLog.probes.error("Codex API: HTTP error \(httpResponse.statusCode)")
-            throw ProbeError.executionFailed("HTTP error: \(httpResponse.statusCode)")
-        }
-
-        return (data, httpResponse)
+        return try await networkClient.send(request, label: "Codex API")
     }
 
     // MARK: - Response Parsing
@@ -217,63 +191,35 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             throw ProbeError.parseFailed("Failed to parse usage response as JSON")
         }
 
-        var quotas: [UsageQuota] = []
         let nowSeconds = Date().timeIntervalSince1970
-
         let rateLimit = responseDict["rate_limit"] as? [String: Any]
-        let primaryWindow = rateLimit?["primary_window"] as? [String: Any]
-        let secondaryWindow = rateLimit?["secondary_window"] as? [String: Any]
 
-        // Try headers first (preferred), then fall back to body
-        let headerPrimary = readHeaderDouble(httpResponse, key: "x-codex-primary-used-percent")
-        let headerSecondary = readHeaderDouble(httpResponse, key: "x-codex-secondary-used-percent")
-
-        if let primary = headerPrimary {
+        // Each window's used percent: header first (preferred), then body.
+        var quotas: [UsageQuota] = []
+        for (name, quotaType) in [("primary", QuotaType.session), ("secondary", .weekly)] {
+            let window = rateLimit?["\(name)_window"] as? [String: Any]
+            guard let used = readHeaderDouble(httpResponse, key: "x-codex-\(name)-used-percent")
+                    ?? window?["used_percent"] as? Double else { continue }
             quotas.append(UsageQuota(
-                percentRemaining: max(0, 100 - primary),
-                quotaType: .session,
+                percentRemaining: max(0, 100 - used),
+                quotaType: quotaType,
                 providerId: "codex",
-                resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: primaryWindow)
+                resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: window)
             ))
-        }
-        if let secondary = headerSecondary {
-            quotas.append(UsageQuota(
-                percentRemaining: max(0, 100 - secondary),
-                quotaType: .weekly,
-                providerId: "codex",
-                resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: secondaryWindow)
-            ))
-        }
-
-        // Fall back to body if headers not present
-        if quotas.isEmpty {
-            if let usedPercent = primaryWindow?["used_percent"] as? Double {
-                quotas.append(UsageQuota(
-                    percentRemaining: max(0, 100 - usedPercent),
-                    quotaType: .session,
-                    providerId: "codex",
-                    resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: primaryWindow)
-                ))
-            }
-            if let usedPercent = secondaryWindow?["used_percent"] as? Double {
-                quotas.append(UsageQuota(
-                    percentRemaining: max(0, 100 - usedPercent),
-                    quotaType: .weekly,
-                    providerId: "codex",
-                    resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: secondaryWindow)
-                ))
-            }
         }
 
         // Credits: a balance with no cap. The API reports no grant, so no
         // percentage is invented (the balance may be a string or a number).
-        let bodyBalance = (responseDict["credits"] as? [String: Any])?["balance"]
+        // An account without credits (e.g. Plus) reports `has_credits: false`
+        // and a 0 balance; showing "0 credits left" there is noise.
+        let credits = responseDict["credits"] as? [String: Any]
+        let bodyBalance = credits?["balance"]
         let balance = httpResponse.value(forHTTPHeaderField: "x-codex-credits-balance").flatMap { Decimal(string: $0) }
             ?? (bodyBalance as? String).flatMap { Decimal(string: $0) }
             ?? (bodyBalance as? NSNumber)?.decimalValue
-        if let balance {
+        if let balance, balance > 0, credits?["has_credits"] as? Bool != false {
             quotas.append(UsageQuota(
-                percentRemaining: 100, // ponytail: placeholder; isBalanceOnly hides it from UI and feed
+                percentRemaining: nil,
                 quotaType: .timeLimit("Credits"),
                 providerId: "codex",
                 balanceRemaining: balance,
@@ -281,11 +227,8 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             ))
         }
 
-        // Parse plan type
-        var accountTier: AccountTier?
-        if let planType = responseDict["plan_type"] as? String, !planType.isEmpty {
-            accountTier = parsePlanType(planType)
-        }
+        let planType = responseDict["plan_type"] as? String ?? ""
+        let accountTier: AccountTier? = planType.isEmpty ? nil : .custom(planType.uppercased())
 
         AppLog.probes.debug("Codex API: Parsed \(quotas.count) quotas, tier=\(accountTier?.badgeText ?? "unknown")")
 
@@ -314,19 +257,6 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             return Date(timeIntervalSince1970: nowSeconds + resetAfterSeconds)
         }
         return nil
-    }
-
-    private func parsePlanType(_ planType: String) -> AccountTier {
-        switch planType.lowercased() {
-        case "plus":
-            return .custom("PLUS")
-        case "pro":
-            return .custom("PRO")
-        case "free":
-            return .custom("FREE")
-        default:
-            return .custom(planType.uppercased())
-        }
     }
 
     private func extractErrorCode(from errorData: [String: Any]) -> String? {

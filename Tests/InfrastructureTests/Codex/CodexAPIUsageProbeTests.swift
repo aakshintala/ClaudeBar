@@ -193,6 +193,19 @@ struct CodexAPIUsageProbeTests {
         #expect(snapshot.quotas.map(\.balanceRemaining) == [Decimal(string: "1234.5")])
     }
 
+    /// A Plus account without credits reports `has_credits: false` and a 0
+    /// balance; "0 credits left" would be noise, so no Credits bucket.
+    @Test(arguments: [
+        #"{"credits": {"has_credits": false, "unlimited": false, "balance": "0"}}"#,
+        #"{"credits": {"balance": 0}}"#,
+        #"{"credits": {"has_credits": false, "balance": "12"}}"#,
+    ])
+    func `probe omits the credits bucket when the account has no credits`(responseJSON: String) async throws {
+        let snapshot = try await probe(responseJSON: responseJSON)
+
+        #expect(snapshot.quotas.isEmpty)
+    }
+
     // MARK: - Empty Response Tests
 
     @Test

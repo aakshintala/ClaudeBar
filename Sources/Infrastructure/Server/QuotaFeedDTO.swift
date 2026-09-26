@@ -158,7 +158,7 @@ public enum QuotaFeedDTOMapper {
         QuotaFeedQuotaDTO(
             key: quota.quotaType.quotaKey,
             label: quota.quotaType.displayName,
-            percentRemaining: quota.isBalanceOnly ? nil : quota.percentRemaining,
+            percentRemaining: quota.percentRemaining,
             resetsAt: quota.resetsAt,
             resetText: quota.compactResetTime.map { $0 == "soon" ? "Resets soon" : "Resets in \($0)" },
             status: quota.status.feedKey,

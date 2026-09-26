@@ -51,33 +51,10 @@ public struct OpenCodeUsageProbe: UsageProbe, @unchecked Sendable {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.timeoutInterval = timeout
 
-        let data: Data
-        let response: URLResponse
-        do {
-            (data, response) = try await networkClient.request(request)
-        } catch {
-            AppLog.probes.error("OpenCode: Network error: \(error.localizedDescription)")
-            throw ProbeError.executionFailed("Network error: \(error.localizedDescription)")
-        }
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ProbeError.executionFailed("Invalid response")
-        }
-
-        switch httpResponse.statusCode {
-        case 200:
-            break
-        case 401, 403:
-            AppLog.probes.error("OpenCode: Unauthorized (HTTP \(httpResponse.statusCode))")
-            throw ProbeError.authenticationRequired
-        default:
-            AppLog.probes.error("OpenCode: HTTP error \(httpResponse.statusCode)")
-            throw ProbeError.executionFailed("HTTP error: \(httpResponse.statusCode)")
-        }
-
+        let (data, _) = try await networkClient.send(request, label: "OpenCode")
         let quotas = try Self.parseUsageResponse(data)
 
-        AppLog.probes.debug("OpenCode probe success: 5hr \(Int(quotas[0].percentRemaining))%, weekly \(Int(quotas[1].percentRemaining))%, monthly \(Int(quotas[2].percentRemaining))%")
+        AppLog.probes.debug("OpenCode probe success: \(quotas.map { Int($0.percentRemaining ?? 0) })% remaining (5h, weekly, monthly)")
 
         return UsageSnapshot(
             providerId: "opencode-go",
@@ -114,19 +91,19 @@ public struct OpenCodeUsageProbe: UsageProbe, @unchecked Sendable {
                 percentRemaining: percentRemaining(from: response.usage.rolling.percent),
                 quotaType: .session,
                 providerId: "opencode-go",
-                resetsAt: parseDate(response.usage.rolling.resetsAt)
+                resetsAt: parseISO8601(response.usage.rolling.resetsAt)
             ),
             UsageQuota(
                 percentRemaining: percentRemaining(from: response.usage.weekly.percent),
                 quotaType: .weekly,
                 providerId: "opencode-go",
-                resetsAt: parseDate(response.usage.weekly.resetsAt)
+                resetsAt: parseISO8601(response.usage.weekly.resetsAt)
             ),
             UsageQuota(
                 percentRemaining: percentRemaining(from: response.usage.monthly.percent),
                 quotaType: .timeLimit("Monthly"),
                 providerId: "opencode-go",
-                resetsAt: parseDate(response.usage.monthly.resetsAt)
+                resetsAt: parseISO8601(response.usage.monthly.resetsAt)
             ),
         ]
     }
@@ -135,16 +112,5 @@ public struct OpenCodeUsageProbe: UsageProbe, @unchecked Sendable {
     /// mirrors the old local implementation's over-limit-to-zero behavior.
     static func percentRemaining(from percentUsed: Double) -> Double {
         100 - max(0, min(100, percentUsed))
-    }
-
-    static func parseDate(_ string: String?) -> Date? {
-        guard let string else { return nil }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: string) {
-            return date
-        }
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: string)
     }
 }

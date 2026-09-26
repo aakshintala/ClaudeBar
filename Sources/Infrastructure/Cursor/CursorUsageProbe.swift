@@ -206,37 +206,16 @@ public struct CursorUsageProbe: UsageProbe {
     // MARK: - API Call
 
     private func fetchUsageSummary(cookie: String) async throws -> Data {
-        guard let url = URL(string: Self.usageSummaryURL) else {
-            throw ProbeError.executionFailed("Invalid URL")
-        }
-
-        var request = URLRequest(url: url)
+        var request = URLRequest(url: URL(string: Self.usageSummaryURL)!)
         request.httpMethod = "GET"
         request.setValue(cookie, forHTTPHeaderField: "Cookie")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = timeout
 
-        let (data, response) = try await networkClient.request(request)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw ProbeError.executionFailed("Invalid response")
-        }
-
-        AppLog.probes.debug("Cursor: API response status \(httpResponse.statusCode)")
-
-        switch httpResponse.statusCode {
-        case 200:
-            return data
-        case 401:
-            AppLog.probes.error("Cursor: Authentication failed (401) - token may be expired")
-            throw ProbeError.sessionExpired(hint: "Re-authenticate in Cursor settings.")
-        case 403:
-            AppLog.probes.error("Cursor: Forbidden (403)")
-            throw ProbeError.authenticationRequired
-        default:
-            AppLog.probes.error("Cursor: HTTP error \(httpResponse.statusCode)")
-            throw ProbeError.executionFailed("HTTP error: \(httpResponse.statusCode)")
-        }
+        // 401 means the (possibly cached) token is stale; `probe()` retries once on it.
+        return try await networkClient.send(request, label: "Cursor") {
+            $0.statusCode == 401 ? .sessionExpired(hint: "Re-authenticate in Cursor settings.") : nil
+        }.0
     }
 
     // MARK: - Response Parsing (static for testability)
@@ -245,127 +224,23 @@ public struct CursorUsageProbe: UsageProbe {
     ///
     /// The API returns usage nested under `individualUsage.plan` and `individualUsage.onDemand`.
     public static func parseUsageSummary(_ data: Data) throws -> UsageSnapshot {
-        let json: [String: Any]
-        do {
-            guard let parsed = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                throw ProbeError.parseFailed("Response is not a JSON object")
-            }
-            json = parsed
-        } catch let error as ProbeError {
-            throw error
-        } catch {
-            throw ProbeError.parseFailed("Invalid JSON: \(error.localizedDescription)")
+        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw ProbeError.parseFailed("Response is not a JSON object")
         }
-
-        var quotas: [UsageQuota] = []
 
         let membershipType = json["membershipType"] as? String ?? "unknown"
-        let limitType = json["limitType"] as? String ?? ""
-
-        // Parse billing cycle dates for reset time
-        var resetsAt: Date?
-        if let cycleEnd = json["billingCycleEnd"] as? String {
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = formatter.date(from: cycleEnd) {
-                resetsAt = date
-            } else {
-                // Try without fractional seconds
-                formatter.formatOptions = [.withInternetDateTime]
-                resetsAt = formatter.date(from: cycleEnd)
-            }
-        }
-
-        // The API nests usage under "individualUsage" with "plan" and "onDemand" sub-objects
+        let resetsAt = parseISO8601(json["billingCycleEnd"] as? String)
         let individualUsage = json["individualUsage"] as? [String: Any]
+        let teamUsage = json["limitType"] as? String == "team" ? json["teamUsage"] as? [String: Any] : nil
 
-        // Parse plan usage (included requests)
-        if let planUsage = individualUsage?["plan"] as? [String: Any],
-           let enabled = planUsage["enabled"] as? Bool, enabled {
-            let used = Self.intValue(from: planUsage, key: "used") ?? 0
-            let limit = Self.intValue(from: planUsage, key: "limit") ?? 0
+        var quotas = [
+            meter(individualUsage?["plan"], "Monthly", resetsAt),              // included requests
+            meter(individualUsage?["onDemand"], "On-Demand", resetsAt),        // usage-based pricing
+            meter(teamUsage?["onDemand"], "Team", resetsAt),                   // enterprise team pool
+        ].compactMap { $0 }
 
-            // The `used`/`limit` fields describe only the *included* base allotment. Users
-            // with bonus credits have `limit` maxed (used == limit) while real capacity is
-            // `breakdown.total` (included + bonus). Enterprise plans report `limit == 0` and
-            // carry everything in the breakdown. Use the larger of the two as the true
-            // capacity so bonus credits aren't ignored.
-            let breakdown = planUsage["breakdown"] as? [String: Any]
-            let breakdownTotal = breakdown.flatMap { Self.intValue(from: $0, key: "total") } ?? 0
-            let effectiveLimit = max(limit, breakdownTotal)
-
-            if effectiveLimit > 0 {
-                // `totalPercentUsed` is Cursor's authoritative usage figure across the full
-                // capacity (matches the "You've used X%" message in Cursor's own UI). Prefer
-                // it; fall back to used/limit only when the API doesn't provide it.
-                let percentRemaining: Double
-                let effectiveUsed: Int
-                if let totalPercentUsed = planUsage["totalPercentUsed"] as? Double {
-                    percentRemaining = 100 - totalPercentUsed
-                    effectiveUsed = Int((totalPercentUsed * Double(effectiveLimit) / 100).rounded())
-                } else {
-                    effectiveUsed = used
-                    percentRemaining = Double(effectiveLimit - used) / Double(effectiveLimit) * 100
-                }
-
-                quotas.append(UsageQuota(
-                    percentRemaining: max(0, percentRemaining),
-                    quotaType: .timeLimit("Monthly"),
-                    providerId: "cursor",
-                    resetsAt: resetsAt,
-                    unitsUsed: effectiveUsed,
-                    unitsLimit: effectiveLimit
-                ))
-            }
-        }
-
-        // Parse on-demand usage (usage-based pricing)
-        if let onDemand = individualUsage?["onDemand"] as? [String: Any],
-           let enabled = onDemand["enabled"] as? Bool, enabled {
-            let used = Self.intValue(from: onDemand, key: "used") ?? 0
-            let limit = Self.intValue(from: onDemand, key: "limit") ?? 0
-
-            if limit > 0 {
-                let percentRemaining = Double(limit - used) / Double(limit) * 100
-                quotas.append(UsageQuota(
-                    percentRemaining: max(0, percentRemaining),
-                    quotaType: .timeLimit("On-Demand"),
-                    providerId: "cursor",
-                    resetsAt: resetsAt,
-                    unitsUsed: used,
-                    unitsLimit: limit
-                ))
-            }
-        }
-
-        // Parse team usage for enterprise plans (limitType == "team")
-        if limitType == "team",
-           let teamUsage = json["teamUsage"] as? [String: Any],
-           let teamOnDemand = teamUsage["onDemand"] as? [String: Any],
-           let teamEnabled = teamOnDemand["enabled"] as? Bool, teamEnabled {
-            let used = Self.intValue(from: teamOnDemand, key: "used") ?? 0
-            let limit = Self.intValue(from: teamOnDemand, key: "limit") ?? 0
-
-            if limit > 0 {
-                let percentRemaining = Double(limit - used) / Double(limit) * 100
-                quotas.append(UsageQuota(
-                    percentRemaining: max(0, percentRemaining),
-                    quotaType: .timeLimit("Team"),
-                    providerId: "cursor",
-                    resetsAt: resetsAt,
-                    unitsUsed: used,
-                    unitsLimit: limit
-                ))
-            }
-        }
-
-        // Check for unlimited plans
-        if let isUnlimited = json["isUnlimited"] as? Bool, isUnlimited {
-            quotas.append(UsageQuota(
-                percentRemaining: 100,
-                quotaType: .timeLimit("Monthly"),
-                providerId: "cursor"
-            ))
+        if json["isUnlimited"] as? Bool == true {
+            quotas.append(UsageQuota(percentRemaining: 100, quotaType: .timeLimit("Monthly"), providerId: "cursor"))
         }
 
         // If no quotas found, the user might be on a free plan with no data
@@ -373,21 +248,44 @@ public struct CursorUsageProbe: UsageProbe {
             throw ProbeError.parseFailed("No usage data found in Cursor response")
         }
 
-        // Determine account tier from membership type
-        let tier: AccountTier? = switch membershipType.lowercased() {
-        case "pro": .custom("PRO")
-        case "business": .custom("BUSINESS")
-        case "free": .custom("FREE")
-        case "ultra": .custom("ULTRA")
-        case "enterprise": .custom("ENTERPRISE")
-        default: membershipType.isEmpty ? nil : .custom(membershipType.uppercased())
-        }
-
         return UsageSnapshot(
             providerId: "cursor",
             quotas: quotas,
             capturedAt: Date(),
-            accountTier: tier
+            accountTier: membershipType.isEmpty ? nil : .custom(membershipType.uppercased())
+        )
+    }
+
+    /// One enabled usage meter (`{enabled, used, limit, ...}`), or nil when
+    /// disabled or without a positive limit.
+    private static func meter(_ value: Any?, _ name: String, _ resetsAt: Date?) -> UsageQuota? {
+        guard let usage = value as? [String: Any], usage["enabled"] as? Bool == true else { return nil }
+        let used = intValue(from: usage, key: "used") ?? 0
+        // `used`/`limit` describe only the *included* allotment. With bonus credits
+        // `limit` is maxed while real capacity is `breakdown.total`; enterprise plans
+        // report `limit == 0` and carry everything in the breakdown. Take the larger.
+        let breakdownTotal = (usage["breakdown"] as? [String: Any]).flatMap { intValue(from: $0, key: "total") } ?? 0
+        let limit = max(intValue(from: usage, key: "limit") ?? 0, breakdownTotal)
+        guard limit > 0 else { return nil }
+
+        // `totalPercentUsed` is Cursor's authoritative figure across the full capacity
+        // (the "You've used X%" in Cursor's UI); fall back to used/limit without it.
+        let percentRemaining: Double
+        let effectiveUsed: Int
+        if let totalPercentUsed = usage["totalPercentUsed"] as? Double {
+            percentRemaining = 100 - totalPercentUsed
+            effectiveUsed = Int((totalPercentUsed * Double(limit) / 100).rounded())
+        } else {
+            percentRemaining = Double(limit - used) / Double(limit) * 100
+            effectiveUsed = used
+        }
+        return UsageQuota(
+            percentRemaining: max(0, percentRemaining),
+            quotaType: .timeLimit(name),
+            providerId: "cursor",
+            resetsAt: resetsAt,
+            unitsUsed: effectiveUsed,
+            unitsLimit: limit
         )
     }
 

@@ -32,10 +32,10 @@ struct QuotaBucketRow: View {
     /// percentage. Balance-only meters (Codex credits) show the amount left.
     /// Everything else falls back to the percentage.
     private var headlineText: String {
-        if quota.isBalanceOnly, let left = quota.balanceRemaining {
-            return (quota.balanceUnit ?? .usd).format(left)
+        guard let percentRemaining = quota.percentRemaining else {
+            return quota.balanceRemaining.map { (quota.balanceUnit ?? .usd).format($0) } ?? ""
         }
-        return quota.formattedUnits ?? "\(Int(quota.percentRemaining.rounded()))%"
+        return quota.formattedUnits ?? "\(Int(percentRemaining.rounded()))%"
     }
 
     private var resetText: String {
