@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `localhost` (blocks DNS rebinding from web pages) and caps request size at 1 MB.
 
 ### Fixed
+- OpenCode Go works again with opencode 2.x, which removed the `opencode db`
+  command the probe queried ("opencode db exited with code 1"). The probe now
+  reads opencode.ai's usage API with the key opencode stores in `auth.json`,
+  which also matches the dashboard instead of undercounting from local
+  cost estimates.
 - A quota under 20% is critical again when it will run out before reset.
   Burn-rate gating used the 1.5x warning threshold, so Cursor monthly at 1.8%
   left (about 12 hours of use, 3.7 days to reset) showed as healthy.
