@@ -4,28 +4,6 @@ import Testing
 @Suite("AccountTier Tests")
 struct AccountTierTests {
 
-    // MARK: - Display Name Tests
-
-    @Test
-    func `claudeMax has correct display name`() {
-        #expect(AccountTier.claudeMax.displayName == "Claude Max")
-    }
-
-    @Test
-    func `claudePro has correct display name`() {
-        #expect(AccountTier.claudePro.displayName == "Claude Pro")
-    }
-
-    @Test
-    func `claudeApi has correct display name`() {
-        #expect(AccountTier.claudeApi.displayName == "API Usage")
-    }
-
-    @Test
-    func `custom tier uses badge as display name`() {
-        #expect(AccountTier.custom("PRO").displayName == "PRO")
-    }
-
     // MARK: - Badge Text Tests
 
     @Test

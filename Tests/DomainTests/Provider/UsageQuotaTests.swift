@@ -46,70 +46,6 @@ struct UsageQuotaTests {
         #expect(quota.resetsAt == resetDate)
     }
 
-    @Test
-    func `quota reset timestamp shows days hours and minutes`() {
-        // Given - 2 days, 5 hours, 30 minutes from now (+ 30s buffer to avoid rounding down)
-        let resetDate = Date().addingTimeInterval(2.0 * 86400 + 5.0 * 3600 + 30.0 * 60 + 30)
-
-        // When
-        let quota = UsageQuota(
-            percentRemaining: 35,
-            quotaType: .weekly,
-            providerId: "claude",
-            resetsAt: resetDate
-        )
-
-        // Then
-        #expect(quota.resetTimestampDescription == "Resets in 2d 5h 30m")
-    }
-
-    @Test
-    func `quota reset timestamp shows only hours and minutes when less than a day`() {
-        // Given - 3 hours, 15 minutes from now (+ 30s buffer to avoid rounding down)
-        let resetDate = Date().addingTimeInterval(3.0 * 3600 + 15.0 * 60 + 30)
-
-        // When
-        let quota = UsageQuota(
-            percentRemaining: 35,
-            quotaType: .weekly,
-            providerId: "claude",
-            resetsAt: resetDate
-        )
-
-        // Then
-        #expect(quota.resetTimestampDescription == "Resets in 3h 15m")
-    }
-
-    @Test
-    func `quota reset timestamp shows resets soon when under a minute`() {
-        // Given - 30 seconds from now
-        let resetDate = Date().addingTimeInterval(30)
-
-        // When
-        let quota = UsageQuota(
-            percentRemaining: 35,
-            quotaType: .weekly,
-            providerId: "claude",
-            resetsAt: resetDate
-        )
-
-        // Then
-        #expect(quota.resetTimestampDescription == "Resets soon")
-    }
-
-    @Test
-    func `quota reset timestamp description is nil without reset date`() {
-        // Given
-        let quota = UsageQuota(
-            percentRemaining: 35,
-            quotaType: .weekly,
-            providerId: "claude"
-        )
-
-        // Then
-        #expect(quota.resetTimestampDescription == nil)
-    }
-
     // MARK: - Compact Reset Time
 
     @Test
@@ -175,7 +111,6 @@ struct UsageQuotaTests {
 
         // When & Then
         #expect(quotaType.displayName == "Opus")
-        #expect(quotaType.modelName == "opus")
     }
 
     // MARK: - Status Thresholds
@@ -214,7 +149,6 @@ struct UsageQuotaTests {
 
         // When & Then
         #expect(quota.status == .depleted)
-        #expect(quota.isDepleted == true)
     }
 
     // MARK: - Comparing Quotas
@@ -483,26 +417,10 @@ struct UsageQuotaTests {
         #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .critical)
     }
 
-    // MARK: - Window Duration Override
+    // MARK: - Percent Time Elapsed
 
     @Test
-    func `percentTimeElapsed uses explicit windowDuration over quota type duration`() {
-        // A .timeLimit quota defaults to a 7-day window; an explicit 5h
-        // window (as reported by aggregating probes like Oh My Pi) must win.
-        let resetsAt = Date().addingTimeInterval(2.5 * 3600) // half of a 5h window left
-        let quota = UsageQuota(
-            percentRemaining: 50,
-            quotaType: .timeLimit("Claude 5h"),
-            providerId: "claude",
-            resetsAt: resetsAt,
-            windowDuration: 5 * 3600
-        )
-        let elapsed = quota.percentTimeElapsed!
-        #expect(elapsed > 49 && elapsed < 51)
-    }
-
-    @Test
-    func `percentTimeElapsed falls back to quota type duration without windowDuration`() {
+    func `percentTimeElapsed uses quota type duration`() {
         let resetsAt = Date().addingTimeInterval(3.5 * 24 * 3600) // half of the default 7d left
         let quota = UsageQuota(
             percentRemaining: 50,
@@ -512,5 +430,55 @@ struct UsageQuotaTests {
         )
         let elapsed = quota.percentTimeElapsed!
         #expect(elapsed > 49 && elapsed < 51)
+    }
+
+    @Test
+    func `percentTimeElapsed is nil without resetsAt`() {
+        let quota = UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")
+        #expect(quota.percentTimeElapsed == nil)
+    }
+
+    @Test
+    func `percentTimeElapsed calculates correctly for session halfway through`() {
+        // Session = 5 hours. If resets in 2.5 hours, we're 50% through.
+        let resetsAt = Date().addingTimeInterval(2.5 * 3600) // 2.5 hours from now
+        let quota = UsageQuota(
+            percentRemaining: 50,
+            quotaType: .session,
+            providerId: "claude",
+            resetsAt: resetsAt
+        )
+
+        let elapsed = quota.percentTimeElapsed!
+        #expect(elapsed > 49 && elapsed < 51) // ~50%, allow for test execution time
+    }
+
+    @Test
+    func `percentTimeElapsed is clamped to 0 when just reset`() {
+        // Reset time is the full duration away (just started)
+        let resetsAt = Date().addingTimeInterval(5 * 3600) // 5 hours from now (full session)
+        let quota = UsageQuota(
+            percentRemaining: 100,
+            quotaType: .session,
+            providerId: "claude",
+            resetsAt: resetsAt
+        )
+
+        let elapsed = quota.percentTimeElapsed!
+        #expect(elapsed >= 0 && elapsed < 1) // ~0%
+    }
+
+    @Test
+    func `percentTimeElapsed is clamped to 100 when past reset time`() {
+        // Reset time is in the past (timeUntilReset will be 0)
+        let resetsAt = Date().addingTimeInterval(-60) // 1 minute ago
+        let quota = UsageQuota(
+            percentRemaining: 0,
+            quotaType: .session,
+            providerId: "claude",
+            resetsAt: resetsAt
+        )
+
+        #expect(quota.percentTimeElapsed == 100)
     }
 }

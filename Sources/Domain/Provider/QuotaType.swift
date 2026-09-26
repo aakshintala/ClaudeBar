@@ -26,21 +26,6 @@ public enum QuotaType: Sendable, Equatable, Hashable {
         }
     }
 
-    /// Compact label used when several quota windows share the menu bar
-    /// (e.g. "5h" + "7d"). Terser than `displayName` to conserve menu bar width.
-    public var shortLabel: String {
-        switch self {
-        case .session:
-            "5h"
-        case .weekly:
-            "7d"
-        case .modelSpecific(let modelName):
-            modelName.capitalized
-        case .timeLimit(let name):
-            name
-        }
-    }
-
     /// Stable key used for persisted quota selection.
     public var quotaKey: String {
         switch self {
@@ -92,16 +77,6 @@ public enum QuotaType: Sendable, Equatable, Hashable {
             .days(7) // Generic time limits default to weekly
         }
     }
-
-    /// The model name if this is a model-specific quota, nil otherwise
-    public var modelName: String? {
-        switch self {
-        case .modelSpecific(let name):
-            name
-        default:
-            nil
-        }
-    }
 }
 
 /// Represents a time duration for quota windows.
@@ -116,16 +91,6 @@ public enum QuotaDuration: Sendable, Equatable, Hashable {
             TimeInterval(h * 3600)
         case .days(let d):
             TimeInterval(d * 24 * 3600)
-        }
-    }
-
-    /// Human-readable description
-    public var description: String {
-        switch self {
-        case .hours(let h):
-            "\(h) hour\(h == 1 ? "" : "s")"
-        case .days(let d):
-            "\(d) day\(d == 1 ? "" : "s")"
         }
     }
 }

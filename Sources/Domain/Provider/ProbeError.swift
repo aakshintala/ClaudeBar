@@ -18,20 +18,11 @@ public enum ProbeError: Error, Sendable, LocalizedError {
     /// The probe timed out waiting for a response
     case timeout
 
-    /// No quota data was available
-    case noData
-
     /// The CLI needs to be updated
     case updateRequired
 
-    /// User needs to trust the current folder
-    case folderTrustRequired
-
     /// Command execution failed
     case executionFailed(String)
-
-    /// Usage data requires a subscription plan (API billing accounts don't support /usage)
-    case subscriptionRequired
 
     /// The provider's API is rate-limiting us (HTTP 429). `retryAt` is the
     /// earliest time we should try again, derived from the `Retry-After`
@@ -55,16 +46,10 @@ public enum ProbeError: Error, Sendable, LocalizedError {
             return "Failed to parse output: \(reason)"
         case .timeout:
             return "Request timed out"
-        case .noData:
-            return "No usage data available"
         case .updateRequired:
             return "CLI update required"
-        case .folderTrustRequired:
-            return "Please trust this folder in Claude CLI"
         case .executionFailed(let reason):
             return reason
-        case .subscriptionRequired:
-            return "Subscription required for usage data"
         case .rateLimited(let retryAt):
             // Relative formatting ("in 30 minutes") is unambiguous across
             // midnight rollovers and more glance-able than an absolute clock
@@ -93,16 +78,10 @@ extension ProbeError: Equatable {
             return a == b
         case (.timeout, .timeout):
             return true
-        case (.noData, .noData):
-            return true
         case (.updateRequired, .updateRequired):
-            return true
-        case (.folderTrustRequired, .folderTrustRequired):
             return true
         case (.executionFailed(let a), .executionFailed(let b)):
             return a == b
-        case (.subscriptionRequired, .subscriptionRequired):
-            return true
         case (.rateLimited(let a), .rateLimited(let b)):
             return a == b
         default:

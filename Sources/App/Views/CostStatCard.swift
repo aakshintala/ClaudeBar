@@ -64,12 +64,6 @@ struct CostStatCard: View {
                     .font(.system(size: 11, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
-
-            if costUsage.apiDuration > 0 {
-                Text("API time: \(costUsage.formattedApiDuration)")
-                    .font(.system(size: 11, design: theme.fontDesign))
-                    .foregroundStyle(theme.textTertiary)
-            }
         }
         .padding(.leading, 12)
         .accessibilityElement(children: .combine)

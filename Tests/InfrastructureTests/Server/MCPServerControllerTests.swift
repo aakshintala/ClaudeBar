@@ -28,7 +28,7 @@ struct MCPServerControllerTests {
 
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(.empty(for: "claude"))
+        given(probe).probe().willReturn(UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date()))
 
         let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
         return QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())

@@ -157,7 +157,7 @@ private final class SequentialUsageProbe: UsageProbe, @unchecked Sendable {
     func probe() async throws -> UsageSnapshot {
         defer { index += 1 }
         guard index < results.count else {
-            throw ProbeError.noData
+            throw ProbeError.executionFailed("SequentialUsageProbe: no more results")
         }
         switch results[index] {
         case .success(let snapshot):

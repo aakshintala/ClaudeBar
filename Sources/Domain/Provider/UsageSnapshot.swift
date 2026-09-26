@@ -53,6 +53,10 @@ public struct UsageSnapshot: Sendable, Equatable {
     }
 
     /// Finds a quota by its persisted quota key.
+    ///
+    /// Kept for `QuotaMonitor.quota(providerId:quotaKey:)` (part of the
+    /// selection API in item 1, out of scope here even though item 10 lists
+    /// this method as dead).
     public func quota(forKey key: String) -> UsageQuota? {
         guard let quotaType = QuotaType(quotaKey: key) else { return nil }
         return quota(for: quotaType)
@@ -66,42 +70,6 @@ public struct UsageSnapshot: Sendable, Equatable {
     /// The weekly quota if available
     public var weeklyQuota: UsageQuota? {
         quota(for: .weekly)
-    }
-
-    /// All model-specific quotas
-    public var modelSpecificQuotas: [UsageQuota] {
-        quotas.filter { quota in
-            if case .modelSpecific = quota.quotaType {
-                return true
-            }
-            return false
-        }
-    }
-
-    /// Whether any quota carries group metadata (aggregating providers like
-    /// Oh My Pi tag rows with their upstream account).
-    public var hasQuotaGroups: Bool {
-        quotas.contains { $0.group != nil }
-    }
-
-    /// Quotas bucketed by their group, preserving first-appearance order.
-    /// Ungrouped quotas form one leading unnamed group.
-    public var quotaGroups: [QuotaGroup] {
-        var order: [String] = []
-        var buckets: [String: [UsageQuota]] = [:]
-        for quota in quotas {
-            let key = quota.group ?? ""
-            if buckets[key] == nil { order.append(key) }
-            buckets[key, default: []].append(quota)
-        }
-
-        return order.map { key in
-            QuotaGroup(
-                title: key.isEmpty ? nil : key,
-                quotas: buckets[key] ?? [],
-                note: nil
-            )
-        }
     }
 
     /// The overall status is the worst status among all quotas.
@@ -122,80 +90,4 @@ public struct UsageSnapshot: Sendable, Equatable {
         quotas.min(by: { $0.percentRemaining < $1.percentRemaining })
     }
 
-    // MARK: - Freshness
-
-    /// How many seconds ago this snapshot was captured
-    public var age: TimeInterval {
-        Date().timeIntervalSince(capturedAt)
-    }
-
-    /// Whether this snapshot is considered stale (older than 5 minutes)
-    public var isStale: Bool {
-        age > 300 // 5 minutes
-    }
-
-    /// Human-readable age description
-    public var ageDescription: String {
-        let seconds = Int(age)
-        if seconds < 60 {
-            return "Just now"
-        } else if seconds < 3600 {
-            return "\(seconds / 60)m ago"
-        } else {
-            return "\(seconds / 3600)h ago"
-        }
-    }
-
-    // MARK: - Empty Snapshot
-
-    /// Creates an empty snapshot for when no data is available
-    public static func empty(for providerId: String) -> UsageSnapshot {
-        UsageSnapshot(providerId: providerId, quotas: [], capturedAt: Date())
-    }
-}
-
-/// One section of quotas belonging to a single upstream account, produced
-/// by aggregating providers (e.g. Oh My Pi). `title` is nil for the
-/// unnamed bucket of ungrouped quotas.
-public struct QuotaGroup: Sendable, Equatable, Identifiable {
-    public let title: String?
-    public let quotas: [UsageQuota]
-
-    /// Inline annotation for sections without usable quota data
-    /// (e.g. "No usage reported"). See `notePlacement` for where it
-    /// renders.
-    public let note: String?
-
-    public var id: String { title ?? "" }
-
-    /// The most critical status within this group — shown while collapsed.
-    public var worstStatus: QuotaStatus {
-        quotas.map(\.status).max() ?? .healthy
-    }
-
-    /// The quota with the least headroom — summarized while collapsed.
-    public var lowestQuota: UsageQuota? {
-        quotas.min(by: { $0.percentRemaining < $1.percentRemaining })
-    }
-
-    /// Where a group's note renders. Note-only sections have no cards
-    /// to collapse, so the note doubles as the header summary; sections
-    /// that also carry quotas show the note as its own row above the
-    /// cards — it must never be silently dropped.
-    public enum NotePlacement: Sendable, Equatable {
-        case headerInline(String)
-        case row(String)
-    }
-
-    /// The presentation decision for `note`, nil when there is none.
-    public var notePlacement: NotePlacement? {
-        guard let note else { return nil }
-        return quotas.isEmpty ? .headerInline(note) : .row(note)
-    }
-
-    public init(title: String?, quotas: [UsageQuota], note: String? = nil) {
-        self.title = title
-        self.quotas = quotas
-        self.note = note
-    }
 }

@@ -21,15 +21,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
     /// Total time spent on API calls
     public let apiDuration: TimeInterval
 
-    /// Total wall clock time (includes thinking/typing time)
-    public let wallDuration: TimeInterval
-
-    /// Number of lines of code added
-    public let linesAdded: Int
-
-    /// Number of lines of code removed
-    public let linesRemoved: Int
-
     /// The provider ID this cost belongs to (e.g., "claude")
     public let providerId: String
 
@@ -48,9 +39,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
         totalCost: Decimal,
         budget: Decimal? = nil,
         apiDuration: TimeInterval,
-        wallDuration: TimeInterval = 0,
-        linesAdded: Int = 0,
-        linesRemoved: Int = 0,
         providerId: String,
         kind: Kind = .apiCost,
         capturedAt: Date = Date(),
@@ -61,9 +49,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
         self.totalCost = totalCost
         self.budget = budget
         self.apiDuration = apiDuration
-        self.wallDuration = wallDuration
-        self.linesAdded = linesAdded
-        self.linesRemoved = linesRemoved
         self.providerId = providerId
         self.capturedAt = capturedAt
         self.resetsAt = resetsAt
@@ -88,16 +73,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
         formatDuration(apiDuration)
     }
 
-    /// Formatted wall duration (e.g., "6h 33m 10.2s")
-    public var formattedWallDuration: String {
-        formatDuration(wallDuration)
-    }
-
-    /// Formatted code changes (e.g., "+10 / -5 lines")
-    public var formattedCodeChanges: String {
-        "+\(linesAdded) / -\(linesRemoved) lines"
-    }
-
     // MARK: - Budget Calculation
 
     /// Calculates the budget status based on the given budget threshold
@@ -109,37 +84,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
     public var budgetStatusFromBuiltIn: BudgetStatus? {
         guard let budget else { return nil }
         return BudgetStatus.from(cost: totalCost, budget: budget)
-    }
-
-    /// Calculates the percentage of budget used
-    public func budgetPercentUsed(budget: Decimal) -> Double {
-        guard budget > 0 else { return 0 }
-        let percentage = (totalCost / budget) * 100
-        return Double(truncating: percentage as NSDecimalNumber)
-    }
-
-    /// Calculates percentage used from built-in budget (for Pro Extra usage)
-    public var budgetPercentUsedFromBuiltIn: Double? {
-        guard let budget else { return nil }
-        return budgetPercentUsed(budget: budget)
-    }
-
-    /// The unspent built-in budget, floored at zero.
-    public var budgetRemaining: Decimal? {
-        guard let budget else { return nil }
-        return max(0, budget - totalCost)
-    }
-
-    /// Formatted budget string (e.g., "$20.00")
-    public var formattedBudget: String? {
-        guard let budget else { return nil }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "USD"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.minimumFractionDigits = 2
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: budget as NSDecimalNumber) ?? "$\(budget)"
     }
 
     // MARK: - Private Helpers

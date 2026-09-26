@@ -12,17 +12,7 @@ public enum AccountTier: Sendable, Equatable, Hashable {
     /// Custom tier for any provider (badge text, e.g., "PRO", "ULTRA")
     case custom(String)
 
-    // MARK: - Display Properties
-
-    /// Display name for the account tier
-    public var displayName: String {
-        switch self {
-        case .claudeMax: return "Claude Max"
-        case .claudePro: return "Claude Pro"
-        case .claudeApi: return "API Usage"
-        case .custom(let badge): return badge
-        }
-    }
+    // MARK: - Badge Text
 
     /// Short badge text for compact display
     public var badgeText: String {
@@ -34,8 +24,3 @@ public enum AccountTier: Sendable, Equatable, Hashable {
         }
     }
 }
-
-// MARK: - Legacy Type Alias
-
-@available(*, deprecated, renamed: "AccountTier")
-public typealias ClaudeAccountType = AccountTier

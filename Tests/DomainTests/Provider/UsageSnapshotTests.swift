@@ -166,41 +166,6 @@ struct UsageSnapshotTests {
         #expect(snapshot.overallStatus == .depleted)
     }
 
-    // MARK: - Freshness
-
-    @Test
-    func `snapshot knows how old it is`() {
-        // Given
-        let capturedAt = Date().addingTimeInterval(-120) // 2 minutes ago
-        let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
-
-        // When
-        let ageInSeconds = snapshot.age
-
-        // Then
-        #expect(ageInSeconds >= 119 && ageInSeconds <= 121)
-    }
-
-    @Test
-    func `snapshot is stale after 5 minutes`() {
-        // Given
-        let capturedAt = Date().addingTimeInterval(-360) // 6 minutes ago
-        let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
-
-        // When & Then
-        #expect(snapshot.isStale == true)
-    }
-
-    @Test
-    func `snapshot is fresh within 5 minutes`() {
-        // Given
-        let capturedAt = Date().addingTimeInterval(-60) // 1 minute ago
-        let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: capturedAt)
-
-        // When & Then
-        #expect(snapshot.isStale == false)
-    }
-
     // MARK: - Finding Lowest Quota
 
     @Test
@@ -254,100 +219,6 @@ struct UsageSnapshotTests {
         #expect(snapshot.loginMethod == nil)
     }
 
-    // MARK: - Model Specific Quotas
-
-    @Test
-    func `snapshot filters model specific quotas`() {
-        // Given
-        let quotas = [
-            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
-            UsageQuota(percentRemaining: 70, quotaType: .weekly, providerId: "claude"),
-            UsageQuota(percentRemaining: 60, quotaType: .modelSpecific("opus"), providerId: "claude"),
-            UsageQuota(percentRemaining: 50, quotaType: .modelSpecific("sonnet"), providerId: "claude"),
-        ]
-        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
-
-        // When
-        let modelQuotas = snapshot.modelSpecificQuotas
-
-        // Then
-        #expect(modelQuotas.count == 2)
-        #expect(modelQuotas.allSatisfy { quota in
-            if case .modelSpecific = quota.quotaType { return true }
-            return false
-        })
-    }
-
-    @Test
-    func `snapshot returns empty array when no model specific quotas`() {
-        // Given
-        let quotas = [
-            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
-            UsageQuota(percentRemaining: 70, quotaType: .weekly, providerId: "claude"),
-        ]
-        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
-
-        // When
-        let modelQuotas = snapshot.modelSpecificQuotas
-
-        // Then
-        #expect(modelQuotas.isEmpty)
-    }
-
-    // MARK: - Empty Snapshot Factory
-
-    @Test
-    func `empty snapshot factory creates snapshot with no quotas`() {
-        // When
-        let snapshot = UsageSnapshot.empty(for: "claude")
-
-        // Then
-        #expect(snapshot.providerId == "claude")
-        #expect(snapshot.quotas.isEmpty)
-        #expect(snapshot.overallStatus == .healthy)
-    }
-
-    // MARK: - Age Description
-
-    @Test
-    func `age description shows just now for recent snapshots`() {
-        // Given - snapshot from 30 seconds ago
-        let snapshot = UsageSnapshot(
-            providerId: "claude",
-            quotas: [],
-            capturedAt: Date().addingTimeInterval(-30)
-        )
-
-        // Then
-        #expect(snapshot.ageDescription == "Just now")
-    }
-
-    @Test
-    func `age description shows minutes for older snapshots`() {
-        // Given - snapshot from 2 minutes ago
-        let snapshot = UsageSnapshot(
-            providerId: "claude",
-            quotas: [],
-            capturedAt: Date().addingTimeInterval(-120)
-        )
-
-        // Then
-        #expect(snapshot.ageDescription == "2m ago")
-    }
-
-    @Test
-    func `age description shows hours for old snapshots`() {
-        // Given - snapshot from 2 hours ago
-        let snapshot = UsageSnapshot(
-            providerId: "claude",
-            quotas: [],
-            capturedAt: Date().addingTimeInterval(-7200)
-        )
-
-        // Then
-        #expect(snapshot.ageDescription == "2h ago")
-    }
-
     // MARK: - Session and Weekly Quota Accessors
 
     @Test
@@ -374,51 +245,5 @@ struct UsageSnapshotTests {
 
         // Then
         #expect(snapshot.weeklyQuota?.percentRemaining == 70)
-    }
-
-    // MARK: - Quota Groups
-
-    @Test
-    func `ungrouped snapshot has no quota groups and one unnamed bucket`() {
-        let quotas = [
-            UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude"),
-            UsageQuota(percentRemaining: 70, quotaType: .weekly, providerId: "claude"),
-        ]
-        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
-
-        #expect(snapshot.hasQuotaGroups == false)
-        let groups = snapshot.quotaGroups
-        #expect(groups.count == 1)
-        #expect(groups[0].title == nil)
-        #expect(groups[0].quotas.count == 2)
-    }
-
-    @Test
-    func `grouped quotas bucket by group in first-appearance order`() {
-        let quotas = [
-            UsageQuota(percentRemaining: 90, quotaType: .timeLimit("Codex 5h"), providerId: "claude", group: "Codex"),
-            UsageQuota(percentRemaining: 40, quotaType: .timeLimit("Codex 7d"), providerId: "claude", group: "Codex"),
-            UsageQuota(percentRemaining: 95, quotaType: .timeLimit("Claude 5h"), providerId: "claude", group: "Claude"),
-        ]
-        let snapshot = UsageSnapshot(providerId: "claude", quotas: quotas, capturedAt: Date())
-
-        #expect(snapshot.hasQuotaGroups == true)
-        let groups = snapshot.quotaGroups
-        #expect(groups.map(\.title) == ["Codex", "Claude"])
-        #expect(groups[0].quotas.count == 2)
-        #expect(groups[0].worstStatus == .warning) // 40% remaining
-        #expect(groups[0].lowestQuota?.percentRemaining == 40)
-        #expect(groups[1].quotas.count == 1)
-    }
-
-    @Test
-    func `note placement is header-inline for note-only groups and nil without a note`() {
-        let noteOnly = QuotaGroup(title: "Copilot", quotas: [], note: "No usage reported")
-        #expect(noteOnly.notePlacement == .headerInline("No usage reported"))
-
-        let plain = QuotaGroup(title: "Claude", quotas: [
-            UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude", group: "Claude"),
-        ])
-        #expect(plain.notePlacement == nil)
     }
 }

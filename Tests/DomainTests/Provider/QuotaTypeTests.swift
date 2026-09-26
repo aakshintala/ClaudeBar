@@ -28,7 +28,6 @@ struct QuotaTypeTests {
     func `fable quota key round trips through persistence`() {
         let fable = QuotaType.modelSpecific("fable")
         #expect(fable.displayName == "Fable")
-        #expect(fable.shortLabel == "Fable")
         #expect(fable.quotaKey == "model:fable")
         #expect(QuotaType(quotaKey: "model:fable") == fable)
     }
@@ -46,30 +45,6 @@ struct QuotaTypeTests {
         #expect(QuotaType.timeLimit("MCP").displayName == "MCP")
         #expect(QuotaType.timeLimit("Daily Limit").displayName == "Daily Limit")
         #expect(QuotaType.timeLimit("Claude 5h").displayName == "Claude 5h")
-    }
-
-    // MARK: - Short Label Tests
-
-    @Test
-    func `session quota has short label 5h`() {
-        #expect(QuotaType.session.shortLabel == "5h")
-    }
-
-    @Test
-    func `weekly quota has short label 7d`() {
-        #expect(QuotaType.weekly.shortLabel == "7d")
-    }
-
-    @Test
-    func `model specific quota short label capitalizes model name`() {
-        #expect(QuotaType.modelSpecific("opus").shortLabel == "Opus")
-        #expect(QuotaType.modelSpecific("sonnet").shortLabel == "Sonnet")
-    }
-
-    @Test
-    func `time limit quota short label preserves name verbatim`() {
-        #expect(QuotaType.timeLimit("Monthly").shortLabel == "Monthly")
-        #expect(QuotaType.timeLimit("Codex 7d").shortLabel == "Codex 7d")
     }
 
     // MARK: - Duration Tests
@@ -92,29 +67,6 @@ struct QuotaTypeTests {
     @Test
     func `time limit quota has 7 day duration`() {
         #expect(QuotaType.timeLimit("any").duration == .days(7))
-    }
-
-    // MARK: - Model Name Tests
-
-    @Test
-    func `session quota has no model name`() {
-        #expect(QuotaType.session.modelName == nil)
-    }
-
-    @Test
-    func `weekly quota has no model name`() {
-        #expect(QuotaType.weekly.modelName == nil)
-    }
-
-    @Test
-    func `time limit quota has no model name`() {
-        #expect(QuotaType.timeLimit("mcp").modelName == nil)
-    }
-
-    @Test
-    func `model specific quota returns model name`() {
-        #expect(QuotaType.modelSpecific("opus").modelName == "opus")
-        #expect(QuotaType.modelSpecific("sonnet").modelName == "sonnet")
     }
 
     // MARK: - Equality Tests
@@ -167,30 +119,6 @@ struct QuotaDurationTests {
     func `days converts to seconds correctly`() {
         #expect(QuotaDuration.days(1).seconds == 86400)
         #expect(QuotaDuration.days(7).seconds == 604800)
-    }
-
-    // MARK: - Description Tests
-
-    @Test
-    func `single hour uses singular form`() {
-        #expect(QuotaDuration.hours(1).description == "1 hour")
-    }
-
-    @Test
-    func `multiple hours uses plural form`() {
-        #expect(QuotaDuration.hours(5).description == "5 hours")
-        #expect(QuotaDuration.hours(24).description == "24 hours")
-    }
-
-    @Test
-    func `single day uses singular form`() {
-        #expect(QuotaDuration.days(1).description == "1 day")
-    }
-
-    @Test
-    func `multiple days uses plural form`() {
-        #expect(QuotaDuration.days(7).description == "7 days")
-        #expect(QuotaDuration.days(30).description == "30 days")
     }
 
     // MARK: - Equality Tests

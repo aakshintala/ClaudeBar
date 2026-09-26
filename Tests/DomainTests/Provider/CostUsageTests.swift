@@ -13,18 +13,12 @@ struct CostUsageTests {
         let cost = CostUsage(
             totalCost: Decimal(string: "5.50")!,
             apiDuration: 3600,
-            wallDuration: 7200,
-            linesAdded: 100,
-            linesRemoved: 50,
             providerId: "claude"
         )
 
         // Then
         #expect(cost.totalCost == Decimal(string: "5.50"))
         #expect(cost.apiDuration == 3600)
-        #expect(cost.wallDuration == 7200)
-        #expect(cost.linesAdded == 100)
-        #expect(cost.linesRemoved == 50)
         #expect(cost.providerId == "claude")
     }
 
@@ -128,58 +122,7 @@ struct CostUsageTests {
         #expect(cost.formattedApiDuration == "45.2s")
     }
 
-    @Test
-    func `formats code changes`() {
-        // Given
-        let cost = CostUsage(
-            totalCost: 0,
-            apiDuration: 0,
-            wallDuration: 0,
-            linesAdded: 150,
-            linesRemoved: 42,
-            providerId: "claude"
-        )
-
-        // Then
-        #expect(cost.formattedCodeChanges == "+150 / -42 lines")
-    }
-
     // MARK: - Budget Calculation
-
-    @Test
-    func `calculates budget remaining`() {
-        let cost = CostUsage(
-            totalCost: 5,
-            budget: 20,
-            apiDuration: 0,
-            providerId: "claude"
-        )
-
-        #expect(cost.budgetRemaining == 15)
-    }
-
-    @Test
-    func `floors budget remaining at zero when overspent`() {
-        let cost = CostUsage(
-            totalCost: 25,
-            budget: 20,
-            apiDuration: 0,
-            providerId: "claude"
-        )
-
-        #expect(cost.budgetRemaining == 0)
-    }
-
-    @Test
-    func `budget remaining is nil without a budget`() {
-        let cost = CostUsage(
-            totalCost: 5,
-            apiDuration: 0,
-            providerId: "claude"
-        )
-
-        #expect(cost.budgetRemaining == nil)
-    }
 
     @Test
     func `calculates budget status within budget`() {
@@ -227,38 +170,6 @@ struct CostUsageTests {
 
         // Then
         #expect(status == .overBudget)
-    }
-
-    @Test
-    func `calculates budget percent used`() {
-        // Given
-        let cost = CostUsage(
-            totalCost: 5,
-            apiDuration: 0,
-            providerId: "claude"
-        )
-
-        // When
-        let percent = cost.budgetPercentUsed(budget: 10)
-
-        // Then
-        #expect(percent == 50)
-    }
-
-    @Test
-    func `budget percent used handles zero budget`() {
-        // Given
-        let cost = CostUsage(
-            totalCost: 5,
-            apiDuration: 0,
-            providerId: "claude"
-        )
-
-        // When
-        let percent = cost.budgetPercentUsed(budget: 0)
-
-        // Then
-        #expect(percent == 0)
     }
 
     // MARK: - Equatable
