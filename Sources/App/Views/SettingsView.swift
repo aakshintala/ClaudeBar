@@ -93,7 +93,7 @@ struct SettingsContentView: View {
                 GridItem(.flexible(), spacing: 8),
                 GridItem(.flexible(), spacing: 8)
             ], spacing: 8) {
-                ForEach(ThemeRegistry.shared.allThemes, id: \.id) { registeredTheme in
+                ForEach(AppTheme.all, id: \.id) { registeredTheme in
                     ThemeOptionButton(
                         themeProvider: registeredTheme,
                         isSelected: settings.themeMode == registeredTheme.id
@@ -308,7 +308,7 @@ struct SettingsContentView: View {
 // MARK: - Theme Option Button
 
 struct ThemeOptionButton: View {
-    let themeProvider: any AppThemeProvider
+    let themeProvider: AppTheme
     let isSelected: Bool
     let action: () -> Void
 
@@ -333,12 +333,6 @@ struct ThemeOptionButton: View {
                         .font(.system(size: 11, weight: .medium, design: themeProvider.fontDesign))
                         .foregroundStyle(theme.textPrimary)
                         .lineLimit(1)
-
-                    if let subtitle = themeProvider.subtitle {
-                        Text(subtitle)
-                            .font(.system(size: 8, weight: .medium))
-                            .foregroundStyle(themeProvider.accentPrimary)
-                    }
                 }
 
                 Spacer()
@@ -370,7 +364,7 @@ struct ThemeOptionButton: View {
 
 #Preview("Settings - Dark") {
     ZStack {
-        DarkTheme().backgroundGradient
+        AppTheme.dark.backgroundGradient
         SettingsContentView(
             showSettings: .constant(true),
             monitor: QuotaMonitor(providers: []),
@@ -383,7 +377,7 @@ struct ThemeOptionButton: View {
 
 #Preview("Settings - Light") {
     ZStack {
-        LightTheme().backgroundGradient
+        AppTheme.light.backgroundGradient
         SettingsContentView(
             showSettings: .constant(true),
             monitor: QuotaMonitor(providers: []),

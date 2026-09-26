@@ -94,7 +94,7 @@ struct CostStatCard: View {
 
 #Preview("Extra Usage - Capped Partial") {
     ZStack {
-        DarkTheme().backgroundGradient
+        AppTheme.dark.backgroundGradient
 
         CostStatCard(
             costUsage: CostUsage(
@@ -113,7 +113,7 @@ struct CostStatCard: View {
 
 #Preview("API Cost") {
     ZStack {
-        DarkTheme().backgroundGradient
+        AppTheme.dark.backgroundGradient
 
         CostStatCard(
             costUsage: CostUsage(

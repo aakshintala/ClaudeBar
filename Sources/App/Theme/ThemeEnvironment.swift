@@ -4,7 +4,7 @@ import SwiftUI
 
 /// Environment key for injecting the active theme into the view hierarchy.
 private struct AppThemeKey: EnvironmentKey {
-    nonisolated(unsafe) static var defaultValue: any AppThemeProvider = DarkTheme()
+    static let defaultValue = AppTheme.dark
 }
 
 extension EnvironmentValues {
@@ -21,7 +21,7 @@ extension EnvironmentValues {
     ///     }
     /// }
     /// ```
-    public var appTheme: any AppThemeProvider {
+    var appTheme: AppTheme {
         get { self[AppThemeKey.self] }
         set { self[AppThemeKey.self] = newValue }
     }
@@ -29,37 +29,22 @@ extension EnvironmentValues {
 
 // MARK: - Theme Provider Modifier
 
-/// View modifier that provides the resolved theme to the view hierarchy.
+/// View modifier that resolves `themeModeId` to a concrete `AppTheme` and provides it to the view hierarchy.
 ///
 /// ## Usage
 /// ```swift
 /// ContentView()
-///     .appThemeProvider(themeMode: settings.themeMode)
+///     .appThemeProvider(themeModeId: settings.themeMode)
 /// ```
-public struct AppThemeProviderModifier: ViewModifier {
+struct AppThemeProviderModifier: ViewModifier {
     let themeModeId: String
-    @Environment(\.colorScheme) private var systemColorScheme
 
-    public init(themeModeId: String) {
-        self.themeModeId = themeModeId
-    }
+    private var isLight: Bool { ThemeMode(rawValue: themeModeId) == .light }
 
-    @MainActor
-    private var resolvedTheme: any AppThemeProvider {
-        ThemeRegistry.shared.resolveTheme(for: themeModeId, systemColorScheme: systemColorScheme)
-    }
-
-    private var effectiveColorScheme: ColorScheme {
-        switch ThemeMode(rawValue: themeModeId) {
-        case .light: return .light
-        case .dark, .none: return .dark
-        }
-    }
-
-    public func body(content: Content) -> some View {
+    func body(content: Content) -> some View {
         content
-            .environment(\.appTheme, resolvedTheme)
-            .environment(\.colorScheme, effectiveColorScheme)
+            .environment(\.appTheme, isLight ? .light : .dark)
+            .environment(\.colorScheme, isLight ? .light : .dark)
     }
 }
 
@@ -67,73 +52,7 @@ extension View {
     /// Applies the theme provider modifier to inject the active theme.
     /// - Parameter themeModeId: The theme mode ID from AppSettings
     /// - Returns: A view with the theme environment set
-    public func appThemeProvider(themeModeId: String) -> some View {
+    func appThemeProvider(themeModeId: String) -> some View {
         modifier(AppThemeProviderModifier(themeModeId: themeModeId))
-    }
-}
-
-// MARK: - Convenience View Extensions
-
-extension View {
-    /// Applies the theme's text primary color
-    @MainActor
-    public func themeTextPrimary() -> some View {
-        modifier(ThemeTextModifier(style: .primary))
-    }
-
-    /// Applies the theme's text secondary color
-    @MainActor
-    public func themeTextSecondary() -> some View {
-        modifier(ThemeTextModifier(style: .secondary))
-    }
-
-    /// Applies the theme's text tertiary color
-    @MainActor
-    public func themeTextTertiary() -> some View {
-        modifier(ThemeTextModifier(style: .tertiary))
-    }
-
-    /// Applies the theme's card styling
-    @MainActor
-    public func themeCard() -> some View {
-        modifier(ThemeCardModifier())
-    }
-}
-
-// MARK: - Theme Text Modifier
-
-private struct ThemeTextModifier: ViewModifier {
-    enum Style { case primary, secondary, tertiary }
-    let style: Style
-    @Environment(\.appTheme) private var theme
-
-    func body(content: Content) -> some View {
-        content.foregroundStyle(color)
-    }
-
-    private var color: Color {
-        switch style {
-        case .primary: theme.textPrimary
-        case .secondary: theme.textSecondary
-        case .tertiary: theme.textTertiary
-        }
-    }
-}
-
-// MARK: - Theme Card Modifier
-
-private struct ThemeCardModifier: ViewModifier {
-    @Environment(\.appTheme) private var theme
-
-    func body(content: Content) -> some View {
-        content
-            .background(
-                RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                    .fill(theme.cardGradient)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: theme.cardCornerRadius)
-                            .stroke(theme.glassBorder, lineWidth: 1)
-                    )
-            )
     }
 }

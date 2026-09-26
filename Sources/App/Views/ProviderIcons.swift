@@ -112,7 +112,7 @@ struct ProviderIconView: View {
         }
     }
     .padding(40)
-    .background(DarkTheme().backgroundGradient)
+    .background(AppTheme.dark.backgroundGradient)
     .preferredColorScheme(.dark)
 }
 
@@ -122,23 +122,23 @@ struct ProviderIconView: View {
             ProviderIconView(providerId: "claude", size: 40)
             Text("Claude")
                 .font(.caption)
-                .foregroundStyle(LightTheme().textPrimary)
+                .foregroundStyle(AppTheme.light.textPrimary)
         }
         VStack {
             ProviderIconView(providerId: "codex", size: 40)
             Text("Codex")
                 .font(.caption)
-                .foregroundStyle(LightTheme().textPrimary)
+                .foregroundStyle(AppTheme.light.textPrimary)
         }
         VStack {
             ProviderIconView(providerId: "cursor", size: 40)
             Text("Cursor")
                 .font(.caption)
-                .foregroundStyle(LightTheme().textPrimary)
+                .foregroundStyle(AppTheme.light.textPrimary)
         }
     }
     .padding(40)
-    .background(LightTheme().backgroundGradient)
+    .background(AppTheme.light.backgroundGradient)
     .preferredColorScheme(.light)
 }
 
@@ -150,6 +150,6 @@ struct ProviderIconView: View {
         ProviderIconView(providerId: "claude", size: 48)
     }
     .padding(40)
-    .background(DarkTheme().backgroundGradient)
+    .background(AppTheme.dark.backgroundGradient)
     .preferredColorScheme(.dark)
 }
