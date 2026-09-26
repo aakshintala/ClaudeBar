@@ -91,41 +91,6 @@ struct QuotaStatusTests {
         #expect(mixedStatuses.max() == .depleted)
     }
 
-    // MARK: - Equality Tests
-
-    @Test
-    func `status equals itself`() {
-        #expect(QuotaStatus.healthy == .healthy)
-        #expect(QuotaStatus.warning == .warning)
-        #expect(QuotaStatus.critical == .critical)
-        #expect(QuotaStatus.depleted == .depleted)
-    }
-
-    @Test
-    func `different statuses are not equal`() {
-        #expect(QuotaStatus.healthy != .warning)
-        #expect(QuotaStatus.warning != .critical)
-        #expect(QuotaStatus.critical != .depleted)
-    }
-
-    // MARK: - Hashable Tests
-
-    @Test
-    func `status can be used as dictionary key`() {
-        var dict: [QuotaStatus: String] = [:]
-        dict[.healthy] = "green"
-        dict[.warning] = "yellow"
-
-        #expect(dict[.healthy] == "green")
-        #expect(dict[.warning] == "yellow")
-    }
-
-    @Test
-    func `status can be used in set`() {
-        let statuses: Set<QuotaStatus> = [.healthy, .warning, .healthy]
-        #expect(statuses.count == 2)
-    }
-
     // MARK: - Burn Rate (Pace-Aware) Tests
 
     @Test

@@ -2,13 +2,11 @@ import Foundation
 import Domain
 
 /// Unified JSON-backed settings repository.
-/// Implements all settings protocols: AppSettingsRepository + ProviderSettingsRepository
-/// (including all sub-protocols).
+/// Implements ProviderSettingsRepository (including all sub-protocols) plus
+/// the app-level settings accessors used by `AppSettings`.
 ///
 /// Backed by `JSONSettingsStore` reading/writing `~/.claudebar/settings.json`.
-/// Credentials (tokens, API keys) use UserDefaults for now (Keychain migration later).
 public final class JSONSettingsRepository:
-    AppSettingsRepository,
     ProviderSettingsRepository,
     @unchecked Sendable
 {
@@ -16,14 +14,12 @@ public final class JSONSettingsRepository:
     public static let shared = JSONSettingsRepository(store: .shared)
 
     private let store: JSONSettingsStore
-    private let credentials: UserDefaults
 
-    public init(store: JSONSettingsStore, credentials: UserDefaults = .standard) {
+    public init(store: JSONSettingsStore) {
         self.store = store
-        self.credentials = credentials
     }
 
-    // MARK: - AppSettingsRepository
+    // MARK: - App settings
 
     public func themeMode() -> String {
         store.read(key: "app.themeMode") ?? "dark"
@@ -31,14 +27,6 @@ public final class JSONSettingsRepository:
 
     public func setThemeMode(_ mode: String) {
         store.write(value: mode, key: "app.themeMode")
-    }
-
-    public func userHasChosenTheme() -> Bool {
-        store.read(key: "app.userHasChosenTheme") ?? false
-    }
-
-    public func setUserHasChosenTheme(_ chosen: Bool) {
-        store.write(value: chosen, key: "app.userHasChosenTheme")
     }
 
     public func backgroundSyncEnabled() -> Bool {

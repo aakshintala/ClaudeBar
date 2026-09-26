@@ -3,7 +3,7 @@ import Domain
 import Infrastructure
 
 /// Observable settings manager for ClaudeBar preferences.
-/// Thin `@Observable` wrapper around `AppSettingsRepository` for SwiftUI reactivity.
+/// Thin `@Observable` wrapper around `JSONSettingsRepository` for SwiftUI reactivity.
 /// All persistence is delegated to the repository (`~/.claudebar/settings.json`).
 @MainActor
 @Observable
@@ -19,16 +19,6 @@ public final class AppSettings {
     public var themeMode: String {
         didSet {
             repository.setThemeMode(themeMode)
-            if !isInitializing {
-                userHasChosenTheme = true
-            }
-        }
-    }
-
-    /// Whether the user has explicitly chosen a theme
-    public var userHasChosenTheme: Bool {
-        didSet {
-            repository.setUserHasChosenTheme(userHasChosenTheme)
         }
     }
 
@@ -91,10 +81,6 @@ public final class AppSettings {
         }
     }
 
-    // MARK: - Internal
-
-    private var isInitializing = true
-
     // MARK: - Initialization
 
     private init(repository: JSONSettingsRepository = .shared) {
@@ -102,14 +88,11 @@ public final class AppSettings {
 
         // Load all values from repository
         self.themeMode = repository.themeMode()
-        self.userHasChosenTheme = repository.userHasChosenTheme()
         self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
         self.backgroundSyncInterval = repository.backgroundSyncInterval()
         self.quotaAlertsEnabled = repository.quotaAlertsEnabled()
         self.mcpEnabled = repository.mcpEnabled()
         self.mcpPort = repository.mcpPort()
-
-        self.isInitializing = false
     }
 
     // MARK: - Provider Settings Access

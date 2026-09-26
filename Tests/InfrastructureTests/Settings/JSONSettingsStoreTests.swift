@@ -238,31 +238,4 @@ struct JSONSettingsStoreTests {
         let result: String? = store.read(key: "test")
         #expect(result == "created")
     }
-
-    // MARK: - readAll
-
-    @Test
-    func `readAll returns full dictionary`() throws {
-        let json = """
-        {
-            "app": { "theme": "dark" },
-            "version": 1
-        }
-        """
-        let (store, dir) = try makeStore(initialJSON: json)
-        defer { cleanup(dir) }
-
-        let all = store.readAll()
-        #expect(all["version"] as? Int == 1)
-        #expect((all["app"] as? [String: Any])?["theme"] as? String == "dark")
-    }
-
-    @Test
-    func `readAll returns empty dict when no file`() throws {
-        let (store, dir) = try makeStore()
-        defer { cleanup(dir) }
-
-        let all = store.readAll()
-        #expect(all.isEmpty)
-    }
 }

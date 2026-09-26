@@ -40,11 +40,6 @@ public final class JSONSettingsStore: @unchecked Sendable {
         writeFile(dict)
     }
 
-    /// Returns the full settings dictionary (for migration/debugging).
-    public func readAll() -> [String: Any] {
-        readFile()
-    }
-
     // MARK: - Default Path
 
     public static func defaultFileURL() -> URL {

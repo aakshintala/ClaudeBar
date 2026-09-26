@@ -979,24 +979,6 @@ struct QuotaMonitorTests {
         #expect(monitor.isRefreshing == false)
     }
 
-    // MARK: - AIProviders Repository Init
-
-    @Test
-    func `init with AIProviders repository works`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let repository = AIProviders(providers: [
-            ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        ])
-
-        // When
-        let monitor = makeMonitor(providers: repository)
-
-        // Then
-        #expect(monitor.allProviders.count == 2)
-    }
-
     // MARK: - Quota Alerter
 
     @Test

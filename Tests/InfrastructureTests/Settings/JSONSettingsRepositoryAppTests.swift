@@ -39,23 +39,6 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo.themeMode() == "dark")
     }
 
-    @Test
-    func `userHasChosenTheme defaults to false`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.userHasChosenTheme() == false)
-    }
-
-    @Test
-    func `setUserHasChosenTheme persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setUserHasChosenTheme(true)
-        #expect(repo.userHasChosenTheme() == true)
-    }
-
     // MARK: - Background Sync
 
     @Test

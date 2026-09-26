@@ -62,19 +62,6 @@ public enum AppLog {
     
     /// Logger for notification operations
     public static let notifications = CategoryLogger(category: "notifications")
-    
-    /// Logger for update operations
-    public static let updates = CategoryLogger(category: "updates")
-    
-    /// Open the logs directory in Finder
-    public static func openLogsDirectory() {
-        FileLogger.shared.openLogsDirectory()
-    }
-    
-    /// The URL to the logs directory
-    public static var logsDirectoryURL: URL {
-        FileLogger.shared.logsDirectory
-    }
 }
 
 /// A category-specific logger that outputs to both OSLog and file.

@@ -152,11 +152,13 @@ struct ProviderEnableDisableSpec {
     struct PersistEnabledState {
 
         @Test
-        func `enabled state is stored in UserDefaults`() {
-            // Given — isolated UserDefaults
-            let suiteName = "com.claudebar.test.\(UUID().uuidString)"
-            let defaults = UserDefaults(suiteName: suiteName)!
-            let repo = UserDefaultsProviderSettingsRepository(userDefaults: defaults)
+        func `enabled state is stored in settings`() {
+            // Given — isolated settings file
+            let tempDir = FileManager.default.temporaryDirectory
+                .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
+            let fileURL = tempDir.appendingPathComponent("settings.json")
+            defer { try? FileManager.default.removeItem(at: tempDir) }
+            let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
 
             // When — set enabled to false
             repo.setEnabled(false, forProvider: "codex")

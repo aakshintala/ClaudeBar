@@ -52,7 +52,7 @@ struct ProviderIconView: View {
                         .fill(ProviderVisualIdentityLookup.gradient(for: providerId, scheme: colorScheme))
                         .frame(width: size, height: size)
 
-                    Image(systemName: providerSymbol(for: providerId))
+                    Image(systemName: ProviderVisualIdentityLookup.symbolIcon(for: providerId))
                         .font(.system(size: size * 0.45, weight: .bold))
                         .foregroundStyle(.white)
                 }
@@ -85,15 +85,6 @@ struct ProviderIconView: View {
         }
 
         return nil
-    }
-
-    private func providerSymbol(for providerId: String) -> String {
-        switch providerId {
-        case "claude": return "brain.head.profile"
-        case "codex": return "chevron.left.forwardslash.chevron.right"
-        case "opencode-go": return "square.stack.3d.up.fill"
-        default: return "questionmark"
-        }
     }
 }
 

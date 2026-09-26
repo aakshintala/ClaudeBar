@@ -1,7 +1,4 @@
 import Foundation
-#if canImport(AppKit)
-import AppKit
-#endif
 
 /// File-based logger that writes to ~/Library/Logs/ClaudeBar/ClaudeBar.log
 /// Provides user-accessible logs for debugging and support.
@@ -17,12 +14,7 @@ public final class FileLogger: @unchecked Sendable {
     private let fileURL: URL
     private let queue = DispatchQueue(label: "com.tddworks.ClaudeBar.FileLogger")
     private let maxFileSize: UInt64 = 5 * 1024 * 1024  // 5MB
-    
-    /// The directory containing log files
-    public var logsDirectory: URL {
-        fileURL.deletingLastPathComponent()
-    }
-    
+
     private init() {
         // ~/Library/Logs/ClaudeBar/ClaudeBar.log
         let logsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
@@ -93,15 +85,5 @@ public final class FileLogger: @unchecked Sendable {
         let oldURL = fileURL.deletingPathExtension().appendingPathExtension("old.log")
         try? FileManager.default.removeItem(at: oldURL)
         try? FileManager.default.moveItem(at: fileURL, to: oldURL)
-    }
-    
-    /// Open the logs directory in Finder
-    public func openLogsDirectory() {
-        NSWorkspace.shared.open(logsDirectory)
-    }
-
-    /// Open the current log file in TextEdit
-    public func openCurrentLogFile() {
-        NSWorkspace.shared.open(fileURL)
     }
 }
