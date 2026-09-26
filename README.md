@@ -130,8 +130,8 @@ Then press `Cmd+R` in Xcode to run. The app will appear in your menu bar. Click 
 
 QuotaBar can tell Claude Code sessions how much quota is left, so agents can
 route work ("Claude weekly is at 12%, delegate to Codex") and hold back
-expensive runs. It uses Claude Code's HTTP hooks, answered by the app itself:
-no extra process per session.
+expensive runs. The app answers Claude Code hooks itself: no extra process
+stays running per session.
 
 1. Settings → "Quota Feed" → enable. It listens on `127.0.0.1:8787` only.
 2. Add to `~/.claude/settings.json`:
@@ -139,11 +139,15 @@ no extra process per session.
 ```json
 {
   "hooks": {
-    "SessionStart": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:8787/hooks/session-start", "timeout": 3 }] }],
+    "SessionStart": [{ "hooks": [{ "type": "command", "timeout": 3,
+      "command": "curl -s --max-time 2 -X POST -H 'Content-Type: application/json' --data-binary @- http://127.0.0.1:8787/hooks/session-start || true" }] }],
     "UserPromptSubmit": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:8787/hooks/prompt", "timeout": 2 }] }]
   }
 }
 ```
+
+SessionStart uses `curl` because Claude Code does not run HTTP hooks for that
+event. `curl` passes the hook input through, so the app knows the session.
 
 - **Session start** adds the full feed to context: one line per healthy
   provider, with reset times only on buckets that need attention.
