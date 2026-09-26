@@ -3,7 +3,7 @@ import Foundation
 /// Represents a point-in-time snapshot of usage quotas for an AI provider.
 /// This is an aggregate root that collects all quota information for a provider.
 public struct UsageSnapshot: Sendable, Equatable {
-    /// The provider ID this snapshot belongs to (e.g., "claude", "codex", "gemini")
+    /// The provider ID this snapshot belongs to (e.g., "claude", "codex", "cursor")
     public let providerId: String
 
     /// All quotas captured in this snapshot (empty for API accounts)

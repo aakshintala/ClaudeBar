@@ -10,7 +10,7 @@ public struct UsageQuota: Sendable, Equatable, Hashable {
     /// The type of quota (session, weekly, model-specific)
     public let quotaType: QuotaType
 
-    /// The provider ID this quota belongs to (e.g., "claude", "codex", "gemini")
+    /// The provider ID this quota belongs to (e.g., "claude", "codex", "cursor")
     public let providerId: String
 
     /// When this quota will reset (if known)

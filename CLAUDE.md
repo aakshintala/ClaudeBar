@@ -1,368 +1,104 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+QuotaBar is a macOS menu bar app (Swift 6, SwiftUI, macOS 15+) that shows how much of each AI coding subscription is left and serves the same data to other tools over a localhost HTTP feed. It started as a fork of ClaudeBar and was cut down to four providers; read the code, not old upstream docs or issues.
 
-## Project Overview
+## Providers
 
-ClaudeBar is a macOS menu bar application that monitors AI coding assistant usage quotas (Claude, Codex, Gemini, GitHub Copilot, Antigravity, Z.ai, AWS Bedrock, Amp Code, Kimi, OpenCode Go, Oh My Pi). It probes CLI tools and APIs to fetch quota information and displays it in a menu bar interface with system notifications for status changes.
+| id | Name | Probe | Credentials read |
+|----|------|-------|------------------|
+| `claude` | Claude | `ClaudeAPIUsageProbe` | Claude Code OAuth: `~/.claude/.credentials.json` or Keychain item `Claude Code-credentials` |
+| `codex` | Codex | `CodexAPIUsageProbe` | `~/.codex/auth.json` |
+| `cursor` | Cursor | `CursorUsageProbe` | token from Cursor's `state.vscdb` via `sqlite3` |
+| `opencode-go` | OpenCode Go | `OpenCodeUsageProbe` | `$XDG_DATA_HOME/opencode/auth.json` |
 
-## Build & Test Commands
+All four call HTTP APIs; nothing drives an interactive CLI. The id is the settings key and the feed id: never change one that has shipped.
 
-The project uses [Tuist](https://tuist.io) for dependency management and Xcode project generation.
+The Keychain item `Claude Code-credentials` belongs to Claude Code and trusts only `/usr/bin/security`, so the Claude loader reads and writes it through `security` (over stdin, never argv). Calling `SecItem*` on it would prompt the user.
 
-### Quick Start
+## Layers
 
-```bash
-# Install Tuist (if not installed)
-brew install tuist
+| Layer | Path | Holds |
+|-------|------|-------|
+| Domain | `Sources/Domain/` | `AIProvider`, `UsageProbe`, `UsageSnapshot`/`UsageQuota`, `QuotaMonitor`, `ProviderSettingsRepository`, `QuotaAlerter` |
+| Infrastructure | `Sources/Infrastructure/` | probes and credential loaders (one folder per provider), settings file, feed server, notifications, logging, `runProcess` |
+| App | `Sources/App/` | `QuotaBarApp` (composition root), popover and settings views, `AppSettings`, themes, `StatusBarIconDriver` |
 
-# Install dependencies
-tuist install
+- `QuotaMonitor` is the single source of truth. Views read it directly; there is no view model.
+- `QuotaMonitor.refresh(force:)` refreshes all enabled providers concurrently, skips a snapshot younger than `minimumSnapshotAge` (60 s) unless forced, and joins a refresh already in flight. The popover, the refresh button (`force: true`), the background loop and the feed all go through it.
+- `ClaudeAPIUsageProbe` also caches its snapshot for `snapshotCacheTTL` (300 s), even on a forced refresh, because the usage endpoint rate-limits hard.
+- `UsageQuota.status` is pace-aware, so the popover, alerts and feed agree on healthy/warning/critical/depleted.
+- A quota is a percent meter, a balance meter (`balanceRemaining`/`balanceUsed`/`balanceCap` in `usd` or `credits`), or a units count (`unitsUsed`/`unitsLimit`). Probes set `resetsAt`; reset text is formatted once, at the edge.
 
-# Generate Xcode project and open
-tuist generate
-open ClaudeBar.xcworkspace
-```
-
-### Build & Test
-
-```bash
-# Build the project
-tuist build
+## Adding a provider
 
-# Build release configuration
-tuist build ClaudeBar -C Release
-```
+Every provider is the one `AIProvider` class; what differs is its `UsageProbe`. Use the `add-provider` skill (`.claude/skills/add-provider/SKILL.md`). In short:
 
-### Running Tests
+1. Write the probe test-first in `Sources/Infrastructure/<Name>/`, with a static parser tested on a captured response and the HTTP call tested through `MockNetworkClient`. Reuse `NetworkClient.send(_:label:)` and `parseISO8601` from `Shared/ProbeHelpers.swift`.
+2. Register it with one line in the `providers` list in `Sources/App/QuotaBarApp.swift`.
+3. Add its colour, symbol and icon asset to `Sources/App/Views/ProviderVisualIdentity.swift` and `Assets.xcassets`.
 
-**Do not use `tuist test`.** It regenerates the project with a scheme set that
-drops the shared `ClaudeBar` scheme's test action, then exits **0** reporting
-"The scheme's test action has no tests to run, finishing early." It is a silent
-false pass — it will green-light a broken branch. This affects every scheme
-(`ClaudeBar`, `Domain`, `Infrastructure`, `AcceptanceTests`), not just one.
+Add a settings sub-protocol of `ProviderSettingsRepository` only when the provider needs its own setting. API keys (OpenRouter is next, Muse later) belong in the Keychain, in items QuotaBar creates and reads with `SecItem*`, not in the settings file or UserDefaults. That credential store does not exist yet; the first API-key provider builds it.
 
-Always `tuist generate` first, then drive `xcodebuild` directly:
+## Settings
 
-```bash
-# Regenerate schemes (required after tuist test has clobbered them)
-tuist generate --no-open
+One JSON file, `~/.quotabar/settings.json`, modelled by the Codable `SettingsFile` and owned by `JSONSettingsRepository` (read once at launch, whole file rewritten atomically on each change). `AppSettings` is the `@Observable` facade SwiftUI binds to.
 
-# Run all tests (333 tests across DomainTests, InfrastructureTests, AcceptanceTests)
-xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar \
-  -destination 'platform=macOS'
+| Key | Meaning |
+|-----|---------|
+| `app.themeMode` | `dark` or `light` |
+| `app.backgroundSyncEnabled`, `app.backgroundSyncInterval` | background refresh loop (60 s floor, doubled on battery) |
+| `app.quotaAlertsEnabled` | system notifications when a quota's status worsens |
+| `feed.enabled`, `feed.port` | localhost feed (default off, port 8787) |
+| `providers.<id>.isEnabled` | per-provider toggle |
 
-# Run a single test target
-xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar \
-  -destination 'platform=macOS' -only-testing:DomainTests
+Keys the struct does not model are dropped on the next write. Migrations run at load: `~/.claudebar/settings.json` moves to the new path once if the new file is missing, and an old `mcp` section is read as `feed` when `feed` is absent.
 
-# Run tests with coverage
-xcodebuild test -workspace ClaudeBar.xcworkspace -scheme ClaudeBar \
-  -destination 'platform=macOS' -enableCodeCoverage YES \
-  -resultBundlePath TestResults.xcresult
-```
-
-Verify a run actually executed tests — look for `Test run with N tests ... passed`
-and `** TEST SUCCEEDED **`. A run that reports no test count ran nothing.
+## Quota feed
 
-**Key files:**
-- `Project.swift` - Tuist project definition (targets, dependencies, build settings)
-- `Tuist/Package.swift` - External dependency declarations
-- `Tuist.swift` - Tuist configuration
+When `feed.enabled` is on, `FeedServerController` runs `QuotaHTTPServer` on `127.0.0.1:<feed.port>` (loopback only; requests whose `Host` is not `127.0.0.1` or `localhost` are rejected).
 
-**Note:** `*.xcodeproj` and `*.xcworkspace` are git-ignored since they're generated by Tuist.
+| Endpoint | Does |
+|----------|------|
+| `GET /quotas` | refreshes through the monitor (waits at most 20 s), then returns `QuotaFeedDTO` JSON |
+| `POST /hooks/session-start` | Claude Code SessionStart hook: the cached feed as context text |
+| `POST /hooks/prompt` | Claude Code UserPromptSubmit hook: speaks only when a bucket got worse this session |
 
-## Architecture
+The hooks never trigger a probe. The only other consumer of `/quotas` is the pi status extension at `~/work/pi-extensions/extensions/status/quota.ts`; change it in step with any change to the DTO shape.
 
-> **Full documentation:** [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)
+## Themes
 
-The project follows a **layered architecture** with `QuotaMonitor` as the single source of truth:
-
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| **Domain** | `Sources/Domain/` | Pure business logic, rich models, protocols |
-| **Infrastructure** | `Sources/Infrastructure/` | Probes, storage, adapters, network |
-| **App** | `Sources/App/` | SwiftUI views consuming domain directly |
-
-### Key Patterns
-
-- **Single Source of Truth** - `QuotaMonitor` owns all provider state
-- **ISP (Interface Segregation)** - Provider-specific repository sub-protocols:
-  - `ProviderSettingsRepository` (base) - `isEnabled` for simple providers
-  - `ZaiSettingsRepository` extends base - adds Z.ai config path + env var
-  - `CopilotSettingsRepository` extends base - adds env var + credentials
-- **SRP (Single Responsibility)** - Each provider owns only its concerns
-- **Protocol-Based DI** - `@Mockable` protocols enable testing without real CLI/network
-- **Chicago School TDD** - Tests verify state changes, not method calls
-- **No ViewModel/AppState** - Views consume `QuotaMonitor` directly
-
-### Repository Protocol Hierarchy (ISP)
-
-```
-ProviderSettingsRepository (base)
-├── isEnabled(), setEnabled()
-│
-├── ZaiSettingsRepository: ProviderSettingsRepository
-│   ├── zaiConfigPath(), setZaiConfigPath()
-│   └── glmAuthEnvVar(), setGlmAuthEnvVar()
-│
-├── CopilotSettingsRepository: ProviderSettingsRepository
-│   ├── copilotAuthEnvVar(), setCopilotAuthEnvVar()
-│   └── GitHub credentials: save/get/delete token & username
-│
-└── KimiSettingsRepository: ProviderSettingsRepository
-    ├── kimiProbeMode(), setKimiProbeMode()
-    └── Probe mode: CLI (interactive kimi CLI) or API (HTTP with cookie auth)
-```
-
-**Provider Dependencies:**
-| Provider | Repository Type |
-|----------|----------------|
-| Claude, Codex, Gemini, Antigravity, Amp Code, Kiro, Cursor, OpenCode Go, Oh My Pi | `ProviderSettingsRepository` |
-| Z.ai | `ZaiSettingsRepository` |
-| Copilot | `CopilotSettingsRepository` |
-| Bedrock | `BedrockSettingsRepository` |
-| Kimi | `KimiSettingsRepository` |
-| MiniMax | `MiniMaxSettingsRepository` |
-
-### Settings Storage
-
-All settings are persisted in a single JSON file (`~/.claudebar/settings.json`) via `JSONSettingsRepository`.
-
-```
-Sources/Infrastructure/Storage/
-└── JSONSettingsRepository.swift     # SettingsFile (Codable) + repository
-
-Sources/App/Settings/
-└── AppSettings.swift               # @Observable wrapper for SwiftUI reactivity
-```
-
-- `SettingsFile` — Codable struct for the whole file: `app.{themeMode, backgroundSyncEnabled, backgroundSyncInterval, quotaAlertsEnabled}`, `feed.{enabled, port}`, `providers.{id}.isEnabled`. Missing keys take defaults; unmodelled keys drop on the next write. Legacy `mcp.*` is read if `feed` is absent and mirrored on write for older installed builds.
-- `JSONSettingsRepository` — reads the file once, keeps it in memory, rewrites it atomically on `update { }`; implements `ProviderSettingsRepository`.
-- `AppSettings` — `@Observable` facade for SwiftUI.
-
-### Theme System
-
-> **Full documentation:** [docs/architecture/THEME_DESIGN.md](docs/architecture/THEME_DESIGN.md)
-
-The app uses a **protocol-based theme system** (`AppThemeProvider`) for pluggable themes:
-
-```
-Sources/App/Theme/
-├── AppThemeProvider.swift      # Protocol definition
-├── ThemeRegistry.swift         # Theme management
-├── ThemeEnvironment.swift      # SwiftUI environment key
-└── Themes/
-    ├── DarkTheme.swift         # Purple-pink glassmorphism
-    ├── LightTheme.swift        # Light mode variant
-    ├── CLITheme.swift          # Terminal aesthetic
-    └── ChristmasTheme.swift    # Festive with snowfall
-```
-
-**Adding a New Theme:**
-1. Create `Sources/App/Theme/Themes/MyTheme.swift` implementing `AppThemeProvider`
-2. Register in `ThemeRegistry.registerBuiltInThemes()`
-3. Add case to `ThemeMode` enum in `Theme.swift`
-
-### Adding a New AI Provider
-
-Use the **add-provider** skill to guide you through adding new AI providers following TDD patterns:
-
-```
-Tell Claude Code: "I want to add a new provider for [ProviderName]"
-```
-
-The skill will guide you through:
-
-1. **Parsing Tests** → Create tests for API/CLI response parsing first
-2. **Probe Behavior Tests** → Test detection and error handling with mocks
-3. **Probe Implementation** → Implement `UsageProbe` in `Sources/Infrastructure/CLI/`
-4. **Registration** → One `provider(id, name, probe)` line in `ClaudeBarApp.init()` (no provider class to write)
-
-**Repository Selection (ISP):**
-- **Simple provider** (no special config) → Use base `ProviderSettingsRepository`
-- **Provider with config/credentials** → Create a new sub-protocol extending base
-
-```swift
-// If your provider needs special settings, create a sub-protocol:
-public protocol MyProviderSettingsRepository: ProviderSettingsRepository {
-    func mySpecialConfig() -> String
-    func setMySpecialConfig(_ value: String)
-}
-
-// Then add implementation to JSONSettingsRepository
-```
-
-**Skill location:** `.claude/skills/add-provider/SKILL.md`
-
-**Reference implementations:**
-- `AntigravityProvider` - Simple provider using base `ProviderSettingsRepository`
-- `ZaiProvider` - Extended with `ZaiSettingsRepository` for config path
-- `CopilotProvider` - Extended with `CopilotSettingsRepository` for config + credentials
-
-## Assets
-
-The project uses a standard Xcode asset catalog for images:
-
-```
-Sources/App/Resources/
-├── Assets.xcassets/           # Used at runtime
-│   ├── AppIcon.appiconset/    # App icon (all sizes)
-│   ├── AppLogo.imageset/      # App logo
-│   ├── ClaudeIcon.imageset/   # Provider icons (PNG @1x, @2x, @3x)
-│   ├── CodexIcon.imageset/
-│   ├── CopilotIcon.imageset/
-│   ├── GeminiIcon.imageset/
-│   ├── OpenCodeIcon.imageset/
-│   └── AntigravityIcon.imageset/
-├── ClaudeIcon.svg             # Source SVG files (kept for reference)
-├── CodexIcon.svg
-├── CopilotIcon.png
-├── GeminiIcon.svg
-└── AntigravityIcon.svg
-```
-
-- **Runtime**: PNGs from `Assets.xcassets` loaded via `NSImage(named:)`
-- **Source**: SVGs kept as original files for future regeneration
-
-## Versioning & Release
-
-### How Version Updates Work (with Tuist)
-
-The release workflow updates version before Tuist generates the project:
-
-```
-1. GitHub Action triggered (tag v1.0.0 or manual input)
-2. Update Info.plist ← PlistBuddy sets CFBundleShortVersionString
-3. tuist generate   ← Reads updated Info.plist
-4. xcodebuild       ← Builds app with correct version
-5. Sparkle appcast  ← Generated with version for auto-updates
-```
-
-**Key files:**
-- `Sources/App/Info.plist` - Source of truth for version (`CFBundleShortVersionString`, `CFBundleVersion`)
-- `Project.swift` - References Info.plist: `infoPlist: .file(path: "Sources/App/Info.plist")`
-
-### Manual Version Update (Local Development)
-
-```bash
-# Update version in Info.plist
-/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString 1.0.0" Sources/App/Info.plist
-/usr/libexec/PlistBuddy -c "Set :CFBundleVersion 1" Sources/App/Info.plist
-
-# Regenerate Xcode project
-tuist generate
-```
-
-### Creating a Release
-
-```bash
-# Tag and push to trigger release workflow
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-Or use the manual workflow dispatch in GitHub Actions with version input.
+`AppTheme` is a concrete struct with two values, `AppTheme.dark` and `AppTheme.light` (`Sources/App/Theme/AppTheme.swift`), chosen by `app.themeMode` and passed through the SwiftUI environment. A new theme is a new static value added to `AppTheme.all`.
 
 ## Logging
 
-The app uses a **dual-output logging system** via `AppLog` in `Sources/Infrastructure/Logging/`:
-
-- **OSLog** (for developers): Full privacy controls, visible in Console.app
-- **File** (for users): Persistent logs at `~/Library/Logs/ClaudeBar/ClaudeBar.log`
-
-### AppLog Categories
-
-```swift
-AppLog.monitor        // QuotaMonitor operations
-AppLog.providers      // AI provider lifecycle  
-AppLog.probes         // CLI probe execution
-AppLog.network        // HTTP requests/responses
-AppLog.credentials    // Token management (redact sensitive data!)
-AppLog.ui             // SwiftUI view lifecycle
-AppLog.notifications  // System notifications
-AppLog.updates        // Sparkle updates
-```
-
-### Log Levels and Output
-
-| Level | Method | OSLog | File | Use Case |
-|-------|--------|-------|------|----------|
-| `debug` | `.debug()` | ✅ | ❌ | Development diagnostics (too verbose for file) |
-| `info` | `.info()` | ✅ | ✅ | Informational events |
-| `notice` | `.notice()` | ✅ | ✅ | Significant events |
-| `warning` | `.warning()` | ✅ | ✅ | Potential issues |
-| `error` | `.error()` | ✅ | ✅ | Recoverable errors |
-
-### Privacy Rules
-
-Since `AppLog` uses simple String parameters (not OSLog interpolation), you must manually redact sensitive data:
-
-```swift
-// ✅ Correct - redact sensitive data
-AppLog.credentials.info("Token refreshed for provider")
-AppLog.probes.error("Probe failed: \(error.localizedDescription)")
-
-// ❌ Wrong - exposes secrets in file log
-AppLog.credentials.info("Token: \(accessToken)")
-```
-
-For sensitive debugging that needs OSLog privacy controls, use OSLog directly.
-
-### File Logging Details
-
-- **Location**: `~/Library/Logs/ClaudeBar/ClaudeBar.log`
-- **Rotation**: Rotates to `ClaudeBar.old.log` at 5MB
-- **Format**: `[YYYY-MM-DD HH:MM:SS] [LEVEL] [category] message`
-- **Access**: Settings → "Open Logs Folder" button
-
-### Viewing Logs
-
-**File logs (for users):**
-```bash
-# Open in Finder (or use Settings → Open Logs Folder)
-open ~/Library/Logs/ClaudeBar/
-
-# Tail the log
-tail -f ~/Library/Logs/ClaudeBar/ClaudeBar.log
-```
-
-**OSLog (for developers):**
-```bash
-# Console.app filter
-subsystem:com.tddworks.ClaudeBar
-
-# Terminal - show all levels (including debug)
-log show --predicate 'subsystem == "com.tddworks.ClaudeBar"' --info --debug --last 1h
-
-# Terminal - errors only
-log show --predicate 'subsystem == "com.tddworks.ClaudeBar" AND messageType == error' --last 1h
-
-# Live stream (for debugging)
-log stream --predicate 'subsystem == "com.tddworks.ClaudeBar"' --info --debug
-```
-
-### Debugging Probe Issues
-
-When a probe fails (e.g., `claude /usage`), all errors are logged with context:
+`AppLog.<category>` (`monitor`, `providers`, `probes`, `network`, `credentials`, `ui`, `notifications`) writes to OSLog under subsystem `com.aakshintala.subscriptionusagebar` and, from `info` up, to `~/Library/Logs/QuotaBar/QuotaBar.log` (rotated to `QuotaBar.old.log` at 5 MB). Messages are plain strings with public privacy, so redact tokens and keys before logging.
 
 ```bash
-# File log - grep for probe issues
-grep -i "probe" ~/Library/Logs/ClaudeBar/ClaudeBar.log
-
-# OSLog - probe-specific logs
-log show --predicate 'subsystem == "com.tddworks.ClaudeBar" AND category == "probes"' --info --debug --last 1h
+tail -f ~/Library/Logs/QuotaBar/QuotaBar.log
+log stream --predicate 'subsystem == "com.aakshintala.subscriptionusagebar"' --info --debug
 ```
 
-Common error patterns logged:
-- `"Claude probe failed: token has expired"` → Re-login required
-- `"Claude probe blocked: folder trust required"` → Trust the folder in Claude CLI
-- `"Codex probe failed: data not available yet"` → Wait for Codex to sync
-- `"Gemini probe failed: no access token"` → Re-authenticate with Gemini CLI
-- `"Antigravity probe failed: server not found"` → Ensure Antigravity app is running locally
+## Build and test
+
+Tuist generates `QuotaBar.xcworkspace` (git-ignored). Targets: `QuotaBar` (app), `Domain`, `Infrastructure`, and the test bundles `DomainTests`, `InfrastructureTests`, `AcceptanceTests`, all run by the shared `QuotaBar` scheme.
+
+```bash
+tuist install
+tuist generate --no-open
+xcodebuild test -workspace QuotaBar.xcworkspace -scheme QuotaBar -destination 'platform=macOS' \
+  2>&1 | grep -E 'error:|✘|Test run with|TEST (SUCCEEDED|FAILED)'
+tuist build                     # Debug
+tuist build QuotaBar -C Release # Release: QuotaBar.app, executable Contents/MacOS/QuotaBar
+```
+
+Run tests only through `xcodebuild` as above. `tuist test` regenerates the scheme without its test action, runs nothing and exits 0, a silent false pass; if it has been run, `tuist generate --no-open` restores the scheme.
+
+Green is `** TEST SUCCEEDED **` with no `✘`. xcodebuild prints one `Test run with N tests` line per bundle; the suite total is their sum (343 as of 2026-09-26: 18 + 141 + 184). A run with no such lines ran nothing. Record the new total in commit messages.
+
+Tests are Swift Testing (`@Test`, `#expect`) in Chicago style: stub `@Mockable` protocols to return data and assert on resulting state; use `verify()` only at real boundaries. Shared fixtures live in `Tests/Support/`.
+
+Bundle id is `com.aakshintala.subscriptionusagebar`; keep it, since changing it resets notification permission. Version lives in `Sources/App/Info.plist`. There is no auto-update and no release workflow; CI (`.github/workflows/build.yml`, `tests.yml`) builds and tests on push and PR.
 
 ## Dependencies
 
-- **Sparkle**: Auto-update framework for macOS
-- **Mockable**: Protocol mocking for tests via Swift macros
-- **Tuist**: Xcode project generation for SwiftUI previews (`ENABLE_DEBUG_DYLIB`)
+`Mockable` (protocol mocks for tests) and `MenuBarExtraAccess` (status item access for `MenuBarExtra`), declared in `Tuist/Package.swift`.

@@ -101,15 +101,15 @@ struct QuotaFeedTextTests {
     func `unavailable and never-probed providers say so`() {
         let text = QuotaFeedText.render(feed([
             provider("codex", unavailable: "token has expired", quotas: []),
-            provider("gemini", ageSeconds: nil, quotas: [])
-        ], disabled: ["zai"]), now: now)
+            provider("cursor", ageSeconds: nil, quotas: [])
+        ], disabled: ["opencode-go"]), now: now)
 
         #expect(text == """
         codex - unavailable: token has expired
 
-        gemini - no data yet
+        cursor - no data yet
 
-        (disabled in QuotaBar: zai)
+        (disabled in QuotaBar: opencode-go)
         """)
     }
 }

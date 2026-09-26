@@ -18,4 +18,3 @@ build/
 # Personal Claude Code settings (per-project, never commit)
 .claude/settings.local.json
 
-# MCP server (local-only Node tooling)

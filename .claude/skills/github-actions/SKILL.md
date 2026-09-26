@@ -1,104 +1,32 @@
 ---
 name: github-actions
 description: |
-  Manage ClaudeBar's GitHub Actions CI/CD pipelines: build, test, and release workflows.
-  Use this skill when:
-  (1) Setting up secrets for CI/CD (certificate, API key, Sparkle key, Codecov)
-  (2) Creating a new release — tag-based or manual workflow_dispatch
-  (3) Triggering or explaining the build.yml, tests.yml, or release.yml workflows
-  (4) Debugging release failures (signing, notarization, appcast)
-  (5) Managing beta vs stable channels for Sparkle auto-updates
-  (6) User says "release a new version", "push a tag", "set up CI secrets", "why did the release fail"
+  QuotaBar's CI workflows (build.yml, tests.yml). Use when a CI run fails, when changing
+  a workflow, or when asked what CI checks.
 ---
 
-# ClaudeBar GitHub Actions
+# QuotaBar CI
 
-Three workflows live in `.github/workflows/`. See reference files for setup and troubleshooting.
+Two workflows in `.github/workflows/`, both on `macos-26`, triggered by pushes and pull requests to `main` and `develop`:
 
-## Workflows at a Glance
+| Workflow | Does |
+|----------|------|
+| `build.yml` | `tuist install`, `tuist generate`, then `xcodebuild build` of the `QuotaBar` scheme in `QuotaBar.xcworkspace`, Debug and Release |
+| `tests.yml` | the same setup, then `xcodebuild test` with coverage, and uploads the report to Codecov (`CODECOV_TOKEN` secret). Also runs on manual dispatch. |
 
-| Workflow | Trigger | Runner | Purpose |
-|----------|---------|--------|---------|
-| `build.yml` | push/PR to main, develop | macos-15 | Debug + release build verification |
-| `tests.yml` | push/PR to main, develop | macos-26 | Unit tests + Codecov coverage upload |
-| `release.yml` | `v*` tag push OR manual | macos-15 | Sign → notarize → DMG → GitHub release → appcast |
+There is no release workflow, signing, notarisation or auto-update. Releases are local Release builds (`tuist build QuotaBar -C Release`).
 
-## Create a Release
+## Keeping CI honest
 
-**Option A — Tag (recommended):**
+- Tests run through `xcodebuild test`, never `tuist test` (it exits 0 having run nothing). A run is real only if the log has one `Test run with N tests` line per bundle and `** TEST SUCCEEDED **`.
+- Both workflows use the runner's bundled Xcode on purpose: Tuist's SwiftSyntax macro prebuilts must match that toolchain, and a separately installed Swift broke the Release build before.
+- If you rename the scheme or workspace in `Project.swift`, change both workflows in the same commit.
+
+## Debugging a failure
 
 ```bash
-# 1. Update CHANGELOG.md with release notes for this version
-# 2. Commit and push
-git add CHANGELOG.md
-git commit -m "docs: add release notes for v1.2.0"
-git push origin main
-
-# 3. Tag and push — this triggers release.yml automatically
-git tag v1.2.0 && git push origin v1.2.0
-
-# Beta / pre-release (automatically flagged on GitHub)
-git tag v1.2.0-beta.1 && git push origin v1.2.0-beta.1
+gh run list --limit 5
+gh run view <run-id> --log-failed
 ```
 
-**Option B — Manual dispatch:**
-
-1. Go to **Actions → Release → Run workflow**
-2. Enter version (e.g. `1.2.0` or `1.2.0-beta.1`)
-3. Optionally toggle `publish_appcast` and `debug`
-
-**Supported version formats:** `X.Y.Z`, `X.Y.Z-beta`, `X.Y.Z-beta.N`, `X.Y.Z-alpha.N`, `X.Y.Z-rc.N`
-
-## Secrets Required
-
-| Secret | Required For | See |
-|--------|-------------|-----|
-| `APPLE_CERTIFICATE_P12` | Code signing | [secrets-setup.md](references/secrets-setup.md) |
-| `APPLE_CERTIFICATE_PASSWORD` | Code signing | [secrets-setup.md](references/secrets-setup.md) |
-| `APP_STORE_CONNECT_API_KEY_P8` | Notarization | [secrets-setup.md](references/secrets-setup.md) |
-| `APP_STORE_CONNECT_KEY_ID` | Notarization | [secrets-setup.md](references/secrets-setup.md) |
-| `APP_STORE_CONNECT_ISSUER_ID` | Notarization | [secrets-setup.md](references/secrets-setup.md) |
-| `SPARKLE_EDDSA_PRIVATE_KEY` | In-app auto-updates | [secrets-setup.md](references/secrets-setup.md) |
-| `CODECOV_TOKEN` | Coverage upload | [secrets-setup.md](references/secrets-setup.md) |
-| `APP_IDENTITY` | Optional signing override | [secrets-setup.md](references/secrets-setup.md) |
-
-## What the Release Pipeline Does
-
-```
-git tag v1.2.0
-      │
-      ▼
-release.yml
-  1. Extract + validate version (SemVer)
-  2. Update Info.plist (CFBundleShortVersionString + CFBundleVersion = run_number)
-  3. tuist install → tuist generate
-  4. xcodebuild archive (arm64 + x86_64, unsigned)
-  5. Import Developer ID cert into temp keychain
-  6. codesign with entitlements
-  7. notarytool submit + staple
-  8. Create ZIP + DMG (signed), SHA256 checksums
-  9. Extract release notes from CHANGELOG.md
- 10. Publish GitHub Release (draft: false)
- 11. Generate Sparkle appcast with EdDSA signature
- 12. Deploy appcast to GitHub Pages
-```
-
-## Debugging Failures
-
-Enable verbose output via **manual dispatch → debug: true**. This prints:
-- P12 certificate details and contents
-- All identities in the signing keychain
-- Certificate subject and expiry dates
-
-For detailed troubleshooting: [troubleshooting.md](references/troubleshooting.md)
-
-## Beta Channel
-
-Pre-release tags (`v1.2.0-beta.1`) automatically:
-- Set GitHub release as `prerelease: true`
-- Add `<sparkle:channel>beta</sparkle:channel>` to the appcast entry
-- Are only offered to users with **Beta Updates** enabled in Settings
-
-Stable releases always win over betas of the same version (stable gets higher build number).
-
-See [release-workflow.md](references/release-workflow.md) for the full beta channel matrix.
+Reproduce locally with the commands in `CLAUDE.md` (`tuist generate --no-open`, then the same `xcodebuild` line).

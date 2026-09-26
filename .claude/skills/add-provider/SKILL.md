@@ -1,253 +1,89 @@
 ---
 name: add-provider
 description: |
-  Guide for adding new AI providers to ClaudeBar using TDD patterns. Use this skill when:
-  (1) Adding a new AI assistant provider (like Antigravity, Cursor, etc.)
-  (2) Creating a usage probe for a CLI tool or local API
-  (3) Following TDD to implement provider integration
-  (4) User asks "how do I add a new provider" or "create a provider for X"
+  Add a new usage provider to QuotaBar (a UsageProbe plus one registration line), test-first.
+  Use when adding a provider such as OpenRouter, writing a UsageProbe for an HTTP API,
+  or when asked "how do I add a provider".
 ---
 
-# Add Provider to ClaudeBar
+# Add a provider to QuotaBar
 
-Add new AI providers following established TDD patterns and architecture.
+Every provider is the one `AIProvider` class, configured with an id, a display name and a `UsageProbe`. Adding a provider is a probe, one registration line and its visual identity. Read `CLAUDE.md` first for the test command and the settings file.
 
-## Architecture Overview
+Reference probes:
 
-> **Full architecture:** [docs/ARCHITECTURE.md](../../../docs/ARCHITECTURE.md)
+| Probe | Shows |
+|-------|-------|
+| `Sources/Infrastructure/OpenCode/OpenCodeUsageProbe.swift` | smallest case: API key from a file, one GET, a static parser |
+| `Sources/Infrastructure/Codex/CodexAPIUsageProbe.swift` | OAuth refresh, a balance meter in `credits` |
+| `Sources/Infrastructure/Cursor/CursorUsageProbe.swift` | units meter (`unitsUsed`/`unitsLimit`), token cached until JWT expiry |
+| `Sources/Infrastructure/Claude/ClaudeAPIUsageProbe.swift` | pure parser split from the HTTP shell, snapshot cache, 429 backoff |
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `AIProvider` | `Sources/Domain/Provider/` | Rich domain model with isEnabled state |
-| `UsageProbe` | `Sources/Infrastructure/CLI/` | Fetches quota from CLI/API |
-| Tests | `Tests/InfrastructureTests/CLI/` | Parsing + behavior tests |
+## Steps
 
-## TDD Workflow
+Each step is done when its tests pass in the full `xcodebuild test` run (`** TEST SUCCEEDED **`, no `✘`).
 
-### Phase 1: Parsing Tests (Red → Green)
+### 1. Parser (red, then green)
 
-Create `Tests/InfrastructureTests/CLI/{Provider}UsageProbeParsingTests.swift`:
+Capture a real response body (redact ids and keys) and test a static parser in `Tests/InfrastructureTests/<Name>/<Name>UsageProbeTests.swift`:
 
 ```swift
-import Testing
-import Foundation
-@testable import Infrastructure
-@testable import Domain
-
-@Suite
-struct {Provider}UsageProbeParsingTests {
-
-    static let sampleResponse = """
-                                { /* sample API/CLI response */ }
-                                """
-
-    @Test func `parses quota into UsageQuota`() throws {
-        let data = Data(Self.sampleResponse.utf8)
-        let snapshot = try {Provider}UsageProbe.parseResponse(data, providerId: "{provider-id}")
-        #expect(snapshot.quotas.count > 0)
-    }
-
-    @Test func `maps percentage correctly`() throws { /* ... */ }
-    @Test func `parses reset time`() throws { /* ... */ }
-    @Test func `extracts account email`() throws { /* ... */ }
-    @Test func `handles missing data gracefully`() throws { /* ... */ }
+@Test
+func `parses the usage response into quotas`() throws {
+    let quotas = try <Name>UsageProbe.parseUsageResponse(Data(Self.sample.utf8))
+    #expect(quotas.first?.percentRemaining == 75)
+    #expect(quotas.first?.resetsAt != nil)
 }
 ```
 
-### Phase 2: Probe Behavior Tests (Red → Green)
+Map the response onto `UsageQuota`:
 
-Create `Tests/InfrastructureTests/CLI/{Provider}UsageProbeTests.swift`:
+| Source | Field |
+|--------|-------|
+| percent left (0–100) | `percentRemaining`; `nil` for a balance-only meter |
+| window | `quotaType`: `.session`, `.weekly`, `.modelSpecific(name)`, `.timeLimit(name)` |
+| reset time | `resetsAt: Date?` only; never a pre-formatted string |
+| money or credits | `balanceRemaining`, `balanceUsed`, `balanceCap`, `balanceUnit` (`.usd`, `.credits`) |
+| request counts | `unitsUsed`, `unitsLimit` |
 
-```swift
-import Testing
-import Foundation
-import Mockable
-@testable import Infrastructure
-@testable import Domain
+Status (healthy to depleted) is derived by `UsageQuota.status`; the probe never sets it. Throw `ProbeError.parseFailed` on a body that does not decode.
 
-@Suite
-struct {Provider}UsageProbeTests {
+### 2. Probe (red, then green)
 
-    @Test func `isAvailable returns false when not detected`() async {
-        let mockExecutor = MockCLIExecutor()
-        given(mockExecutor).execute(...).willReturn(CLIResult(output: "", exitCode: 1))
-        let probe = {Provider}UsageProbe(cliExecutor: mockExecutor)
-        #expect(await probe.isAvailable() == false)
-    }
+Test `isAvailable()` and `probe()` with `MockNetworkClient` (stub `request(.any)` with `httpResponse(_:statusCode:)` from `Tests/Support/`) and credentials in a temp directory. Cover success, missing credentials (`isAvailable() == false`, `probe()` throws `.authenticationRequired`), and a 401.
 
-    @Test func `isAvailable returns true when detected`() async { /* ... */ }
-    @Test func `probe throws appropriate error when unavailable`() async { /* ... */ }
-    @Test func `probe returns UsageSnapshot on success`() async { /* ... */ }
-}
-```
+Implement in `Sources/Infrastructure/<Name>/<Name>UsageProbe.swift`:
 
-### Phase 3: Implement Probe
+- Inject `networkClient: any NetworkClient = URLSession.shared` and a credential loader with a test seam (home directory or environment).
+- Send with `networkClient.send(request, label: "<Name>")` from `Shared/ProbeHelpers.swift`; it maps non-200 to `ProbeError` and logs. Parse dates with `parseISO8601`.
+- Return `UsageSnapshot(providerId: "<id>", quotas: quotas, capturedAt: Date())`.
+- Log through `AppLog.probes` and never log a key or token.
 
-Create `Sources/Infrastructure/CLI/{Provider}UsageProbe.swift`:
+### 3. Credentials
 
-```swift
-import Foundation
-import Domain
+- Credentials another tool writes (a CLI's auth file): read them where that tool puts them, as the OpenCode and Codex loaders do.
+- An API key the user pastes into QuotaBar (OpenRouter, Muse): store it in the Keychain with `SecItem*`, in an item QuotaBar creates (service named for QuotaBar and the provider). Never put a key in `settings.json` or UserDefaults. The first provider that needs this builds the shared Keychain store in `Sources/Infrastructure/` with a protocol seam for tests.
+- A setting the user edits (other than the key) gets a sub-protocol of `ProviderSettingsRepository` in Domain, a field in `SettingsFile`, and the probe takes that sub-protocol in its initialiser. Skip this when the provider has nothing to configure.
 
-public struct {Provider}UsageProbe: UsageProbe {
-    private let cliExecutor: any CLIExecutor
-    private let networkClient: any NetworkClient
-    private let timeout: TimeInterval
+### 4. Register
 
-    public init(
-        cliExecutor: (any CLIExecutor)? = nil,
-        networkClient: (any NetworkClient)? = nil,
-        timeout: TimeInterval = 8.0
-    ) {
-        self.cliExecutor = cliExecutor ?? DefaultCLIExecutor()
-        self.networkClient = networkClient ?? URLSession.shared
-        self.timeout = timeout
-    }
-
-    public func isAvailable() async -> Bool {
-        // Detect if provider is available (binary exists, process running, etc.)
-    }
-
-    public func probe() async throws -> UsageSnapshot {
-        // 1. Detect/authenticate
-        // 2. Fetch quota data
-        // 3. Parse and return UsageSnapshot
-    }
-
-    // Static parsing for testability
-    static func parseResponse(_ data: Data, providerId: String) throws -> UsageSnapshot {
-        // Parse response into domain models
-    }
-}
-```
-
-### Phase 4: Register Provider
-
-There is no per-provider class: every provider is one `AIProvider(id:name:probe:settingsRepository:)`.
-Add one line to the `providers` list in `Sources/App/ClaudeBarApp.swift`:
+Add one line to the `providers` list in `Sources/App/QuotaBarApp.swift`:
 
 ```swift
-provider("{provider-id}", "{Provider Name}", {Provider}UsageProbe()),
+provider("<id>", "<Display Name>", <Name>UsageProbe()),
 ```
 
-The id is the settings key (`providers.{id}.isEnabled`) and the feed id; never change it once shipped.
-A probe that needs config takes the settings sub-protocol itself (see ISP section below):
-`{Provider}UsageProbe(settingsRepository: settingsRepository)`.
+The id is the settings key (`providers.<id>.isEnabled`) and the feed id; choose it once. The feed and the pi status extension (`~/work/pi-extensions/extensions/status/quota.ts`) pick the provider up with no change unless the DTO shape changes.
 
-Add visual identity in `Sources/App/Views/Theme.swift`:
+### 5. Visual identity
 
-```swift
-// In AppTheme.providerColor(for:scheme:)
-case "{provider-id}": return /* your color */
+In `Sources/App/Views/ProviderVisualIdentity.swift` add a `case "<id>"` to `color`, `gradient`, `iconAssetName` and `symbolIcon`. Add an icon image set to `Sources/App/Resources/Assets.xcassets`; see [references/provider-icon-guide.md](references/provider-icon-guide.md).
 
-// In AppTheme.providerName(for:)
-case "{provider-id}": return "{Provider Name}"
+A settings card is optional: add one under `Sources/App/Views/Settings/` using `ConfigCard` only when the provider has something to configure (an API key field, for example).
 
-// In AppTheme.providerSymbolIcon(for:)
-case "{provider-id}": return "/* SF Symbol name */"
+## Done when
 
-// In AppTheme.providerIconAssetName(for:)
-case "{provider-id}": return "{Provider}Icon"
-```
-
-## Domain Model Mapping
-
-Map provider responses to existing domain models:
-
-| Source Data | Domain Model |
-|-------------|--------------|
-| Quota percentage | `UsageQuota.percentRemaining` (0-100) |
-| Model/tier name | `QuotaType.modelSpecific("name")` |
-| Reset time | `UsageQuota.resetsAt` (Date) |
-| Account email | `UsageSnapshot.accountEmail` |
-
-## Error Handling
-
-Use existing `ProbeError` enum:
-
-```swift
-ProbeError.cliNotFound("{Provider}")      // Binary/process not found
-ProbeError.authenticationRequired          // Auth token missing/expired
-ProbeError.executionFailed("message")      // Runtime errors
-ProbeError.parseFailed("message")          // Parse errors
-```
-
-## ISP: Creating Provider-Specific Repository Sub-Protocols
-
-If your provider needs special configuration or credentials, create a sub-protocol following ISP:
-
-### Step 1: Define Sub-Protocol in Domain
-
-Add to `Sources/Domain/Provider/ProviderSettingsRepository.swift`:
-
-```swift
-/// {Provider}-specific settings repository, extending base ProviderSettingsRepository.
-public protocol {Provider}SettingsRepository: ProviderSettingsRepository {
-    // Configuration
-    func {provider}ConfigPath() -> String
-    func set{Provider}ConfigPath(_ path: String)
-
-    // Credentials (if needed)
-    func save{Provider}Token(_ token: String)
-    func get{Provider}Token() -> String?
-    func has{Provider}Token() -> Bool
-}
-```
-
-### Step 2: Implement in Infrastructure
-
-Add to `Sources/Infrastructure/Storage/JSONSettingsRepository.swift`:
-
-```swift
-// MARK: - {Provider}SettingsRepository
-
-extension JSONSettingsRepository: {Provider}SettingsRepository {
-    public func {provider}ConfigPath() -> String {
-        store.read(key: "{provider}.configPath") ?? ""
-    }
-
-    public func set{Provider}ConfigPath(_ path: String) {
-        store.write(value: path, key: "{provider}.configPath")
-    }
-}
-```
-
-### Step 3: Give the Probe the Sub-Protocol
-
-```swift
-public init(settingsRepository: any {Provider}SettingsRepository) {
-    self.settingsRepository = settingsRepository
-}
-```
-
-**Existing Examples:**
-- `ZaiSettingsRepository` - config path + env var
-- `CopilotSettingsRepository` - env var + GitHub credentials
-
-## Reference Implementation
-
-See [references/antigravity-example.md](references/antigravity-example.md) for a complete working example showing:
-- Full parsing test suite
-- Probe behavior tests with mocking
-- Probe implementation with process detection
-- Provider class pattern
-
-## Provider Icon
-
-See [references/provider-icon-guide.md](references/provider-icon-guide.md) for creating provider icons:
-- SVG template with rounded rectangle background
-- PNG generation at 1x/2x/3x sizes
-- Asset catalog setup
-- ProviderVisualIdentity extension
-
-## Checklist
-
-- [ ] Parsing tests created and passing
-- [ ] Probe behavior tests created and passing
-- [ ] Probe implementation complete
-- [ ] Provider class created
-- [ ] Provider registered in ClaudeBarApp
-- [ ] Visual identity added to Theme.swift (color, name, icons)
-- [ ] Provider icon SVG created with rounded rect background
-- [ ] Icon PNGs generated (64, 128, 192px)
-- [ ] All 300+ existing tests still pass
+- Parser and probe tests pass, and the full suite total has gone up by the tests you added.
+- `tuist build QuotaBar -C Release` succeeds.
+- With the app running and the feed on, `curl -s 127.0.0.1:8787/quotas` lists the new id with its quotas.
+- `CLAUDE.md`'s provider table and `README.md`'s provider list include it.

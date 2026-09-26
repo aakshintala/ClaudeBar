@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to ClaudeBar will be documented in this file.
+All notable changes to QuotaBar (formerly ClaudeBar; entries before the rename are upstream history) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- Renamed to QuotaBar. Settings move from `~/.claudebar/settings.json` to
+  `~/.quotabar/settings.json` on first launch; logs are now in
+  `~/Library/Logs/QuotaBar/`. The bundle id is unchanged, so notification
+  permission carries over.
+- Four providers remain: Claude, Codex, Cursor and OpenCode Go. Sparkle
+  auto-update, the CLI and Christmas themes and the other providers are removed.
 - Quota reaches Claude Code through HTTP hooks served by the app
   (`/hooks/session-start`, `/hooks/prompt`) instead of the Node stdio MCP
   server, which cost ~93 MB per Claude Code session. `mcp/` is removed. The
@@ -36,7 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The pace tick under quota progress bars now explains itself: hovering the
   bar shows a mode-aware tooltip ("steady usage would leave ~N% remaining by
   now"), so the marker no longer reads as a misaligned rendering glitch.
-=======
 ### Added
 - Claude Extra Usage now reads the current OAuth `spend` payload (with the
   legacy `extra_usage` shape as a tolerant fallback), converts minor units with
