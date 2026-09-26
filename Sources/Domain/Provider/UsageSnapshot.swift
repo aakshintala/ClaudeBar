@@ -52,16 +52,6 @@ public struct UsageSnapshot: Sendable, Equatable {
         quotas.first { $0.quotaType == type }
     }
 
-    /// Finds a quota by its persisted quota key.
-    ///
-    /// Kept for `QuotaMonitor.quota(providerId:quotaKey:)` (part of the
-    /// selection API in item 1, out of scope here even though item 10 lists
-    /// this method as dead).
-    public func quota(forKey key: String) -> UsageQuota? {
-        guard let quotaType = QuotaType(quotaKey: key) else { return nil }
-        return quota(for: quotaType)
-    }
-
     /// The session quota if available
     public var sessionQuota: UsageQuota? {
         quota(for: .session)

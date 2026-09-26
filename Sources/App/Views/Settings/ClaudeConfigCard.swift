@@ -101,7 +101,7 @@ struct ClaudeConfigCard: View {
                         .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
                         .foregroundStyle(theme.textPrimary)
 
-                    Text("Calls the Anthropic API directly using OAuth credentials. Usage data is cached for 15 min to stay under rate limits.")
+                    Text("Calls the Anthropic API directly using OAuth credentials. Usage data is cached for 5 min to stay under rate limits.")
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
                         .foregroundStyle(theme.textTertiary)
                 }

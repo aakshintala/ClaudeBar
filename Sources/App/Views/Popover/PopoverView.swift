@@ -60,7 +60,7 @@ struct PopoverView: View {
                     _ = await quotaAlerter.requestPermission()
                 }
             }
-            await refreshAll()
+            await monitor.refresh()
         }
     }
 
@@ -71,7 +71,7 @@ struct PopoverView: View {
                 .foregroundStyle(theme.textPrimary)
             Spacer()
             Button {
-                Task { await refreshAll() }
+                Task { await monitor.refresh(force: true) }
             } label: {
                 Image(systemName: "arrow.clockwise")
             }
@@ -112,11 +112,5 @@ struct PopoverView: View {
             return "Refreshing…"
         }
         return settings.refreshInterval.label
-    }
-
-    private func refreshAll() async {
-        for provider in monitor.enabledProviders {
-            _ = try? await provider.refresh()
-        }
     }
 }

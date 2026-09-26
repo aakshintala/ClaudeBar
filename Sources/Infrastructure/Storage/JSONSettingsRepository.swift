@@ -71,14 +71,6 @@ public final class JSONSettingsRepository:
         store.write(value: port, key: "mcp.port")
     }
 
-    public func claudeSnapshotCacheTTL() -> TimeInterval {
-        store.read(key: "claude.snapshotCacheTTL") ?? 300
-    }
-
-    public func setClaudeSnapshotCacheTTL(_ ttl: TimeInterval) {
-        store.write(value: ttl, key: "claude.snapshotCacheTTL")
-    }
-
     // MARK: - ProviderSettingsRepository
 
     public func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool {

@@ -22,38 +22,6 @@ struct QuotaFeedServiceTests {
     }
 
     @Test
-    func `two feeds inside coalescing window share capturedAt`() async {
-        let clock = MutableDate(Date(timeIntervalSince1970: 1_700_000_000))
-        let probe = TimestampedUsageProbe { clock.value }
-        let settings = makeSettings()
-        let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
-        let service = QuotaFeedService(monitor: monitor, now: { clock.value })
-
-        let first = await service.currentFeed()
-        clock.value = clock.value.addingTimeInterval(30)
-        let second = await service.currentFeed()
-
-        #expect(first.providers[0].capturedAt == second.providers[0].capturedAt)
-    }
-
-    @Test
-    func `feed after coalescing window has newer capturedAt`() async {
-        let clock = MutableDate(Date(timeIntervalSince1970: 1_700_000_000))
-        let probe = TimestampedUsageProbe { clock.value }
-        let settings = makeSettings()
-        let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
-        let service = QuotaFeedService(monitor: monitor, now: { clock.value })
-
-        let first = await service.currentFeed()
-        clock.value = clock.value.addingTimeInterval(61)
-        let second = await service.currentFeed()
-
-        #expect(second.providers[0].capturedAt! > first.providers[0].capturedAt!)
-    }
-
-    @Test
     func `concurrent feeds during refresh share one capturedAt`() async {
         let gate = RefreshGate()
         let probe = GatedUsageProbe(gate: gate) { Date(timeIntervalSince1970: 1_700_000_000) }
@@ -90,30 +58,6 @@ struct QuotaFeedServiceTests {
         let feed = await service.currentFeed()
 
         #expect(feed.providers[0].unavailable != nil)
-    }
-}
-
-private final class MutableDate: @unchecked Sendable {
-    var value: Date
-    init(_ value: Date) { self.value = value }
-}
-
-private final class TimestampedUsageProbe: UsageProbe, @unchecked Sendable {
-    private let now: @Sendable () -> Date
-
-    init(now: @escaping @Sendable () -> Date) {
-        self.now = now
-    }
-
-    func isAvailable() async -> Bool { true }
-
-    func probe() async throws -> UsageSnapshot {
-        let capturedAt = now()
-        return UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
-            capturedAt: capturedAt
-        )
     }
 }
 

@@ -69,13 +69,6 @@ public protocol AIProvider: AnyObject, Sendable, Identifiable where ID == String
     /// distinguish the two need no extra code.
     @discardableResult
     func refresh(_ kind: RefreshKind) async throws -> UsageSnapshot
-
-    /// An optional lower bound this provider imposes on the *background* poll
-    /// cadence, independent of the user's chosen interval. `nil` means the
-    /// provider has no opinion. Claude in API mode returns 15 min to match its
-    /// snapshot-cache TTL, so a fast user interval can't drive redundant HTTP
-    /// (and 429s) in the background (issue #204).
-    var backgroundRefreshFloor: Duration? { get }
 }
 
 // MARK: - Default Implementations
@@ -91,9 +84,6 @@ public extension AIProvider {
     func refresh(_ kind: RefreshKind) async throws -> UsageSnapshot {
         try await refresh()
     }
-
-    /// Default: no provider-imposed background cadence floor.
-    var backgroundRefreshFloor: Duration? { nil }
 }
 
 import Mockable

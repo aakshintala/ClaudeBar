@@ -3,13 +3,10 @@ import Domain
 
 @MainActor
 public final class QuotaFeedService {
-    public static let coalescingWindow: TimeInterval = 60
     public static let refreshDeadline: TimeInterval = 20
 
     private let monitor: QuotaMonitor
     private let now: @Sendable () -> Date
-    private var lastRefreshCompletedAt: Date?
-    private var inFlightRefresh: Task<Void, Never>?
 
     public init(
         monitor: QuotaMonitor,
@@ -29,36 +26,16 @@ public final class QuotaFeedService {
         QuotaFeedDTO.make(from: monitor.allProviders, at: now())
     }
 
+    /// Freshness and coalescing live in `QuotaMonitor.refresh()`; the feed
+    /// only bounds how long a request waits for it.
     private func refreshIfNeeded() async {
-        let currentTime = now()
-
-        if let lastRefreshCompletedAt,
-           currentTime.timeIntervalSince(lastRefreshCompletedAt) < Self.coalescingWindow {
-            return
-        }
-
-        if let inFlightRefresh {
-            await inFlightRefresh.value
-            return
-        }
-
-        let enabledIds = monitor.enabledProviders.map(\.id)
-        let task = Task {
-            await withTaskGroup(of: Void.self) { group in
-                group.addTask {
-                    await self.monitor.refresh(providerIds: enabledIds, kind: .background)
-                }
-                group.addTask {
-                    try? await Task.sleep(nanoseconds: UInt64(Self.refreshDeadline * 1_000_000_000))
-                }
-                _ = await group.next()
-                group.cancelAll()
+        await withTaskGroup(of: Void.self) { group in
+            group.addTask { await self.monitor.refresh() }
+            group.addTask {
+                try? await Task.sleep(nanoseconds: UInt64(Self.refreshDeadline * 1_000_000_000))
             }
-            self.lastRefreshCompletedAt = self.now()
-            self.inFlightRefresh = nil
+            _ = await group.next()
+            group.cancelAll()
         }
-
-        inFlightRefresh = task
-        await task.value
     }
 }

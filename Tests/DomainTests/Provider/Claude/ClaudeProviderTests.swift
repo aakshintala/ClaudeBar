@@ -162,16 +162,4 @@ struct ClaudeProviderTests {
         let provider2 = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         #expect(provider1.id == provider2.id)
     }
-
-    // MARK: - Background Refresh Floor (issue #204)
-
-    @Test
-    func `background refresh floor is 15 minutes`() {
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-
-        // Floored to the API snapshot-cache TTL so background polling never
-        // outpaces the cache and burns extra requests for no fresher data.
-        #expect(claude.backgroundRefreshFloor == .seconds(900))
-    }
 }

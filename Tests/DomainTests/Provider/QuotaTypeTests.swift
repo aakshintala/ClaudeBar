@@ -25,11 +25,10 @@ struct QuotaTypeTests {
     }
 
     @Test
-    func `fable quota key round trips through persistence`() {
+    func `fable quota has display name and key`() {
         let fable = QuotaType.modelSpecific("fable")
         #expect(fable.displayName == "Fable")
         #expect(fable.quotaKey == "model:fable")
-        #expect(QuotaType(quotaKey: "model:fable") == fable)
     }
 
     @Test

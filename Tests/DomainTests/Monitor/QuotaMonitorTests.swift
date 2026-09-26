@@ -14,7 +14,7 @@ struct QuotaMonitorTests {
 
     /// A clock whose `sleep` suspends until the surrounding task is cancelled,
     /// rather than waiting real wall-clock time. The monitoring loop runs exactly
-    /// one cycle and then parks here; `stopMonitoring()` (or stream termination)
+    /// one cycle and then parks here; `stopMonitoring()`
     /// cancels the loop's task, resuming this with a `CancellationError` so the
     /// loop ends at once. Replacing the old real `Task.sleep(60s)` removes the
     /// timing race that made the continuous-monitoring tests flake under load.
@@ -67,16 +67,38 @@ struct QuotaMonitorTests {
         }
     }
 
+    /// Holds probes until opened; waiting on an open gate returns at once.
+    private actor Gate {
+        private var isOpen = false
+        private var waiters: [CheckedContinuation<Void, Never>] = []
+
+        func wait() async {
+            if isOpen { return }
+            await withCheckedContinuation { waiters.append($0) }
+        }
+
+        func open() {
+            isOpen = true
+            waiters.forEach { $0.resume() }
+            waiters.removeAll()
+        }
+    }
+
     private final class CountingUsageProbe: UsageProbe, @unchecked Sendable {
         let providerId: String
         let counter = RefreshCounter()
+        private let gate: Gate?
+        private let capturedAgo: TimeInterval
 
-        init(providerId: String) {
+        init(providerId: String, gate: Gate? = nil, capturedAgo: TimeInterval = 0) {
             self.providerId = providerId
+            self.gate = gate
+            self.capturedAgo = capturedAgo
         }
 
         func probe() async throws -> UsageSnapshot {
             let count = await counter.increment()
+            await gate?.wait()
             return UsageSnapshot(
                 providerId: providerId,
                 quotas: [
@@ -86,7 +108,7 @@ struct QuotaMonitorTests {
                         providerId: providerId
                     ),
                 ],
-                capturedAt: Date()
+                capturedAt: Date().addingTimeInterval(-capturedAgo)
             )
         }
 
@@ -122,7 +144,7 @@ struct QuotaMonitorTests {
     // MARK: - Single Provider Monitoring
 
     @Test
-    func `monitor can refresh a provider by ID`() async throws {
+    func `monitor refreshes a provider`() async throws {
         // Given
         let settings = makeSettingsRepository()
         let probe = MockUsageProbe()
@@ -139,7 +161,7 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
 
         // When
-        await monitor.refresh(providerId: "claude")
+        await monitor.refresh()
 
         // Then
         #expect(provider.snapshot != nil)
@@ -157,7 +179,7 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
 
         // When
-        await monitor.refreshAll()
+        await monitor.refresh()
 
         // Then
         #expect(provider.snapshot == nil)
@@ -190,7 +212,7 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
 
         // When
-        await monitor.refreshAll()
+        await monitor.refresh()
 
         // Then
         #expect(claudeProvider.snapshot?.quota(for: .session)?.percentRemaining == 70)
@@ -218,7 +240,7 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
 
         // When
-        await monitor.refreshAll()
+        await monitor.refresh()
 
         // Then
         #expect(claudeProvider.snapshot != nil)
@@ -226,309 +248,107 @@ struct QuotaMonitorTests {
         #expect(codexProvider.lastError != nil)
     }
 
-    // MARK: - Refresh Others
-
-    @Test
-    func `refreshOthers excludes the specified provider`() async {
-        // Given
-        let claudeProbe = MockUsageProbe()
-        given(claudeProbe).isAvailable().willReturn(true)
-        given(claudeProbe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-
-        let codexProbe = MockUsageProbe()
-        given(codexProbe).isAvailable().willReturn(true)
-        given(codexProbe).probe().willReturn(UsageSnapshot(
-            providerId: "codex",
-            quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "codex")],
-            capturedAt: Date()
-        ))
-
-        let cursorProbe = MockUsageProbe()
-        given(cursorProbe).isAvailable().willReturn(true)
-        given(cursorProbe).probe().willReturn(UsageSnapshot(
-            providerId: "cursor",
-            quotas: [UsageQuota(percentRemaining: 30, quotaType: .session, providerId: "cursor")],
-            capturedAt: Date()
-        ))
-
-        let settings = makeSettingsRepository()
-        let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let cursorProvider = CursorProvider(probe: cursorProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider, cursorProvider]))
-
-        // When - refresh all except Claude
-        await monitor.refreshOthers(except: "claude")
-
-        // Then - Codex and Cursor loaded, Claude excluded
-        #expect(claudeProvider.snapshot == nil)
-        #expect(codexProvider.snapshot?.quota(for: .session)?.percentRemaining == 50)
-        #expect(cursorProvider.snapshot?.quota(for: .session)?.percentRemaining == 30)
-    }
-
-    // MARK: - Provider Access
-
-    @Test
-    func `monitor can find provider by ID`() async {
-        // Given
-        let settings = makeSettingsRepository()
-        let probe = MockUsageProbe()
-        let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
-
-        // When
-        let found = monitor.provider(for: "claude")
-
-        // Then
-        #expect(found?.id == "claude")
-    }
-
-    @Test
-    func `monitor returns nil for unknown provider ID`() async {
-        // Given
-        let monitor = makeMonitor(providers: AIProviders(providers: []))
-
-        // When
-        let found = monitor.provider(for: "unknown")
-
-        // Then
-        #expect(found == nil)
-    }
-
-    // MARK: - Overall Status
-
-    @Test
-    func `monitor calculates overall status from all providers`() async {
-        // Given
-        let claudeProbe = MockUsageProbe()
-        given(claudeProbe).isAvailable().willReturn(true)
-        given(claudeProbe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")], // healthy
-            capturedAt: Date()
-        ))
-
-        let codexProbe = MockUsageProbe()
-        given(codexProbe).isAvailable().willReturn(true)
-        given(codexProbe).probe().willReturn(UsageSnapshot(
-            providerId: "codex",
-            quotas: [UsageQuota(percentRemaining: 15, quotaType: .session, providerId: "codex")], // critical
-            capturedAt: Date()
-        ))
-
-        let settings = makeSettingsRepository()
-        let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
-
-        await monitor.refreshAll()
-
-        // When
-        let overallStatus = monitor.overallStatus
-
-        // Then - worst status (critical) wins
-        #expect(overallStatus == .critical)
-    }
-
-    // MARK: - Refresh Selected
-
-    @Test
-    func `refreshSelected only refreshes the selected provider`() async {
-        // Given
-        let claudeProbe = MockUsageProbe()
-        given(claudeProbe).isAvailable().willReturn(true)
-        given(claudeProbe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-
-        let codexProbe = MockUsageProbe()
-        given(codexProbe).isAvailable().willReturn(true)
-        given(codexProbe).probe().willReturn(UsageSnapshot(
-            providerId: "codex",
-            quotas: [UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "codex")],
-            capturedAt: Date()
-        ))
-
-        let settings = makeSettingsRepository()
-        let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
-
-        // Selected provider is "claude" by default
-
-        // When
-        await monitor.refreshSelected()
-
-        // Then - only Claude refreshed, Codex untouched
-        #expect(claudeProvider.snapshot != nil)
-        #expect(codexProvider.snapshot == nil)
-    }
-
-    @Test
-    func `refreshSelected refreshes newly selected provider`() async {
-        // Given
-        let claudeProbe = MockUsageProbe()
-        given(claudeProbe).isAvailable().willReturn(true)
-        given(claudeProbe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-
-        let codexProbe = MockUsageProbe()
-        given(codexProbe).isAvailable().willReturn(true)
-        given(codexProbe).probe().willReturn(UsageSnapshot(
-            providerId: "codex",
-            quotas: [UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "codex")],
-            capturedAt: Date()
-        ))
-
-        let settings = makeSettingsRepository()
-        let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
-
-        // When - switch to codex then refresh selected
-        monitor.selectProvider(id: "codex")
-        await monitor.refreshSelected()
-
-        // Then - only Codex refreshed
-        #expect(claudeProvider.snapshot == nil)
-        #expect(codexProvider.snapshot != nil)
-    }
-
     // MARK: - Continuous Monitoring
 
     @Test
-    func `monitor can start continuous monitoring`() async throws {
-        // Given
-        let settings = makeSettingsRepository()
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-        let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
-
-        // When
-        let stream = monitor.startMonitoring(interval: .milliseconds(100))
-        var events: [MonitoringEvent] = []
-
-        // Collect first 2 events
-        for await event in stream.prefix(2) {
-            events.append(event)
-        }
-
-        monitor.stopMonitoring()
-
-        // Then
-        #expect(events.count == 2)
-        #expect(events.allSatisfy { event in
-            if case .refreshed = event { return true }
-            return false
-        })
-    }
-
-    @Test
-    func `background monitoring refreshes configured menu bar provider in percentage mode`() async {
-        // Given
+    func `background tick refreshes every enabled provider`() async {
+        // Given - two enabled providers and one disabled
         let settings = makeSettingsRepository()
         let claudeProbe = CountingUsageProbe(providerId: "claude")
         let codexProbe = CountingUsageProbe(providerId: "codex")
+        let cursorProbe = CountingUsageProbe(providerId: "cursor")
         let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
         let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
-
-        // When - App layer passes selected + configured menu bar provider ids in percentage mode.
-        let stream = monitor.startMonitoring(
-            interval: .seconds(60),
-            providerIds: ["claude", "codex"]
+        let cursorProvider = CursorProvider(probe: cursorProbe, settingsRepository: settings)
+        cursorProvider.isEnabled = false
+        let monitor = QuotaMonitor(
+            providers: AIProviders(providers: [claudeProvider, codexProvider, cursorProvider]),
+            clock: RecordingClock()
         )
-        for await _ in stream.prefix(1) {}
-        monitor.stopMonitoring()
+
+        // When - one tick (the recording clock ends the loop at its first sleep)
+        await monitor.startMonitoring(interval: .seconds(60)).value
 
         // Then
         #expect(await claudeProbe.counter.count() == 1)
         #expect(await codexProbe.counter.count() == 1)
-        #expect(claudeProvider.snapshot != nil)
-        #expect(codexProvider.snapshot != nil)
+        #expect(await cursorProbe.counter.count() == 0)
     }
 
     @Test
-    func `background monitoring does not duplicate refreshes when selected and menu bar provider match`() async {
+    func `concurrent refreshes probe each provider once`() async {
+        // Given - probes that hold until released, so the two refreshes overlap
+        let settings = makeSettingsRepository()
+        let gate = Gate()
+        let claudeProbe = CountingUsageProbe(providerId: "claude", gate: gate)
+        let codexProbe = CountingUsageProbe(providerId: "codex", gate: gate)
+        let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
+        let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
+        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+
+        // When - the popover and the feed refresh at the same time
+        async let popover: Void = monitor.refresh()
+        async let feed: Void = monitor.refresh(force: true)
+        try? await Task.sleep(nanoseconds: 50_000_000)
+
+        // Then - still syncing while the joined refresh is in flight
+        #expect(claudeProvider.isSyncing)
+        await gate.open()
+        _ = await (popover, feed)
+
+        #expect(await claudeProbe.counter.count() == 1)
+        #expect(await codexProbe.counter.count() == 1)
+        #expect(claudeProvider.isSyncing == false)
+    }
+
+    @Test
+    func `fresh snapshot is re-probed only when forced`() async {
         // Given
         let settings = makeSettingsRepository()
         let probe = CountingUsageProbe(providerId: "claude")
         let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [provider]))
+        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
 
-        // When
-        let stream = monitor.startMonitoring(
-            interval: .seconds(60),
-            providerIds: ["claude", "claude"]
-        )
-        for await _ in stream.prefix(1) {}
-        monitor.stopMonitoring()
-
-        // Then
+        // When / Then - a snapshot under a minute old is kept...
+        await monitor.refresh()
+        await monitor.refresh()
         #expect(await probe.counter.count() == 1)
+
+        // ...unless the user forces a refresh
+        await monitor.refresh(force: true)
+        #expect(await probe.counter.count() == 2)
     }
 
     @Test
-    func `background monitoring without provider ids preserves selected provider refresh behaviour`() async {
-        // Given
+    func `stale snapshot is re-probed without force`() async {
+        // Given - the probe reports data captured two minutes ago
         let settings = makeSettingsRepository()
-        let claudeProbe = CountingUsageProbe(providerId: "claude")
-        let codexProbe = CountingUsageProbe(providerId: "codex")
-        let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
-        monitor.selectProvider(id: "codex")
-
-        // When - icon mode uses the default selected-provider monitoring path.
-        let stream = monitor.startMonitoring(interval: .seconds(60))
-        for await _ in stream.prefix(1) {}
-        monitor.stopMonitoring()
-
-        // Then
-        #expect(await claudeProbe.counter.count() == 0)
-        #expect(await codexProbe.counter.count() == 1)
-    }
-
-    @Test
-    func `monitor stops when requested`() async throws {
-        // Given
-        let settings = makeSettingsRepository()
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
+        let probe = CountingUsageProbe(providerId: "claude", capturedAgo: 120)
         let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
         let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
 
         // When
-        let stream = monitor.startMonitoring(interval: .milliseconds(50))
+        await monitor.refresh()
+        await monitor.refresh()
+
+        // Then
+        #expect(await probe.counter.count() == 2)
+    }
+
+    @Test
+    func `monitor stops when requested`() async {
+        // Given
+        let settings = makeSettingsRepository()
+        let provider = ClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
+        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [provider]))
+
+        // When
+        let loop = monitor.startMonitoring(interval: .seconds(60))
         monitor.stopMonitoring()
 
-        var eventCount = 0
-        for await _ in stream {
-            eventCount += 1
-        }
-
-        // Then - Stream should finish quickly after stop
-        #expect(eventCount <= 2)
+        // Then - the loop ends instead of sleeping for a minute
+        await loop.value
+        #expect(monitor.isMonitoring == false)
     }
 
     /// #182 regression guard: monitoring flips `isMonitoring` on at start and
@@ -543,10 +363,9 @@ struct QuotaMonitorTests {
         let provider = ClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
         let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [provider]))
 
-        let stream = monitor.startMonitoring(interval: .seconds(60))
+        monitor.startMonitoring(interval: .seconds(60))
         #expect(monitor.isMonitoring == true)
 
-        for await _ in stream.prefix(1) {}
         monitor.stopMonitoring()
 
         #expect(monitor.isMonitoring == false)
@@ -561,23 +380,6 @@ struct QuotaMonitorTests {
         #expect(QuotaMonitor.clampedInterval(.seconds(60)) == .seconds(60))
         #expect(QuotaMonitor.clampedInterval(.seconds(300)) == .seconds(300))
         #expect(QuotaMonitor.clampedInterval(.seconds(900)) == .seconds(900))
-    }
-
-    /// The background cadence is the requested interval clamped to the 1-minute
-    /// floor, then raised to the slowest provider-imposed floor in the active set
-    /// (Claude API → 15 min — issue #204).
-    @Test
-    func `effectiveInterval clamps then raises to the slowest provider floor`() {
-        // No provider floor → clamped requested.
-        #expect(QuotaMonitor.effectiveInterval(requested: .seconds(600), floors: []) == .seconds(600))
-        #expect(QuotaMonitor.effectiveInterval(requested: .seconds(5), floors: []) == .seconds(60))
-        // A floor below the requested cadence leaves it unchanged.
-        #expect(QuotaMonitor.effectiveInterval(requested: .seconds(600), floors: [.seconds(60)]) == .seconds(600))
-        // The Claude API floor lifts even the 1-minute option to 15 minutes.
-        #expect(QuotaMonitor.effectiveInterval(requested: .seconds(60), floors: [.seconds(900)]) == .seconds(900))
-        #expect(QuotaMonitor.effectiveInterval(requested: .seconds(600), floors: [.seconds(900)]) == .seconds(900))
-        // The slowest floor wins for a mixed set.
-        #expect(QuotaMonitor.effectiveInterval(requested: .seconds(60), floors: [.seconds(300), .seconds(900)]) == .seconds(900))
     }
 
     // MARK: - Energy Awareness (issue #204)
@@ -680,7 +482,7 @@ struct QuotaMonitorTests {
             powerStateProvider: power
         )
 
-        let stream = monitor.startMonitoring(interval: .seconds(60))
+        let loop = monitor.startMonitoring(interval: .seconds(60))
 
         // The loop reaches the asleep gate and parks — no refresh while asleep.
         await power.waitUntilParked()
@@ -688,16 +490,13 @@ struct QuotaMonitorTests {
 
         // Waking lets exactly one refresh through, then the clock ends the loop.
         power.wake()
-        for await _ in stream {}
+        await loop.value
         #expect(await probe.counter.count() == 1)
     }
 
     @Test
     func `background loop doubles the cadence while on battery`() async {
         let settings = makeSettingsRepository()
-        // Codex imposes no provider background floor, so this isolates the
-        // battery-doubling behavior from any provider-specific cadence floor
-        // (unlike Claude, which now always floors at 900s — issue #204).
         let provider = CodexProvider(probe: CountingUsageProbe(providerId: "codex"), settingsRepository: settings)
         let power = FakePowerStateProvider(asleep: false, onBattery: true)
         let clock = RecordingClock()
@@ -707,10 +506,9 @@ struct QuotaMonitorTests {
             powerStateProvider: power
         )
 
-        let stream = monitor.startMonitoring(interval: .seconds(600))
-        for await _ in stream {}
+        await monitor.startMonitoring(interval: .seconds(600)).value
 
-        // 600s → 1200s on battery (×2); no provider floor applies.
+        // 600s → 1200s on battery (×2).
         #expect(clock.durations == [.seconds(1200)])
     }
 
@@ -726,8 +524,7 @@ struct QuotaMonitorTests {
             powerStateProvider: power
         )
 
-        let stream = monitor.startMonitoring(interval: .seconds(600))
-        for await _ in stream {}
+        await monitor.startMonitoring(interval: .seconds(600)).value
 
         #expect(clock.durations == [.seconds(600)])
     }
@@ -760,225 +557,6 @@ struct QuotaMonitorTests {
         #expect(monitor.enabledProviders.first?.id == "claude")
     }
 
-    // MARK: - Dynamic Provider Management
-
-    @Test
-    func `addProvider adds new provider`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
-
-        #expect(monitor.allProviders.count == 1)
-
-        // When
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        monitor.addProvider(codex)
-
-        // Then
-        #expect(monitor.allProviders.count == 2)
-        #expect(monitor.provider(for: "codex") != nil)
-    }
-
-    @Test
-    func `removeProvider removes provider by id`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-
-        #expect(monitor.allProviders.count == 2)
-
-        // When
-        monitor.removeProvider(id: "codex")
-
-        // Then
-        #expect(monitor.allProviders.count == 1)
-        #expect(monitor.provider(for: "codex") == nil)
-    }
-
-    // MARK: - Lowest Quota
-
-    @Test
-    func `lowestQuota returns lowest across all providers`() async {
-        // Given
-        let claudeProbe = MockUsageProbe()
-        given(claudeProbe).isAvailable().willReturn(true)
-        given(claudeProbe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-
-        let codexProbe = MockUsageProbe()
-        given(codexProbe).isAvailable().willReturn(true)
-        given(codexProbe).probe().willReturn(UsageSnapshot(
-            providerId: "codex",
-            quotas: [UsageQuota(percentRemaining: 25, quotaType: .session, providerId: "codex")],
-            capturedAt: Date()
-        ))
-
-        let settings = makeSettingsRepository()
-        let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
-
-        await monitor.refreshAll()
-
-        // When
-        let lowest = monitor.lowestQuota()
-
-        // Then
-        #expect(lowest?.percentRemaining == 25)
-    }
-
-    @Test
-    func `lowestQuota returns nil when no snapshots`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let monitor = makeMonitor(providers: AIProviders(providers: [ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)]))
-
-        // Then
-        #expect(monitor.lowestQuota() == nil)
-    }
-
-    // MARK: - Selection
-
-    @Test
-    func `selectedProvider returns provider matching selectedProviderId`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-
-        // When
-        monitor.selectedProviderId = "codex"
-
-        // Then
-        #expect(monitor.selectedProvider?.id == "codex")
-    }
-
-    @Test
-    func `selectedProvider returns nil when selected provider is disabled`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        claude.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
-        monitor.selectedProviderId = "claude"
-
-        // Then
-        #expect(monitor.selectedProvider == nil)
-    }
-
-    @Test
-    func `selectedProviderStatus returns healthy when no snapshot`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
-
-        // Then
-        #expect(monitor.selectedProviderStatus == .healthy)
-    }
-
-    @Test
-    func `selectedProviderStatus returns provider status when snapshot exists`() async {
-        // Given
-        let settings = makeSettingsRepository()
-        let probe = MockUsageProbe()
-        given(probe).isAvailable().willReturn(true)
-        given(probe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 15, quotaType: .session, providerId: "claude")],
-            capturedAt: Date()
-        ))
-        let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
-
-        await monitor.refresh(providerId: "claude")
-
-        // Then
-        #expect(monitor.selectedProviderStatus == .critical)
-    }
-
-    @Test
-    func `selectProvider updates selectedProviderId for enabled provider`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-
-        #expect(monitor.selectedProviderId == "claude")
-
-        // When
-        monitor.selectProvider(id: "codex")
-
-        // Then
-        #expect(monitor.selectedProviderId == "codex")
-    }
-
-    @Test
-    func `selectProvider ignores disabled provider`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        codex.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-
-        // When
-        monitor.selectProvider(id: "codex")
-
-        // Then - still claude because codex is disabled
-        #expect(monitor.selectedProviderId == "claude")
-    }
-
-    @Test
-    func `init selects first enabled when default claude is disabled`() {
-        // Given - claude (default) is disabled before init
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        claude.isEnabled = false
-
-        // When
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-
-        // Then - automatically selects codex (first enabled)
-        #expect(monitor.selectedProviderId == "codex")
-    }
-
-    @Test
-    func `init keeps claude when enabled`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-
-        // When
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-
-        // Then - keeps default claude
-        #expect(monitor.selectedProviderId == "claude")
-    }
-
-    // MARK: - Refreshing State
-
-    @Test
-    func `isRefreshing returns false when no providers syncing`() {
-        // Given
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]))
-
-        // Then
-        #expect(monitor.isRefreshing == false)
-    }
-
     // MARK: - Quota Alerter
 
     @Test
@@ -999,7 +577,7 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [claude]), alerter: mockAlerter)
 
         // When
-        await monitor.refresh(providerId: "claude")
+        await monitor.refresh()
 
         // Then
         verify(mockAlerter).alert(
@@ -1027,8 +605,8 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [claude]), alerter: mockAlerter)
 
         // When - refresh twice with same status
-        await monitor.refresh(providerId: "claude")
-        await monitor.refresh(providerId: "claude")
+        await monitor.refresh()
+        await monitor.refresh()
 
         // Then - only notified once (first change from nil/healthy to healthy)
         // Actually, the first refresh won't trigger because healthy -> healthy
@@ -1038,7 +616,7 @@ struct QuotaMonitorTests {
     // MARK: - Disabled Provider Skipping
 
     @Test
-    func `refreshAll skips disabled providers`() async {
+    func `refresh skips disabled providers`() async {
         // Given
         let claudeProbe = MockUsageProbe()
         given(claudeProbe).isAvailable().willReturn(true)
@@ -1059,83 +637,44 @@ struct QuotaMonitorTests {
         let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
 
         // When
-        await monitor.refreshAll()
+        await monitor.refresh()
 
         // Then - claude refreshed, codex skipped (no snapshot)
         #expect(claudeProvider.snapshot != nil)
         #expect(codexProvider.snapshot == nil)
     }
 
-    @Test
-    func `overallStatus only considers enabled providers`() async {
-        // Given
-        let claudeProbe = MockUsageProbe()
-        given(claudeProbe).isAvailable().willReturn(true)
-        given(claudeProbe).probe().willReturn(UsageSnapshot(
-            providerId: "claude",
-            quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")], // healthy
-            capturedAt: Date()
-        ))
-
-        let codexProbe = MockUsageProbe()
-        given(codexProbe).isAvailable().willReturn(true)
-        given(codexProbe).probe().willReturn(UsageSnapshot(
-            providerId: "codex",
-            quotas: [UsageQuota(percentRemaining: 5, quotaType: .session, providerId: "codex")], // critical
-            capturedAt: Date()
-        ))
-
-        let settings = makeSettingsRepository()
-        let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-        let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
-
-        // First refresh both
-        await monitor.refreshAll()
-        #expect(monitor.overallStatus == .critical)
-
-        // Disable codex
-        codexProvider.isEnabled = false
-
-        // Then - only claude's healthy status matters
-        #expect(monitor.overallStatus == .healthy)
-    }
-
     // MARK: - Set Provider Enabled
 
     @Test
-    func `setProviderEnabled disables provider and updates selection`() {
+    func `setProviderEnabled disables provider`() {
         // Given
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-        monitor.selectedProviderId = "claude"
 
-        // When - disable the currently selected provider
+        // When
         monitor.setProviderEnabled("claude", enabled: false)
 
-        // Then - provider is disabled and selection switches to first enabled
+        // Then
         #expect(claude.isEnabled == false)
-        #expect(monitor.selectedProviderId == "codex")
+        #expect(monitor.enabledProviders.map(\.id) == ["codex"])
     }
 
     @Test
-    func `setProviderEnabled enables provider without changing selection`() {
+    func `setProviderEnabled enables provider`() {
         // Given
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
         codex.isEnabled = false
         let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
-        monitor.selectedProviderId = "claude"
 
-        // When - enable a different provider
+        // When
         monitor.setProviderEnabled("codex", enabled: true)
 
-        // Then - provider is enabled, selection unchanged
+        // Then
         #expect(codex.isEnabled == true)
-        #expect(monitor.selectedProviderId == "claude")
     }
 }

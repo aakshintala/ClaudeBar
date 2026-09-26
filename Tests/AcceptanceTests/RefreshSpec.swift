@@ -12,7 +12,7 @@ import Mockable
 /// - #15: User clicks Refresh → fetches latest quota for current provider
 /// - #16: Button shows "Syncing..." spinner while in progress
 /// - #17: Duplicate refresh clicks are ignored while syncing
-/// - #18: Background sync auto-refreshes at configured interval
+/// - #18: Background sync auto-refreshes every enabled provider at configured interval
 @Suite("Feature: Refresh")
 struct RefreshSpec {
 
@@ -60,7 +60,7 @@ struct RefreshSpec {
             #expect(claude.snapshot == nil)
 
             // When — user clicks Refresh
-            await monitor.refresh(providerId: "claude")
+            await monitor.refresh()
 
             // Then
             #expect(claude.snapshot != nil)
@@ -92,7 +92,7 @@ struct RefreshSpec {
             )
 
             // When
-            await monitor.refreshAll()
+            await monitor.refresh()
 
             // Then — Claude succeeds, Codex fails independently
             #expect(claude.snapshot != nil)
@@ -112,84 +112,38 @@ struct RefreshSpec {
         }
 
         @Test
-        func `continuous monitoring emits refresh events`() async throws {
-            // Given
+        func `background sync refreshes every enabled provider`() async {
+            // Given — Claude and Codex enabled
             let settings = RefreshSpec.makeSettings()
-            let probe = MockUsageProbe()
-            given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willReturn(UsageSnapshot(
+            let claudeProbe = SequentialProbe([UsageSnapshot(
                 providerId: "claude",
                 quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
                 capturedAt: Date()
-            ))
-
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
-            )
-
-            // When — start monitoring
-            let stream = monitor.startMonitoring(interval: .milliseconds(100))
-            var events: [MonitoringEvent] = []
-
-            for await event in stream.prefix(2) {
-                events.append(event)
-            }
-
-            monitor.stopMonitoring()
-
-            // Then — received refresh events
-            #expect(events.count == 2)
-            #expect(events.allSatisfy { if case .refreshed = $0 { return true }; return false })
-        }
-
-        @Test
-        func `monitoring stops when requested`() async throws {
-            // Given
-            let settings = RefreshSpec.makeSettings()
-            let probe = MockUsageProbe()
-            given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willReturn(UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
+            )])
+            let codexProbe = SequentialProbe([UsageSnapshot(
+                providerId: "codex",
+                quotas: [UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "codex")],
                 capturedAt: Date()
-            ))
-
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            )])
+            let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
+            let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
+                providers: AIProviders(providers: [claude, codex]),
+                clock: OneTickClock()
             )
 
-            // When — start then immediately stop
-            let stream = monitor.startMonitoring(interval: .milliseconds(50))
-            monitor.stopMonitoring()
+            // When — background sync runs one tick
+            await monitor.startMonitoring(interval: .seconds(60)).value
 
-            var eventCount = 0
-            for await _ in stream {
-                eventCount += 1
-            }
-
-            // Then — stream finishes quickly
-            #expect(eventCount <= 2)
+            // Then — both providers were refreshed, not just Claude
+            #expect(claude.snapshot?.quotas.first?.percentRemaining == 50)
+            #expect(codex.snapshot?.quotas.first?.percentRemaining == 40)
         }
 
-        // MARK: - #204: Power-conscious background refresh
-
-        /// A clock that records each requested sleep, then ends the loop by
-        /// throwing — so one deterministic tick reveals the background cadence.
-        private final class RecordingClock: Clock, @unchecked Sendable {
-            private let lock = NSLock()
-            private var _durations: [Duration] = []
-            var durations: [Duration] { lock.withLock { _durations } }
-            func sleep(for duration: Duration) async throws {
-                lock.withLock { _durations.append(duration) }
-                throw CancellationError()
-            }
-            func sleep(nanoseconds: UInt64) async throws {
-                try await sleep(for: .nanoseconds(Int64(nanoseconds)))
-            }
+        /// A clock that ends the loop at its first sleep, so one tick runs.
+        private struct OneTickClock: Clock {
+            func sleep(for duration: Duration) async throws { throw CancellationError() }
+            func sleep(nanoseconds: UInt64) async throws { throw CancellationError() }
         }
 
         /// A probe that returns the next snapshot in a sequence on each call, so a
@@ -210,56 +164,32 @@ struct RefreshSpec {
         }
 
         @Test
-        func `background cadence is at least 15 minutes`() async {
-            // Given — a Claude provider and a user who picked the 1-minute option.
-            let settings = RefreshSpec.makeSettings()
-            let snapshot = UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 50, quotaType: .session, providerId: "claude")],
-                capturedAt: Date()
-            )
-            let probe = MockUsageProbe()
-            given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willReturn(snapshot)
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-            let clock = RecordingClock()
-            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: clock)
-
-            // When — background sync runs one tick.
-            let stream = monitor.startMonitoring(interval: .seconds(60), providerIds: ["claude"])
-            for await _ in stream {}
-
-            // Then — the cadence is floored to the 15-minute API cache TTL (#204).
-            #expect(clock.durations == [.seconds(900)])
-        }
-
-        @Test
-        func `interactive refresh is not throttled by the background floor`() async {
-            // Given — a Claude provider (which imposes a 15-min background floor)
-            // returning a different snapshot on each probe.
+        func `refresh button bypasses the one-minute freshness window`() async {
+            // Given — a provider returning a different snapshot on each probe
             let settings = RefreshSpec.makeSettings()
             let probe = SequentialProbe([
                 UsageSnapshot(
-                    providerId: "claude",
-                    quotas: [UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "claude")],
+                    providerId: "codex",
+                    quotas: [UsageQuota(percentRemaining: 80, quotaType: .session, providerId: "codex")],
                     capturedAt: Date()
                 ),
                 UsageSnapshot(
-                    providerId: "claude",
-                    quotas: [UsageQuota(percentRemaining: 60, quotaType: .session, providerId: "claude")],
+                    providerId: "codex",
+                    quotas: [UsageQuota(percentRemaining: 60, quotaType: .session, providerId: "codex")],
                     capturedAt: Date()
                 ),
             ])
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-            let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
+            let codex = CodexProvider(probe: probe, settingsRepository: settings)
+            let monitor = QuotaMonitor(providers: AIProviders(providers: [codex]), clock: TestClock())
 
-            // When/Then — two back-to-back user-initiated refreshes both update the
-            // snapshot. The 15-min floor governs only the background loop, never the
-            // interactive path (#204), so neither call is gated.
-            await monitor.refresh(providerId: "claude")
-            #expect(claude.snapshot?.quotas.first?.percentRemaining == 80)
-            await monitor.refresh(providerId: "claude")
-            #expect(claude.snapshot?.quotas.first?.percentRemaining == 60)
+            // When/Then — opening the popover again keeps the fresh snapshot...
+            await monitor.refresh()
+            await monitor.refresh()
+            #expect(codex.snapshot?.quotas.first?.percentRemaining == 80)
+
+            // ...and the refresh button fetches new data
+            await monitor.refresh(force: true)
+            #expect(codex.snapshot?.quotas.first?.percentRemaining == 60)
         }
     }
 }

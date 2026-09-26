@@ -20,7 +20,6 @@ final class StatusBarIconDriver {
 
     private var statusItem: NSStatusItem?
     private var loopSync: ObservationRenderSync<RefreshLoopKey>?
-    private var streamConsumer: Task<Void, Never>?
 
     private var staticImage: NSImage?
     private var imageWipeObservation: NSKeyValueObservation?
@@ -82,7 +81,6 @@ final class StatusBarIconDriver {
     struct RefreshLoopKey: Equatable {
         var isEnabled: Bool
         var seconds: Int
-        var providerIds: [String]?
     }
 
     /// Starts watching the refresh cadence/target settings and (re)starts the
@@ -101,29 +99,16 @@ final class StatusBarIconDriver {
         let interval = settings.refreshInterval
         return RefreshLoopKey(
             isEnabled: interval.isEnabled,
-            seconds: interval.seconds ?? 0,
-            providerIds: backgroundRefreshProviderIds
+            seconds: interval.seconds ?? 0
         )
     }
 
-    private var backgroundRefreshProviderIds: [String]? {
-        nil
-    }
-
     private func restartMonitoring(_ key: RefreshLoopKey) {
-        streamConsumer?.cancel()
-        streamConsumer = nil
         guard key.isEnabled else {
             monitor.stopMonitoring()
             return
         }
-        AppLog.monitor.info("Background refresh starting (interval: \(key.seconds)s, providers: \(key.providerIds?.joined(separator: ",") ?? "selected"))")
-        let stream = monitor.startMonitoring(
-            interval: .seconds(key.seconds),
-            providerIds: key.providerIds
-        )
-        streamConsumer = Task {
-            for await _ in stream { }
-        }
+        AppLog.monitor.info("Background refresh starting (interval: \(key.seconds)s)")
+        monitor.startMonitoring(interval: .seconds(key.seconds))
     }
 }

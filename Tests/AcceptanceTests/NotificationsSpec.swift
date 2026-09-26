@@ -68,7 +68,7 @@ struct NotificationsSpec {
             )
 
             // When — refresh returns 15% (critical)
-            await monitor.refresh(providerId: "claude")
+            await monitor.refresh()
 
             // Then — alerter called with healthy → critical
             verify(mockAlerter).alert(
@@ -76,6 +76,65 @@ struct NotificationsSpec {
                 previousStatus: .value(.healthy),
                 currentStatus: .value(.critical)
             ).called(1)
+        }
+    }
+
+    // MARK: - Every refresh path alerts
+
+    @Suite("Scenario: Popover refresh")
+    @MainActor
+    struct PopoverRefresh {
+
+        private struct TestClock: Clock {
+            func sleep(for duration: Duration) async throws {}
+            func sleep(nanoseconds: UInt64) async throws {}
+        }
+
+        @Test
+        func `refresh button that finds a degraded quota triggers alert`() async {
+            // Given — Codex healthy, then critical on the next probe
+            let settings = MockProviderSettingsRepository()
+            given(settings).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
+            given(settings).isEnabled(forProvider: .any).willReturn(true)
+            given(settings).setEnabled(.any, forProvider: .any).willReturn()
+
+            let mockAlerter = MockQuotaAlerter()
+            given(mockAlerter).alert(providerId: .any, previousStatus: .any, currentStatus: .any).willReturn(())
+
+            let probe = DegradingProbe()
+
+            let codex = CodexProvider(probe: probe, settingsRepository: settings)
+            let monitor = QuotaMonitor(
+                providers: AIProviders(providers: [codex]),
+                alerter: mockAlerter,
+                clock: TestClock()
+            )
+
+            // When — the popover opens, then the user clicks Refresh
+            await monitor.refresh()
+            await monitor.refresh(force: true)
+
+            // Then — the popover path alerts healthy → critical
+            verify(mockAlerter).alert(
+                providerId: .value("codex"),
+                previousStatus: .value(.healthy),
+                currentStatus: .value(.critical)
+            ).called(1)
+        }
+
+        /// Healthy (80%) on the first probe, critical (10%) after.
+        private final class DegradingProbe: UsageProbe, @unchecked Sendable {
+            private let lock = NSLock()
+            private var calls = 0
+            func probe() async throws -> UsageSnapshot {
+                let percent: Double = lock.withLock { calls += 1; return calls == 1 ? 80 : 10 }
+                return UsageSnapshot(
+                    providerId: "codex",
+                    quotas: [UsageQuota(percentRemaining: percent, quotaType: .session, providerId: "codex")],
+                    capturedAt: Date()
+                )
+            }
+            func isAvailable() async -> Bool { true }
         }
     }
 
@@ -117,8 +176,8 @@ struct NotificationsSpec {
             )
 
             // When — refresh twice with same healthy status
-            await monitor.refresh(providerId: "claude")
-            await monitor.refresh(providerId: "claude")
+            await monitor.refresh()
+            await monitor.refresh()
 
             // Then — no alerts (healthy → healthy is not a degradation)
             verify(mockAlerter).alert(
@@ -168,7 +227,7 @@ struct NotificationsSpec {
             )
 
             // When — refresh all
-            await monitor.refreshAll()
+            await monitor.refresh()
 
             // Then — Claude succeeds independently
             #expect(claude.snapshot != nil)

@@ -115,26 +115,6 @@ struct JSONSettingsRepositoryAppTests {
         #expect(repo2.mcpPort() == 9000)
     }
 
-    // MARK: - Claude probe cache
-
-    @Test
-    func `claudeSnapshotCacheTTL defaults to 300`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-        #expect(repo.claudeSnapshotCacheTTL() == 300)
-    }
-
-    @Test
-    func `setClaudeSnapshotCacheTTL persists`() {
-        let (repo1, dir) = makeRepository()
-        defer { cleanup(dir) }
-        let fileURL = dir.appendingPathComponent("settings.json")
-        repo1.setClaudeSnapshotCacheTTL(600)
-
-        let repo2 = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
-        #expect(repo2.claudeSnapshotCacheTTL() == 600)
-    }
-
     // MARK: - Persistence across instances
 
     @Test

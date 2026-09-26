@@ -39,14 +39,6 @@ public final class ClaudeProvider: AIProvider {
     /// The last error that occurred during refresh
     public private(set) var lastError: Error?
 
-    /// Background poll cadence floor, in lockstep with `ClaudeAPIUsageProbe`'s
-    /// snapshot-cache TTL: polling faster only re-serves the cache (or, once
-    /// expired, risks 429s), so there's no benefit to a tighter background
-    /// cadence (issue #204).
-    public var backgroundRefreshFloor: Duration? {
-        .seconds(900)
-    }
-
     // MARK: - Internal
 
     /// The probe used to fetch usage data via the Anthropic OAuth API

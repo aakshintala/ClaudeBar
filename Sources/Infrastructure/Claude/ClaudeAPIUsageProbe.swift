@@ -136,15 +136,11 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     /// reasonably quickly once the window opens.
     static let defaultRetryAfter: TimeInterval = 5 * 60
 
-    /// Default TTL for the in-memory snapshot cache. Anthropic's
-    /// /api/oauth/usage throttle has been observed handing out 1-hour
-    /// Retry-After windows in response to even one call after a quiet
-    /// period (see anthropics/claude-code#30930), so we err on the
-    /// conservative side. With background refresh off, the cache is
-    /// consumed only by popover opens and MCP quota requests; the MCP
-    /// coalescing window caps agent-driven volume. Default TTL is
-    /// configurable via `claude.snapshotCacheTTL` (300s out of the box).
-    public static let defaultSnapshotCacheTTL: TimeInterval = 15 * 60
+    /// TTL for the in-memory snapshot cache: the app's only Claude rate-limit
+    /// guard besides the 429 backoff. It applies to forced refreshes too, so
+    /// at most one usage call reaches Anthropic per 5 minutes. The init
+    /// parameter exists for tests.
+    public static let snapshotCacheTTL: TimeInterval = 5 * 60
 
     // API endpoints
     private static let usageURL = URL(string: "https://api.anthropic.com/api/oauth/usage")!
@@ -160,7 +156,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         credentialLoader: ClaudeCredentialLoader = ClaudeCredentialLoader(),
         networkClient: any NetworkClient = URLSession.shared,
         timeout: TimeInterval = 15,
-        snapshotCacheTTL: TimeInterval = Self.defaultSnapshotCacheTTL,
+        snapshotCacheTTL: TimeInterval = Self.snapshotCacheTTL,
         accountInfoResolver: any AccountInfoResolving = ClaudeAccountInfoResolver()
     ) {
         self.credentialLoader = credentialLoader

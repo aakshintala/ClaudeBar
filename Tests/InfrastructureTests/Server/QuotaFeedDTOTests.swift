@@ -51,7 +51,7 @@ struct QuotaFeedDTOTests {
 
         let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
-        await monitor.refresh(providerId: "claude")
+        await monitor.refresh()
 
         let feed = QuotaFeedDTO.make(from: monitor.allProviders, at: Self.fixedNow)
 
@@ -90,7 +90,7 @@ struct QuotaFeedDTOTests {
 
         let cursor = CursorProvider(probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(providers: AIProviders(providers: [cursor]), clock: TestClock())
-        await monitor.refresh(providerId: "cursor")
+        await monitor.refresh()
 
         let feed = QuotaFeedDTO.make(from: monitor.allProviders, at: Self.fixedNow)
 
@@ -116,8 +116,8 @@ struct QuotaFeedDTOTests {
 
         let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
-        await monitor.refresh(providerId: "claude")
-        await monitor.refresh(providerId: "claude")
+        await monitor.refresh()
+        await monitor.refresh(force: true)
 
         let feed = QuotaFeedDTO.make(from: monitor.allProviders, at: Self.fixedNow)
 

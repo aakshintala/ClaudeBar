@@ -63,7 +63,7 @@ struct QuotaDisplaySpec {
             )
 
             // When — user opens menu and quota is refreshed
-            await monitor.refresh(providerId: "claude")
+            await monitor.refresh()
 
             // Then
             #expect(claude.snapshot != nil)
@@ -112,7 +112,7 @@ struct QuotaDisplaySpec {
             )
 
             // When
-            await monitor.refresh(providerId: "claude")
+            await monitor.refresh()
 
             // Then — multiple quota cards with correct statuses
             let resultSnapshot = claude.snapshot
@@ -147,7 +147,7 @@ struct QuotaDisplaySpec {
             )
 
             // When
-            await monitor.refresh(providerId: "claude")
+            await monitor.refresh()
 
             // Then
             let session = claude.snapshot?.quota(for: .session)
@@ -184,7 +184,7 @@ struct QuotaDisplaySpec {
             )
 
             // When
-            await monitor.refresh(providerId: "claude")
+            await monitor.refresh()
 
             // Then
             #expect(claude.snapshot == nil)
@@ -209,7 +209,7 @@ struct QuotaDisplaySpec {
             )
 
             // When
-            await monitor.refresh(providerId: "claude")
+            await monitor.refresh()
 
             // Then — error stored, user sees "Session expired..."
             #expect(claude.snapshot == nil)

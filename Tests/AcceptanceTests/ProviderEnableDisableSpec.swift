@@ -40,7 +40,7 @@ struct ProviderEnableDisableSpec {
         }
 
         @Test
-        func `disabled provider is skipped during refreshAll`() async {
+        func `disabled provider is skipped during refresh`() async {
             // Given — Claude enabled, Codex disabled
             let settings = ProviderEnableDisableSpec.makeSettings()
 
@@ -65,53 +65,16 @@ struct ProviderEnableDisableSpec {
             )
 
             // When
-            await monitor.refreshAll()
+            await monitor.refresh()
 
             // Then — Claude refreshed, Codex skipped
             #expect(claude.snapshot != nil)
             #expect(codex.snapshot == nil)
         }
 
-        @Test
-        func `disabled provider excluded from overall status`() async {
-            // Given — Claude healthy, Codex critical but disabled
-            let settings = ProviderEnableDisableSpec.makeSettings()
-
-            let claudeProbe = MockUsageProbe()
-            given(claudeProbe).isAvailable().willReturn(true)
-            given(claudeProbe).probe().willReturn(UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 70, quotaType: .session, providerId: "claude")],
-                capturedAt: Date()
-            ))
-
-            let codexProbe = MockUsageProbe()
-            given(codexProbe).isAvailable().willReturn(true)
-            given(codexProbe).probe().willReturn(UsageSnapshot(
-                providerId: "codex",
-                quotas: [UsageQuota(percentRemaining: 5, quotaType: .session, providerId: "codex")],
-                capturedAt: Date()
-            ))
-
-            let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
-                clock: TestClock()
-            )
-
-            await monitor.refreshAll()
-            #expect(monitor.overallStatus == .critical)
-
-            // When — user disables Codex
-            codex.isEnabled = false
-
-            // Then — overall status improves to healthy
-            #expect(monitor.overallStatus == .healthy)
-        }
     }
 
-    // MARK: - #47: Enable provider without changing selection
+    // MARK: - #47: Enable provider
 
     @Suite("Scenario: Enable a provider")
     @MainActor
@@ -122,8 +85,8 @@ struct ProviderEnableDisableSpec {
         }
 
         @Test
-        func `enabling Codex does not change Claude selection`() {
-            // Given — Claude selected, Codex disabled
+        func `enabling Codex includes it in monitoring`() {
+            // Given — Codex disabled
             let settings = ProviderEnableDisableSpec.makeSettings()
             let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
             let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
@@ -133,15 +96,13 @@ struct ProviderEnableDisableSpec {
                 providers: AIProviders(providers: [claude, codex]),
                 clock: TestClock()
             )
-            #expect(monitor.selectedProviderId == "claude")
 
             // When — user enables Codex
             monitor.setProviderEnabled("codex", enabled: true)
 
-            // Then — Codex appears, Claude still selected
+            // Then — Codex appears
             #expect(codex.isEnabled == true)
             #expect(monitor.enabledProviders.count == 2)
-            #expect(monitor.selectedProviderId == "claude")
         }
     }
 
