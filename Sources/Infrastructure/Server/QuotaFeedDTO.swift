@@ -118,7 +118,7 @@ public enum QuotaFeedDTOMapper {
         }
 
         let quotas = snapshot?.quotas.map(mapQuota) ?? []
-        let status = snapshot?.paceAwareOverallStatus(burnRateThreshold: 1.5).feedKey ?? "healthy"
+        let status = snapshot?.overallStatus.feedKey ?? "healthy"
 
         return QuotaFeedProviderDTO(
             id: provider.id,
@@ -140,7 +140,7 @@ public enum QuotaFeedDTOMapper {
             percentRemaining: quota.percentRemaining,
             resetsAt: quota.resetsAt,
             resetText: quota.resetText,
-            status: quota.paceAwareStatus(burnRateThreshold: 1.5).feedKey
+            status: quota.status.feedKey
         )
     }
 
@@ -170,7 +170,12 @@ public extension QuotaFeedDTO {
     }
 }
 
-private extension QuotaStatus {
+extension QuotaStatus {
+    init?(feedKey: String) {
+        guard let status = Self.allCases.first(where: { $0.feedKey == feedKey }) else { return nil }
+        self = status
+    }
+
     var feedKey: String {
         switch self {
         case .healthy: "healthy"

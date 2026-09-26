@@ -368,7 +368,7 @@ struct UsageQuotaTests {
     // MARK: - Pace-Aware Status
 
     @Test
-    func `paceAwareStatus returns healthy when burn rate is low`() {
+    func `status returns healthy when burn rate is low`() {
         // 57% used, ~85% elapsed → burn rate ~0.67 → healthy
         let resetsAt = Date().addingTimeInterval(0.75 * 3600) // 15% of 5h remaining
         let quota = UsageQuota(
@@ -377,18 +377,18 @@ struct UsageQuotaTests {
             providerId: "claude",
             resetsAt: resetsAt
         )
-        #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .healthy)
+        #expect(quota.status == .healthy)
     }
 
     @Test
-    func `paceAwareStatus falls back to absolute thresholds without resetsAt`() {
+    func `status falls back to absolute thresholds without resetsAt`() {
         let quota = UsageQuota(percentRemaining: 35, quotaType: .session, providerId: "claude")
         // No reset time → falls back to absolute: 35% remaining → warning
-        #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .warning)
+        #expect(quota.status == .warning)
     }
 
     @Test
-    func `paceAwareStatus treats slow-burn Cursor monthly quota as healthy`() {
+    func `status treats slow-burn Cursor monthly quota as healthy`() {
         // Real scenario: ~18.84% remaining, monthly window nearly elapsed, slow burn rate
         let resetsAt = Date().addingTimeInterval(5.8 * 3600) // ~5h48m until reset
         let quota = UsageQuota(
@@ -397,14 +397,13 @@ struct UsageQuotaTests {
             providerId: "cursor",
             resetsAt: resetsAt
         )
-        #expect(quota.status == .critical) // absolute floor still critical
-        #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .healthy)
+        #expect(quota.status == .healthy)
         let elapsed = quota.percentTimeElapsed!
         #expect(elapsed > 98) // most of the 30-day window has elapsed
     }
 
     @Test
-    func `paceAwareStatus keeps Codex session quota critical when reset is days away`() {
+    func `status keeps Codex session quota critical when reset is days away`() {
         // Session window is 5h but reset is multi-day away → elapsed clamps to 0 → absolute thresholds
         let resetsAt = Date().addingTimeInterval(3 * 24 * 3600) // 3 days
         let quota = UsageQuota(
@@ -414,7 +413,21 @@ struct UsageQuotaTests {
             resetsAt: resetsAt
         )
         #expect(quota.percentTimeElapsed == 0)
-        #expect(quota.paceAwareStatus(burnRateThreshold: 1.5) == .critical)
+        #expect(quota.status == .critical)
+    }
+
+    @Test
+    func `status is pace-aware when reset time is known`() {
+        // 40% left @ ~90% of the week elapsed → burn rate ~0.67, lasts to reset → healthy,
+        // though the absolute 20-50% band says warning. Popover, alerts and feed all read this.
+        let resetsAt = Date().addingTimeInterval(0.1 * 7 * 24 * 3600)
+        let quota = UsageQuota(
+            percentRemaining: 40,
+            quotaType: .weekly,
+            providerId: "claude",
+            resetsAt: resetsAt
+        )
+        #expect(quota.status == .healthy)
     }
 
     // MARK: - Percent Time Elapsed

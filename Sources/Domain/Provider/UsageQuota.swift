@@ -66,10 +66,10 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
 
     // MARK: - Domain Behavior
 
-    /// The current health status based on percentage remaining.
-    /// This is a domain rule: status is determined by business thresholds.
+    /// The current health status: pace-aware when the reset time is known,
+    /// absolute thresholds otherwise. Popover, alerts and the feed all read this.
     public var status: QuotaStatus {
-        QuotaStatus.from(percentRemaining: percentRemaining)
+        QuotaStatus.from(percentRemaining: percentRemaining, percentTimeElapsed: percentTimeElapsed)
     }
 
     /// The percentage that has been used (0-100)
@@ -130,20 +130,6 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     public var burnRate: Double? {
         guard let percentTimeElapsed, percentTimeElapsed > 0 else { return nil }
         return percentUsed / percentTimeElapsed
-    }
-
-    /// Returns quota status using burn rate when time information is available.
-    /// Falls back to absolute thresholds when reset time is unknown.
-    /// - Parameter burnRateThreshold: The multiplier above which a warning fires (e.g., 1.5)
-    public func paceAwareStatus(burnRateThreshold: Double) -> QuotaStatus {
-        guard let percentTimeElapsed else {
-            return status // Fall back to absolute thresholds
-        }
-        return QuotaStatus.from(
-            percentRemaining: percentRemaining,
-            percentTimeElapsed: percentTimeElapsed,
-            burnRateThreshold: burnRateThreshold
-        )
     }
 
     // MARK: - Pace

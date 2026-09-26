@@ -2,7 +2,7 @@ import Foundation
 
 /// Represents the health status of a usage quota.
 /// Rich domain model - status is determined by business rules, not UI logic.
-public enum QuotaStatus: Sendable, Equatable, Hashable, Comparable {
+public enum QuotaStatus: Sendable, Equatable, Hashable, Comparable, CaseIterable {
     /// Quota has remaining capacity (>50%)
     case healthy
     /// Quota is getting low (20-50%)
@@ -29,24 +29,18 @@ public enum QuotaStatus: Sendable, Equatable, Hashable, Comparable {
         }
     }
 
+    /// Burn rate above which a quota between 20% and 50% remaining is a warning.
+    static let burnRateThreshold = 1.5
+
     /// Creates a pace-aware status using burn rate (usage% / timeElapsed%).
-    /// Burn rate > threshold means consuming faster than the period can sustain.
+    /// Burn rate > `burnRateThreshold` means consuming faster than the period can sustain.
     /// Depleted is always absolute. Below 20% remaining, critical means the pace
     /// so far exhausts the rest before reset (burn rate > 1); a quota that will
     /// last is healthy however low it is. Falls back to absolute thresholds when
-    /// time elapsed is 0.
-    ///
-    /// - Parameters:
-    ///   - percentRemaining: The percentage of quota remaining (0-100)
-    ///   - percentTimeElapsed: How much of the reset period has elapsed (0-100)
-    ///   - burnRateThreshold: The multiplier above which a warning fires (e.g., 1.5 = 50% faster than sustainable)
-    public static func from(
-        percentRemaining: Double,
-        percentTimeElapsed: Double,
-        burnRateThreshold: Double
-    ) -> QuotaStatus {
+    /// time elapsed is unknown or 0.
+    public static func from(percentRemaining: Double, percentTimeElapsed: Double?) -> QuotaStatus {
         if percentRemaining <= 0 { return .depleted }
-        guard percentTimeElapsed > 0 else {
+        guard let percentTimeElapsed, percentTimeElapsed > 0 else {
             return from(percentRemaining: percentRemaining)  // no pace data: fall back to absolute thresholds
         }
         let percentUsed = 100 - percentRemaining

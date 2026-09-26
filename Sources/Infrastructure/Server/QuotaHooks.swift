@@ -1,4 +1,5 @@
 import Foundation
+import Domain
 
 /// Claude Code HTTP hook endpoints. SessionStart gets the full feed; the
 /// prompt hook stays silent unless a bucket got worse since this session was
@@ -11,9 +12,9 @@ public final class QuotaHooks {
     private let feed: @MainActor () -> QuotaFeedDTO
     private let now: () -> Date
 
-    /// Per session: "provider/bucket" → severity last reported.
+    /// Per session: "provider/bucket" → status last reported.
     // ponytail: never evicted, a few strings per session. Clear on a SessionEnd hook if it ever matters.
-    private var reported: [String: [String: Int]] = [:]
+    private var reported: [String: [String: QuotaStatus]] = [:]
 
     public init(feed: @escaping @MainActor () -> QuotaFeedDTO, now: @escaping () -> Date = { Date() }) {
         self.feed = feed
@@ -22,7 +23,7 @@ public final class QuotaHooks {
 
     public func sessionStart(_ body: Data) -> Data {
         let feed = feed()
-        reported[Self.sessionId(body)] = Self.severities(in: feed)
+        reported[Self.sessionId(body)] = Self.statuses(in: feed)
         let text = QuotaFeedText.render(feed, now: now())
         return text.isEmpty ? Self.empty : Self.envelope("SessionStart", "Quota headroom (QuotaBar):\n\(text)")
     }
@@ -31,10 +32,10 @@ public final class QuotaHooks {
         let feed = feed()
         let session = Self.sessionId(body)
         let previous = reported[session] ?? [:]
-        let current = Self.severities(in: feed)
+        let current = Self.statuses(in: feed)
         reported[session] = current
 
-        let worsened = Set(current.filter { $0.value > previous[$0.key, default: 0] }.keys)
+        let worsened = Set(current.filter { $0.value > previous[$0.key, default: .healthy] }.keys)
         let providers = feed.providers.filter { p in p.quotas.contains { worsened.contains("\(p.id)/\($0.key)") } }
         guard !providers.isEmpty else { return Self.empty }
 
@@ -44,12 +45,11 @@ public final class QuotaHooks {
 
     private static let empty = Data("{}".utf8)
 
-    private static func severities(in feed: QuotaFeedDTO) -> [String: Int] {
-        let rank = ["warning": 1, "critical": 2, "depleted": 3]
-        var result: [String: Int] = [:]
+    private static func statuses(in feed: QuotaFeedDTO) -> [String: QuotaStatus] {
+        var result: [String: QuotaStatus] = [:]
         for p in feed.providers {
             for q in p.quotas {
-                if let severity = rank[q.status] { result["\(p.id)/\(q.key)"] = severity }
+                if let status = QuotaStatus(feedKey: q.status) { result["\(p.id)/\(q.key)"] = status }
             }
         }
         return result

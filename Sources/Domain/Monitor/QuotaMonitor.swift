@@ -99,7 +99,7 @@ public final class QuotaMonitor {
     /// Handles snapshot update and alerts user if status changed
     private func handleSnapshotUpdate(provider: any AIProvider, snapshot: UsageSnapshot) async {
         let previousStatus = previousStatuses[provider.id] ?? .healthy
-        let newStatus = snapshot.paceAwareOverallStatus(burnRateThreshold: 1.5)
+        let newStatus = snapshot.overallStatus
 
         previousStatuses[provider.id] = newStatus
 
