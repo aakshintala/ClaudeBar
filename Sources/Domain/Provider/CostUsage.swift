@@ -27,9 +27,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
     /// When this cost usage resets (for Pro Extra usage)
     public let resetsAt: Date?
 
-    /// Human-readable reset text (e.g., "Resets Jan 1, 2026")
-    public let resetText: String?
-
     // MARK: - Initialization
 
     public init(
@@ -38,8 +35,7 @@ public struct CostUsage: Sendable, Equatable, Hashable {
         providerId: String,
         kind: Kind = .apiCost,
         capturedAt: Date = Date(),
-        resetsAt: Date? = nil,
-        resetText: String? = nil
+        resetsAt: Date? = nil
     ) {
         self.kind = kind
         self.totalCost = totalCost
@@ -47,7 +43,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
         self.providerId = providerId
         self.capturedAt = capturedAt
         self.resetsAt = resetsAt
-        self.resetText = resetText
     }
 
     // MARK: - Formatting

@@ -70,9 +70,6 @@ struct CostStatCard: View {
     }
 
     private var trailingDetail: String {
-        if let resetText = costUsage.resetText {
-            return resetText
-        }
         if let budget = effectiveBudget, budget > 0, let status = budgetStatus {
             return status.badgeText
         }
@@ -101,8 +98,7 @@ struct CostStatCard: View {
                 totalCost: 5.41,
                 budget: 20,
                 providerId: "claude",
-                kind: .extraUsage,
-                resetText: "Resets Jan 1, 2026"
+                kind: .extraUsage
             )
         )
         .padding()

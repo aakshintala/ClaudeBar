@@ -36,13 +36,21 @@ struct QuotaFeedDTOTests {
                     percentRemaining: 42,
                     quotaType: .modelSpecific("opus"),
                     providerId: "claude",
-                    resetsAt: Self.fixedNow.addingTimeInterval(3600),
-                    resetText: "12/500 on-demand"
+                    resetsAt: Date().addingTimeInterval(3 * 3600 + 60)
                 ),
                 UsageQuota(
-                    percentRemaining: 80,
+                    percentRemaining: 17.6,
                     quotaType: .timeLimit("Monthly"),
-                    providerId: "claude"
+                    providerId: "claude",
+                    unitsUsed: 412,
+                    unitsLimit: 500
+                ),
+                UsageQuota(
+                    percentRemaining: 100,
+                    quotaType: .timeLimit("Credits"),
+                    providerId: "claude",
+                    balanceRemaining: 750,
+                    balanceUnit: .credits
                 )
             ],
             capturedAt: capturedAt,
@@ -59,9 +67,18 @@ struct QuotaFeedDTOTests {
         let quotas = feed.providers[0].quotas
         #expect(quotas[0].key == "model:opus")
         #expect(quotas[0].label == "Opus")
-        #expect(quotas[0].resetText == "12/500 on-demand")
+        #expect(quotas[0].resetText == "Resets in 3h")
+        #expect(quotas[0].percentRemaining == 42)
         #expect(quotas[1].key == "time:Monthly")
         #expect(quotas[1].label == "Monthly")
+        #expect(quotas[1].resetText == nil)
+        #expect(quotas[1].unitsUsed == 412)
+        #expect(quotas[1].unitsLimit == 500)
+        // Balance-only: no meaningful percentage.
+        #expect(quotas[2].percentRemaining == nil)
+        #expect(quotas[2].balanceRemaining == 750)
+        #expect(quotas[2].balanceCap == nil)
+        #expect(quotas[2].balanceUnit == "credits")
     }
 
     @Test

@@ -426,8 +426,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 percentRemaining: percentRemaining,
                 quotaType: .session,
                 providerId: "claude",
-                resetsAt: resetsAt,
-                resetText: formatResetText(resetsAt)
+                resetsAt: resetsAt
             ))
         }
 
@@ -439,8 +438,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 percentRemaining: percentRemaining,
                 quotaType: .weekly,
                 providerId: "claude",
-                resetsAt: resetsAt,
-                resetText: formatResetText(resetsAt)
+                resetsAt: resetsAt
             ))
         }
 
@@ -452,8 +450,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 percentRemaining: percentRemaining,
                 quotaType: .modelSpecific("sonnet"),
                 providerId: "claude",
-                resetsAt: resetsAt,
-                resetText: formatResetText(resetsAt)
+                resetsAt: resetsAt
             ))
         }
 
@@ -464,8 +461,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 percentRemaining: percentRemaining,
                 quotaType: .modelSpecific("opus"),
                 providerId: "claude",
-                resetsAt: resetsAt,
-                resetText: formatResetText(resetsAt)
+                resetsAt: resetsAt
             ))
         }
 
@@ -496,8 +492,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 percentRemaining: 100.0 - percent,
                 quotaType: quotaType,
                 providerId: "claude",
-                resetsAt: resetsAt,
-                resetText: formatResetText(resetsAt)
+                resetsAt: resetsAt
             ))
         }
 
@@ -511,9 +506,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 budget: pair.cap,
                 providerId: "claude",
                 kind: .extraUsage,
-                capturedAt: Date(),
-                resetsAt: nil,
-                resetText: nil
+                capturedAt: Date()
             )
         } else if let pair = response.extraUsage?.costPair {
             costUsage = CostUsage(
@@ -521,9 +514,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 budget: pair.cap,
                 providerId: "claude",
                 kind: .extraUsage,
-                capturedAt: Date(),
-                resetsAt: nil,
-                resetText: nil
+                capturedAt: Date()
             )
         } else {
             costUsage = nil
@@ -579,25 +570,6 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         // Try without fractional seconds
         formatter.formatOptions = [.withInternetDateTime]
         return formatter.date(from: isoString)
-    }
-
-    private func formatResetText(_ date: Date?) -> String? {
-        guard let date else { return nil }
-
-        let now = Date()
-        let seconds = date.timeIntervalSince(now)
-        guard seconds > 0 else { return nil }
-
-        let hours = Int(seconds / 3600)
-        let minutes = Int((seconds.truncatingRemainder(dividingBy: 3600)) / 60)
-
-        if hours > 0 {
-            return "Resets in \(hours)h \(minutes)m"
-        } else if minutes > 0 {
-            return "Resets in \(minutes)m"
-        } else {
-            return "Resets soon"
-        }
     }
 
     private func parseAccountTier(_ subscriptionType: String?) -> AccountTier? {

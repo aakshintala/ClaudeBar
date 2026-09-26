@@ -25,8 +25,8 @@ struct UsageQuotaTests {
         #expect(quota.percentRemaining == 65)
         #expect(quota.quotaType == QuotaType.session)
         #expect(quota.providerId == "claude")
-        #expect(quota.dollarUsed == nil)
-        #expect(quota.dollarCap == nil)
+        #expect(quota.balanceUsed == nil)
+        #expect(quota.balanceCap == nil)
     }
 
     @Test
@@ -174,89 +174,36 @@ struct UsageQuotaTests {
         #expect(quota1 == quota2)
     }
 
-    // MARK: - Dollar-Based Quotas
+    // MARK: - Balance Meters
 
     @Test
-    func `isDollarBased returns true when dollarRemaining is set`() {
-        // Given
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "claude", dollarRemaining: 50)
+    func `a balance with no cap is balance-only`() {
+        let quota = UsageQuota(percentRemaining: 100, quotaType: .timeLimit("Credits"), providerId: "codex",
+                               balanceRemaining: 750, balanceUnit: .credits)
 
-        // When & Then
-        #expect(quota.isDollarBased == true)
+        #expect(quota.isBalanceOnly)
     }
 
     @Test
-    func `isDollarBased returns false when dollarRemaining is nil`() {
-        // Given
-        let quota = UsageQuota(percentRemaining: 87.95, quotaType: .modelSpecific("Amp Free"), providerId: "claude")
+    func `a capped balance and a percentage quota are not balance-only`() {
+        let capped = UsageQuota(percentRemaining: 75, quotaType: .timeLimit("Extra"), providerId: "claude",
+                                balanceUsed: 125, balanceCap: 500, balanceUnit: .usd)
+        let percent = UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude")
 
-        // When & Then
-        #expect(quota.isDollarBased == false)
+        #expect(!capped.isBalanceOnly)
+        #expect(!percent.isBalanceOnly)
     }
 
     @Test
-    func `formattedDollarRemaining formats whole dollars`() {
-        // Given
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "claude", dollarRemaining: 50)
-
-        // When & Then
-        #expect(quota.formattedDollarRemaining == "$50.00")
+    func `usd balances format as dollars and cents`() {
+        #expect(BalanceUnit.usd.format(50) == "$50.00")
+        #expect(BalanceUnit.usd.format(Decimal(string: "1234.5")!) == "$1,234.50")
     }
 
     @Test
-    func `formattedDollarRemaining formats zero`() {
-        // Given
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "claude", dollarRemaining: 0)
-
-        // When & Then
-        #expect(quota.formattedDollarRemaining == "$0.00")
-    }
-
-    @Test
-    func `formattedDollarRemaining formats decimal amount`() {
-        // Given
-        let quota = UsageQuota(percentRemaining: 100, quotaType: .modelSpecific("Individual credits"), providerId: "claude", dollarRemaining: Decimal(string: "17.59"))
-
-        // When & Then
-        #expect(quota.formattedDollarRemaining == "$17.59")
-    }
-
-    @Test
-    func `formattedDollarRemaining returns nil when not dollar based`() {
-        // Given
-        let quota = UsageQuota(percentRemaining: 75, quotaType: .session, providerId: "claude")
-
-        // When & Then
-        #expect(quota.formattedDollarRemaining == nil)
-    }
-
-    @Test
-    func `quota stores capped dollar spend amounts`() {
-        let quota = UsageQuota(
-            percentRemaining: 75,
-            quotaType: .timeLimit("Claude Extra"),
-            providerId: "claude",
-            dollarUsed: Decimal(string: "123.45"),
-            dollarCap: 500
-        )
-
-        #expect(quota.dollarUsed == Decimal(string: "123.45"))
-        #expect(quota.dollarCap == 500)
-        #expect(quota.dollarRemaining == nil)
-    }
-
-    @Test
-    func `formats capped zero spend at a glance`() {
-        let quota = UsageQuota(
-            percentRemaining: 100,
-            quotaType: .timeLimit("Claude Extra"),
-            providerId: "claude",
-            dollarUsed: 0,
-            dollarCap: 500
-        )
-
-        #expect(quota.formattedDollarUsed == "$0.00")
-        #expect(quota.formattedDollarCap == "$500")
+    func `credit balances format as grouped credits`() {
+        #expect(BalanceUnit.credits.format(1234) == "1,234 credits")
+        #expect(BalanceUnit.credits.format(Decimal(string: "12.5")!) == "12.5 credits")
     }
 
     // MARK: - Unit Counts

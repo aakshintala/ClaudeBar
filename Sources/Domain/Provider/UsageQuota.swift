@@ -15,20 +15,18 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     /// When this quota will reset (if known)
     public let resetsAt: Date?
 
-    /// Raw reset text from CLI (e.g., "Resets 11am", "Resets Jan 15")
-    public let resetText: String?
+    /// Money or credits left. With no `balanceCap` this is a balance-only
+    /// meter, whose `percentRemaining` is a placeholder (see `isBalanceOnly`).
+    public let balanceRemaining: Decimal?
 
-    /// Dollar balance remaining for credit-based quotas with no cap (e.g., "$50 remaining").
-    /// nil for percentage-based quotas that have a known total.
-    public let dollarRemaining: Decimal?
+    /// Amount spent against `balanceCap`.
+    public let balanceUsed: Decimal?
 
-    /// Dollars spent for a capped spend meter.
-    /// Co-occurs with `dollarCap`; nil for percentage and balance meters.
-    public let dollarUsed: Decimal?
+    /// The cap a spend meter counts against; nil when none exists.
+    public let balanceCap: Decimal?
 
-    /// Dollar cap for a capped spend meter.
-    /// Co-occurs with `dollarUsed`; nil for percentage and balance meters.
-    public let dollarCap: Decimal?
+    /// What the balance fields count; nil for non-balance meters.
+    public let balanceUnit: BalanceUnit?
 
     /// Requests consumed for a count-based meter (e.g. Cursor's 326 of 40000).
     /// Co-occurs with `unitsLimit`; nil for percentage and monetary meters.
@@ -45,10 +43,10 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         quotaType: QuotaType,
         providerId: String,
         resetsAt: Date? = nil,
-        resetText: String? = nil,
-        dollarRemaining: Decimal? = nil,
-        dollarUsed: Decimal? = nil,
-        dollarCap: Decimal? = nil,
+        balanceRemaining: Decimal? = nil,
+        balanceUsed: Decimal? = nil,
+        balanceCap: Decimal? = nil,
+        balanceUnit: BalanceUnit? = nil,
         unitsUsed: Int? = nil,
         unitsLimit: Int? = nil
     ) {
@@ -56,10 +54,10 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         self.quotaType = quotaType
         self.providerId = providerId
         self.resetsAt = resetsAt
-        self.resetText = resetText
-        self.dollarRemaining = dollarRemaining
-        self.dollarUsed = dollarUsed
-        self.dollarCap = dollarCap
+        self.balanceRemaining = balanceRemaining
+        self.balanceUsed = balanceUsed
+        self.balanceCap = balanceCap
+        self.balanceUnit = balanceUnit
         self.unitsUsed = unitsUsed
         self.unitsLimit = unitsLimit
     }
@@ -77,26 +75,9 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
         100 - percentRemaining
     }
 
-    /// Whether this quota is dollar-based (credit balance with no percentage cap)
-    public var isDollarBased: Bool {
-        dollarRemaining != nil
-    }
-
-    /// Formatted dollar remaining string (e.g., "$50.00"), nil for percentage-based quotas
-    public var formattedDollarRemaining: String? {
-        guard let dollarRemaining else { return nil }
-        let amount = NSDecimalNumber(decimal: dollarRemaining).doubleValue
-        return String(format: "$%.2f", amount)
-    }
-
-    /// Formatted spend amount for capped monetary quotas (e.g. "$1,234.56").
-    public var formattedDollarUsed: String? {
-        formatDollars(dollarUsed, minimumFractionDigits: 2)
-    }
-
-    /// Formatted cap for capped monetary quotas (e.g. "$500").
-    public var formattedDollarCap: String? {
-        formatDollars(dollarCap, minimumFractionDigits: 0)
+    /// A balance with no cap (e.g. Codex credits): no meaningful percentage.
+    public var isBalanceOnly: Bool {
+        balanceRemaining != nil && balanceCap == nil
     }
 
     /// The used/total fraction for a count-based meter (e.g. "326/40000"), nil
@@ -105,20 +86,6 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
     public var formattedUnits: String? {
         guard let unitsUsed, let unitsLimit, unitsLimit > 0 else { return nil }
         return "\(unitsUsed)/\(unitsLimit)"
-    }
-
-    private func formatDollars(_ amount: Decimal?, minimumFractionDigits: Int) -> String? {
-        guard let amount else { return nil }
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.usesGroupingSeparator = true
-        formatter.groupingSeparator = ","
-        formatter.decimalSeparator = "."
-        formatter.minimumFractionDigits = minimumFractionDigits
-        formatter.maximumFractionDigits = 2
-        let value = formatter.string(from: amount as NSDecimalNumber) ?? "\(amount)"
-        return "$\(value)"
     }
 
     // MARK: - Burn Rate
@@ -168,5 +135,25 @@ public struct UsageQuota: Sendable, Equatable, Hashable, Comparable {
 
     public static func < (lhs: UsageQuota, rhs: UsageQuota) -> Bool {
         lhs.percentRemaining < rhs.percentRemaining
+    }
+}
+
+/// What a balance meter counts.
+public enum BalanceUnit: String, Sendable, Hashable {
+    case usd
+    case credits
+
+    /// The one balance formatter: "$1,234.50" for usd, "1,234 credits" for credits.
+    public func format(_ amount: Decimal) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.usesGroupingSeparator = true
+        formatter.groupingSeparator = ","
+        formatter.groupingSize = 3
+        formatter.maximumFractionDigits = 2
+        formatter.minimumFractionDigits = self == .usd ? 2 : 0
+        let value = formatter.string(from: amount as NSDecimalNumber) ?? "\(amount)"
+        return self == .usd ? "$\(value)" : "\(value) credits"
     }
 }

@@ -52,18 +52,33 @@ public struct QuotaFeedProviderDTO: Codable, Sendable, Equatable {
 public struct QuotaFeedQuotaDTO: Codable, Sendable, Equatable {
     public let key: String
     public let label: String
-    public let percentRemaining: Double
+    /// nil for a balance-only bucket, which has no meaningful percentage.
+    public let percentRemaining: Double?
     public let resetsAt: Date?
+    /// Reset time only ("Resets in 3h"), derived from `resetsAt`.
     public let resetText: String?
     public let status: String
+    public let balanceRemaining: Decimal?
+    public let balanceUsed: Decimal?
+    public let balanceCap: Decimal?
+    /// "usd" or "credits".
+    public let balanceUnit: String?
+    public let unitsUsed: Int?
+    public let unitsLimit: Int?
 
     public init(
         key: String,
         label: String,
-        percentRemaining: Double,
+        percentRemaining: Double?,
         resetsAt: Date?,
         resetText: String?,
-        status: String
+        status: String,
+        balanceRemaining: Decimal? = nil,
+        balanceUsed: Decimal? = nil,
+        balanceCap: Decimal? = nil,
+        balanceUnit: String? = nil,
+        unitsUsed: Int? = nil,
+        unitsLimit: Int? = nil
     ) {
         self.key = key
         self.label = label
@@ -71,6 +86,12 @@ public struct QuotaFeedQuotaDTO: Codable, Sendable, Equatable {
         self.resetsAt = resetsAt
         self.resetText = resetText
         self.status = status
+        self.balanceRemaining = balanceRemaining
+        self.balanceUsed = balanceUsed
+        self.balanceCap = balanceCap
+        self.balanceUnit = balanceUnit
+        self.unitsUsed = unitsUsed
+        self.unitsLimit = unitsLimit
     }
 }
 
@@ -137,10 +158,16 @@ public enum QuotaFeedDTOMapper {
         QuotaFeedQuotaDTO(
             key: quota.quotaType.quotaKey,
             label: quota.quotaType.displayName,
-            percentRemaining: quota.percentRemaining,
+            percentRemaining: quota.isBalanceOnly ? nil : quota.percentRemaining,
             resetsAt: quota.resetsAt,
-            resetText: quota.resetText,
-            status: quota.status.feedKey
+            resetText: quota.compactResetTime.map { $0 == "soon" ? "Resets soon" : "Resets in \($0)" },
+            status: quota.status.feedKey,
+            balanceRemaining: quota.balanceRemaining,
+            balanceUsed: quota.balanceUsed,
+            balanceCap: quota.balanceCap,
+            balanceUnit: quota.balanceUnit?.rawValue,
+            unitsUsed: quota.unitsUsed,
+            unitsLimit: quota.unitsLimit
         )
     }
 

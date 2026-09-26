@@ -233,8 +233,7 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 percentRemaining: max(0, 100 - primary),
                 quotaType: .session,
                 providerId: "codex",
-                resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: primaryWindow),
-                resetText: formatResetText(resetsAtDate(nowSeconds: nowSeconds, window: primaryWindow))
+                resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: primaryWindow)
             ))
         }
         if let secondary = headerSecondary {
@@ -242,8 +241,7 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
                 percentRemaining: max(0, 100 - secondary),
                 quotaType: .weekly,
                 providerId: "codex",
-                resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: secondaryWindow),
-                resetText: formatResetText(resetsAtDate(nowSeconds: nowSeconds, window: secondaryWindow))
+                resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: secondaryWindow)
             ))
         }
 
@@ -254,8 +252,7 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
                     percentRemaining: max(0, 100 - usedPercent),
                     quotaType: .session,
                     providerId: "codex",
-                    resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: primaryWindow),
-                    resetText: formatResetText(resetsAtDate(nowSeconds: nowSeconds, window: primaryWindow))
+                    resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: primaryWindow)
                 ))
             }
             if let usedPercent = secondaryWindow?["used_percent"] as? Double {
@@ -263,27 +260,25 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
                     percentRemaining: max(0, 100 - usedPercent),
                     quotaType: .weekly,
                     providerId: "codex",
-                    resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: secondaryWindow),
-                    resetText: formatResetText(resetsAtDate(nowSeconds: nowSeconds, window: secondaryWindow))
+                    resetsAt: resetsAtDate(nowSeconds: nowSeconds, window: secondaryWindow)
                 ))
             }
         }
 
-        // Parse credits
-        var costUsage: CostUsage?
-        let creditsHeader = readHeaderDouble(httpResponse, key: "x-codex-credits-balance")
-        let creditsBody = (responseDict["credits"] as? [String: Any])?["balance"] as? Double
-        if let creditsRemaining = creditsHeader ?? creditsBody {
-            let limit: Decimal = 1000
-            let used = max(0, min(limit, limit - Decimal(creditsRemaining)))
-            costUsage = CostUsage(
-                totalCost: used,
-                budget: limit,
+        // Credits: a balance with no cap. The API reports no grant, so no
+        // percentage is invented (the balance may be a string or a number).
+        let bodyBalance = (responseDict["credits"] as? [String: Any])?["balance"]
+        let balance = httpResponse.value(forHTTPHeaderField: "x-codex-credits-balance").flatMap { Decimal(string: $0) }
+            ?? (bodyBalance as? String).flatMap { Decimal(string: $0) }
+            ?? (bodyBalance as? NSNumber)?.decimalValue
+        if let balance {
+            quotas.append(UsageQuota(
+                percentRemaining: 100, // ponytail: placeholder; isBalanceOnly hides it from UI and feed
+                quotaType: .timeLimit("Credits"),
                 providerId: "codex",
-                capturedAt: Date(),
-                resetsAt: nil,
-                resetText: nil
-            )
+                balanceRemaining: balance,
+                balanceUnit: .credits
+            ))
         }
 
         // Parse plan type
@@ -298,8 +293,7 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             providerId: "codex",
             quotas: quotas,
             capturedAt: Date(),
-            accountTier: accountTier,
-            costUsage: costUsage
+            accountTier: accountTier
         )
     }
 
@@ -320,26 +314,6 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             return Date(timeIntervalSince1970: nowSeconds + resetAfterSeconds)
         }
         return nil
-    }
-
-    private func formatResetText(_ date: Date?) -> String? {
-        guard let date else { return nil }
-        let seconds = date.timeIntervalSinceNow
-        guard seconds > 0 else { return nil }
-
-        let days = Int(seconds / 86400)
-        let hours = Int((seconds.truncatingRemainder(dividingBy: 86400)) / 3600)
-        let minutes = Int((seconds.truncatingRemainder(dividingBy: 3600)) / 60)
-
-        if days > 0 {
-            return "Resets in \(days)d \(hours)h \(minutes)m"
-        } else if hours > 0 {
-            return "Resets in \(hours)h \(minutes)m"
-        } else if minutes > 0 {
-            return "Resets in \(minutes)m"
-        } else {
-            return "Resets soon"
-        }
     }
 
     private func parsePlanType(_ planType: String) -> AccountTier {

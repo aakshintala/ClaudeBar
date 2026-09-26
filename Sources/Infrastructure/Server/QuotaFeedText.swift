@@ -1,4 +1,5 @@
 import Foundation
+import Domain
 
 /// Renders the quota feed as compact text for agents. Output adapts to
 /// severity: an all-healthy provider collapses to one line, and reset times
@@ -34,7 +35,7 @@ public enum QuotaFeedText {
         // Everything healthy: one scannable line per provider.
         if p.throttledUntil == nil, !p.quotas.contains(where: needsDetail) {
             let summary = p.quotas.map { q in
-                "\(q.label.lowercased()) \(percent(q))%" + (informativeResetText(q).map { " (\($0))" } ?? "")
+                "\(q.label.lowercased()) \(amount(q))" + (extra(q).map { " (\($0))" } ?? "")
             }.joined(separator: " · ")
             return ["\(p.id)\(tier) - \(summary.isEmpty ? "no quotas reported" : summary)"]
         }
@@ -44,8 +45,9 @@ public enum QuotaFeedText {
         }
 
         for q in p.quotas {
-            let extra = informativeResetText(q).map { " (\($0))" } ?? ""
-            let line = "  \(padLabel(q.label)) \(percent(q))% left\(extra)"
+            let note = extra(q).map { " (\($0))" } ?? ""
+            let left = q.percentRemaining == nil ? "" : " left"
+            let line = "  \(padLabel(q.label)) \(amount(q))\(left)\(note)"
             guard needsDetail(q) else {
                 lines.append(line)
                 continue
@@ -60,17 +62,21 @@ public enum QuotaFeedText {
         q.status != "healthy"
     }
 
-    private static func percent(_ q: QuotaFeedQuotaDTO) -> Int {
-        Int(q.percentRemaining.rounded())
+    /// "42%", or the balance ("1,234 credits left") when there is no percentage.
+    private static func amount(_ q: QuotaFeedQuotaDTO) -> String {
+        if let p = q.percentRemaining { return "\(Int(p.rounded()))%" }
+        return balanceLeft(q) ?? "?"
     }
 
-    /// `resetText` is overloaded upstream: Cursor puts usage counts in it
-    /// ("21479/27222 requests") while Claude and Codex put a reset description
-    /// ("Resets in 1h 24m") that duplicates `resetsAt`. Keep only the former.
-    private static func informativeResetText(_ q: QuotaFeedQuotaDTO) -> String? {
-        guard let text = q.resetText?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
-        let isResetDescription = text.range(of: #"^resets?\b"#, options: [.regularExpression, .caseInsensitive]) != nil
-        return isResetDescription ? nil : text
+    /// Counts ("412/500"), or the balance left beside a percentage.
+    private static func extra(_ q: QuotaFeedQuotaDTO) -> String? {
+        if let used = q.unitsUsed, let limit = q.unitsLimit, limit > 0 { return "\(used)/\(limit)" }
+        return q.percentRemaining == nil ? nil : balanceLeft(q)
+    }
+
+    private static func balanceLeft(_ q: QuotaFeedQuotaDTO) -> String? {
+        guard let left = q.balanceRemaining else { return nil }
+        return (q.balanceUnit.flatMap(BalanceUnit.init(rawValue:)) ?? .usd).format(left) + " left"
     }
 
     private static func padLabel(_ label: String, width: Int = 8) -> String {

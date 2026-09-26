@@ -9,18 +9,25 @@ struct QuotaFeedTextTests {
 
     private func quota(
         _ label: String,
-        _ percent: Double,
+        _ percent: Double?,
         status: String = "healthy",
         resetsIn: TimeInterval? = nil,
-        resetText: String? = nil
+        balanceRemaining: Decimal? = nil,
+        balanceUnit: String? = nil,
+        unitsUsed: Int? = nil,
+        unitsLimit: Int? = nil
     ) -> QuotaFeedQuotaDTO {
         QuotaFeedQuotaDTO(
             key: label.lowercased(),
             label: label,
             percentRemaining: percent,
             resetsAt: resetsIn.map { now.addingTimeInterval($0) },
-            resetText: resetText,
-            status: status
+            resetText: nil,
+            status: status,
+            balanceRemaining: balanceRemaining,
+            balanceUnit: balanceUnit,
+            unitsUsed: unitsUsed,
+            unitsLimit: unitsLimit
         )
     }
 
@@ -74,15 +81,20 @@ struct QuotaFeedTextTests {
     }
 
     @Test
-    func `reset descriptions are dropped but usage counts are kept`() {
+    func `counts and balances render from their fields`() {
         let text = QuotaFeedText.render(feed([
-            provider("cursor", quotas: [
-                quota("Monthly", 21, resetText: "21479/27222 requests"),
-                quota("Session", 50, resetText: "Resets in 1h 24m")
+            provider("cursor", quotas: [quota("Monthly", 21, unitsUsed: 21479, unitsLimit: 27222)]),
+            provider("codex", quotas: [
+                quota("Session", 50),
+                quota("Credits", nil, balanceRemaining: 1234, balanceUnit: "credits")
             ])
         ]), now: now)
 
-        #expect(text == "cursor - monthly 21% (21479/27222 requests) · session 50%")
+        #expect(text == """
+        cursor - monthly 21% (21479/27222)
+
+        codex - session 50% · credits 1,234 credits left
+        """)
     }
 
     @Test

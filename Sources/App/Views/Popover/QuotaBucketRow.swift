@@ -29,9 +29,13 @@ struct QuotaBucketRow: View {
 
     /// Count-based meters (Cursor) show the raw used/total fraction — the
     /// percentage is derivable from it, the fraction isn't derivable from the
-    /// percentage. Everything else falls back to the percentage.
+    /// percentage. Balance-only meters (Codex credits) show the amount left.
+    /// Everything else falls back to the percentage.
     private var headlineText: String {
-        quota.formattedUnits ?? "\(Int(quota.percentRemaining.rounded()))%"
+        if quota.isBalanceOnly, let left = quota.balanceRemaining {
+            return (quota.balanceUnit ?? .usd).format(left)
+        }
+        return quota.formattedUnits ?? "\(Int(quota.percentRemaining.rounded()))%"
     }
 
     private var resetText: String {

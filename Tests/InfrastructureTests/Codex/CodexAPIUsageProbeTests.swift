@@ -262,9 +262,30 @@ struct CodexAPIUsageProbeTests {
 
         let snapshot = try await probe.probe()
 
-        #expect(snapshot.costUsage != nil)
-        #expect(snapshot.costUsage?.totalCost == 250) // 1000 - 750
-        #expect(snapshot.costUsage?.budget == 1000)
+        // The real balance, no invented cap: the API reports no grant.
+        let credits = try #require(snapshot.quotas.first { $0.quotaType == .timeLimit("Credits") })
+        #expect(credits.balanceRemaining == 750)
+        #expect(credits.balanceCap == nil)
+        #expect(credits.balanceUnit == .credits)
+        #expect(credits.isBalanceOnly)
+        #expect(snapshot.costUsage == nil)
+    }
+
+    @Test
+    func `probe parses a string credits balance from the body`() async throws {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        try createAuthFile(at: tempDir)
+
+        let mockNetwork = MockNetworkClient()
+        let responseJSON = #"{"credits": {"has_credits": true, "unlimited": false, "balance": "1234.5"}}"#.data(using: .utf8)!
+        let response = HTTPURLResponse(url: URL(string: "https://chatgpt.com")!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        given(mockNetwork).request(.any).willReturn((responseJSON, response))
+
+        let probe = CodexAPIUsageProbe(credentialLoader: CodexCredentialLoader(homeDirectory: tempDir.path), networkClient: mockNetwork)
+        let snapshot = try await probe.probe()
+
+        #expect(snapshot.quotas.map(\.balanceRemaining) == [Decimal(string: "1234.5")])
     }
 
     // MARK: - Empty Response Tests
