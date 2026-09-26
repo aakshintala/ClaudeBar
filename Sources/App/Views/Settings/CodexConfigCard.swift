@@ -6,11 +6,9 @@ import Infrastructure
 struct CodexConfigCard: View {
     let monitor: QuotaMonitor
 
-    @State private var settings = AppSettings.shared
     @Environment(\.appTheme) private var theme
 
     @State private var codexConfigExpanded: Bool = false
-    @State private var codexProbeMode: CodexProbeMode = .rpc
 
     var body: some View {
         DisclosureGroup(isExpanded: $codexConfigExpanded) {
@@ -46,9 +44,6 @@ struct CodexConfigCard: View {
                         )
                 )
         )
-        .onAppear {
-            codexProbeMode = settings.codex.codexProbeMode()
-        }
     }
 
     private var codexConfigHeader: some View {
@@ -74,7 +69,7 @@ struct CodexConfigCard: View {
                     .font(.system(size: 14, weight: .bold, design: theme.fontDesign))
                     .foregroundStyle(theme.textPrimary)
 
-                Text("Data fetching method")
+                Text("ChatGPT API status")
                     .font(.system(size: 10, weight: .medium, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }
@@ -85,81 +80,40 @@ struct CodexConfigCard: View {
 
     private var codexConfigForm: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("PROBE MODE")
-                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                    .foregroundStyle(theme.textSecondary)
-                    .tracking(0.5)
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "network")
+                    .font(.system(size: 10))
+                    .foregroundStyle(theme.accentPrimary)
+                    .frame(width: 16)
 
-                Picker("", selection: $codexProbeMode) {
-                    ForEach(CodexProbeMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: codexProbeMode) { _, newValue in
-                    settings.codex.setCodexProbeMode(newValue)
-                    Task {
-                        await monitor.refresh(providerId: "codex")
-                    }
-                }
-            }
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("ChatGPT API")
+                        .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
+                        .foregroundStyle(theme.textPrimary)
 
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "terminal")
-                        .font(.system(size: 10))
-                        .foregroundStyle(codexProbeMode == .rpc ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("RPC Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(codexProbeMode == .rpc ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Uses codex app-server via JSON-RPC. Default, works with any auth.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-
-                HStack(alignment: .top, spacing: 8) {
-                    Image(systemName: "network")
-                        .font(.system(size: 10))
-                        .foregroundStyle(codexProbeMode == .api ? theme.accentPrimary : theme.textTertiary)
-                        .frame(width: 16)
-
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("API Mode")
-                            .font(.system(size: 10, weight: .semibold, design: theme.fontDesign))
-                            .foregroundStyle(codexProbeMode == .api ? theme.textPrimary : theme.textSecondary)
-
-                        Text("Calls ChatGPT API directly. Faster, uses OAuth credentials.")
-                            .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
-                            .foregroundStyle(theme.textTertiary)
-                    }
-                }
-            }
-
-            if codexProbeMode == .api {
-                let credentialLoader = CodexCredentialLoader()
-                let hasCredentials = credentialLoader.loadCredentials() != nil
-
-                HStack(spacing: 6) {
-                    Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
-
-                    Text(hasCredentials ? "OAuth credentials found" : "No OAuth credentials found")
-                        .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
-                        .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
-                }
-
-                if !hasCredentials {
-                    Text("Run `codex` in terminal to authenticate, then credentials will be available.")
+                    Text("Calls the ChatGPT backend API directly using OAuth credentials.")
                         .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
                         .foregroundStyle(theme.textTertiary)
                 }
+            }
+
+            let credentialLoader = CodexCredentialLoader()
+            let hasCredentials = credentialLoader.loadCredentials() != nil
+
+            HStack(spacing: 6) {
+                Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
+
+                Text(hasCredentials ? "OAuth credentials found" : "No OAuth credentials found")
+                    .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
+                    .foregroundStyle(hasCredentials ? theme.statusHealthy : theme.statusWarning)
+            }
+
+            if !hasCredentials {
+                Text("Run `codex` in terminal to authenticate, then credentials will be available.")
+                    .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
+                    .foregroundStyle(theme.textTertiary)
             }
         }
     }

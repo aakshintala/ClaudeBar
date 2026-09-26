@@ -47,8 +47,7 @@ struct ClaudeBarApp: App {
                 settingsRepository: settingsRepository
             ),
             CodexProvider(
-                rpcProbe: CodexUsageProbe(),
-                apiProbe: CodexAPIUsageProbe(),
+                probe: CodexAPIUsageProbe(),
                 settingsRepository: settingsRepository
             ),
             CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),

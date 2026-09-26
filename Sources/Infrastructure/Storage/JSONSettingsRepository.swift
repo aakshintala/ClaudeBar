@@ -9,7 +9,7 @@ import Domain
 /// Credentials (tokens, API keys) use UserDefaults for now (Keychain migration later).
 public final class JSONSettingsRepository:
     AppSettingsRepository,
-    CodexSettingsRepository,
+    ProviderSettingsRepository,
     @unchecked Sendable
 {
     /// Shared instance using the default settings file
@@ -99,19 +99,5 @@ public final class JSONSettingsRepository:
 
     public func setEnabled(_ enabled: Bool, forProvider id: String) {
         store.write(value: enabled, key: "providers.\(id).isEnabled")
-    }
-
-    // MARK: - CodexSettingsRepository
-
-    public func codexProbeMode() -> CodexProbeMode {
-        guard let raw: String = store.read(key: "codex.probeMode"),
-              let mode = CodexProbeMode(rawValue: raw) else {
-            return .rpc
-        }
-        return mode
-    }
-
-    public func setCodexProbeMode(_ mode: CodexProbeMode) {
-        store.write(value: mode.rawValue, key: "codex.probeMode")
     }
 }

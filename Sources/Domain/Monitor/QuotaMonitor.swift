@@ -327,16 +327,12 @@ public final class QuotaMonitor {
                     if Task.isCancelled { break }
 
                     // The continuous loop is the background poll: refresh with
-                    // `.background` so providers skip non-glanceable work, and
-                    // bind a low (`.utility`) QoS so any CLI subprocess spawned
-                    // during the refresh runs on efficiency cores / throttled —
-                    // both keep idle energy use low (issue #204).
-                    await ProbeExecutionContext.$qualityOfService.withValue(.utility) {
-                        if let providerIds {
-                            await self.refresh(providerIds: providerIds, kind: .background)
-                        } else {
-                            await self.refreshSelected(kind: .background)
-                        }
+                    // `.background` so providers skip non-glanceable work,
+                    // keeping idle energy use low (issue #204).
+                    if let providerIds {
+                        await self.refresh(providerIds: providerIds, kind: .background)
+                    } else {
+                        await self.refreshSelected(kind: .background)
                     }
                     continuation.yield(.refreshed)
 

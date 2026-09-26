@@ -52,4 +52,24 @@ struct CodexProviderTests {
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
         #expect(codex.isEnabled == true)
     }
+
+    // MARK: - Refresh
+
+    @Test
+    func `codex provider stores snapshot from its configured probe`() async throws {
+        let settings = makeSettingsRepository()
+        let expectedSnapshot = UsageSnapshot(
+            providerId: "codex",
+            quotas: [UsageQuota(percentRemaining: 45, quotaType: .session, providerId: "codex")],
+            capturedAt: Date()
+        )
+        let probe = MockUsageProbe()
+        given(probe).probe().willReturn(expectedSnapshot)
+        let codex = CodexProvider(probe: probe, settingsRepository: settings)
+
+        let snapshot = try await codex.refresh()
+
+        #expect(snapshot.quotas.first?.percentRemaining == 45)
+        #expect(codex.snapshot?.quotas.first?.percentRemaining == 45)
+    }
 }

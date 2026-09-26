@@ -16,18 +16,6 @@ public protocol ProviderSettingsRepository: Sendable {
     func isEnabled(forProvider id: String, defaultValue: Bool) -> Bool
 }
 
-/// Codex-specific settings repository, extending base ProviderSettingsRepository.
-/// Includes configuration for probe mode (RPC vs API).
-/// Tests can use UserDefaultsProviderSettingsRepository with test UserDefaults.
-/// App uses UserDefaultsProviderSettingsRepository.
-public protocol CodexSettingsRepository: ProviderSettingsRepository {
-    /// Gets the probe mode for Codex (RPC or API)
-    func codexProbeMode() -> CodexProbeMode
-
-    /// Sets the probe mode for Codex
-    func setCodexProbeMode(_ mode: CodexProbeMode)
-}
-
 // MARK: - Default Implementation
 
 public extension ProviderSettingsRepository {

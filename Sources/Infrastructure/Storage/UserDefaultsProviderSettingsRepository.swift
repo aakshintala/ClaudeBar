@@ -3,7 +3,7 @@ import Domain
 
 /// UserDefaults-based implementation of ProviderSettingsRepository and its sub-protocols.
 /// Persists provider settings like isEnabled state and provider-specific configuration.
-public final class UserDefaultsProviderSettingsRepository: CodexSettingsRepository, @unchecked Sendable {
+public final class UserDefaultsProviderSettingsRepository: ProviderSettingsRepository, @unchecked Sendable {
     /// Shared singleton instance
     public static let shared = UserDefaultsProviderSettingsRepository()
 
@@ -31,24 +31,7 @@ public final class UserDefaultsProviderSettingsRepository: CodexSettingsReposito
         userDefaults.set(enabled, forKey: key)
     }
 
-    // MARK: - CodexSettingsRepository
-
-    public func codexProbeMode() -> CodexProbeMode {
-        guard let rawValue = userDefaults.string(forKey: Keys.codexProbeMode) else {
-            return .rpc // Default to RPC mode
-        }
-        return CodexProbeMode(rawValue: rawValue) ?? .rpc
-    }
-
-    public func setCodexProbeMode(_ mode: CodexProbeMode) {
-        userDefaults.set(mode.rawValue, forKey: Keys.codexProbeMode)
-    }
-
     // MARK: - Keys
-
-    private enum Keys {
-        static let codexProbeMode = "providerConfig.codexProbeMode"
-    }
 
     /// Generates the UserDefaults key for a provider's enabled state
     private static func enabledKey(forProvider id: String) -> String {

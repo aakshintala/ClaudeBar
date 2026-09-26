@@ -59,23 +59,4 @@ struct JSONSettingsRepositoryProviderTests {
         #expect(repo.isEnabled(forProvider: "codex") == true)
     }
 
-    // MARK: - Codex Settings
-
-    @Test
-    func `codexProbeMode defaults to rpc`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        #expect(repo.codexProbeMode() == .rpc)
-    }
-
-    @Test
-    func `setCodexProbeMode persists value`() {
-        let (repo, dir) = makeRepository()
-        defer { cleanup(dir) }
-
-        repo.setCodexProbeMode(.api)
-        #expect(repo.codexProbeMode() == .api)
-    }
-
 }
