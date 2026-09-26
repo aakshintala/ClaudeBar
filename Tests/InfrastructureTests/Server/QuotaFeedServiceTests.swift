@@ -45,6 +45,20 @@ struct QuotaFeedServiceTests {
     }
 
     @Test
+    func `hung probe does not hold the feed past the deadline`() async {
+        let probe = GatedUsageProbe(gate: RefreshGate()) { Date() }  // gate never released
+        let claude = ClaudeProvider(probe: probe, settingsRepository: makeSettings())
+        let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
+        let service = QuotaFeedService(monitor: monitor, refreshDeadline: 0.2)
+
+        let start = ContinuousClock.now
+        _ = await service.currentFeed()
+        _ = await service.currentFeed()  // joins the still-hung refresh; must also return
+
+        #expect(ContinuousClock.now - start < .seconds(3))
+    }
+
+    @Test
     func `probe failure still returns feed with unavailable`() async {
         let settings = makeSettings()
         let probe = MockUsageProbe()

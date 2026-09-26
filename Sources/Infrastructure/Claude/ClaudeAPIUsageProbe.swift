@@ -168,7 +168,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
 
     public func isAvailable() async -> Bool {
         if cache.get() != nil { return true }
-        return credentialLoader.loadCredentials() != nil
+        return await credentialLoader.loadCredentials() != nil
     }
 
     public func probe() async throws -> UsageSnapshot {
@@ -191,7 +191,9 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         // Only update cache when loading from file (not from cache hit) to preserve TTL
         // 仅在从文件加载时更新缓存，避免滑动续期导致 TTL 永不过期
         let fromCache = cache.get()
-        guard var credentials = fromCache ?? credentialLoader.loadCredentials() else {
+        var loaded = fromCache
+        if loaded == nil { loaded = await credentialLoader.loadCredentials() }
+        guard var credentials = loaded else {
             AppLog.probes.error("Claude API: No credentials found")
             throw ProbeError.authenticationRequired
         }
@@ -212,7 +214,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
 
                     // Try reloading from file — CLI may have updated credentials externally
                     // 尝试从文件重新加载——CLI 可能已在外部更新了凭证
-                    if let freshCredentials = credentialLoader.loadCredentials(),
+                    if let freshCredentials = await credentialLoader.loadCredentials(),
                        freshCredentials.oauth != credentials.oauth {
                         AppLog.probes.info("Claude API: Found updated credentials from file, retrying...")
                         credentials = freshCredentials
@@ -347,7 +349,7 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         }
 
         // Save updated credentials and update cache
-        credentialLoader.saveCredentials(updatedCredentials)
+        await credentialLoader.saveCredentials(updatedCredentials)
         cache.set(updatedCredentials)
 
         AppLog.probes.info("Claude API: Token refreshed successfully")

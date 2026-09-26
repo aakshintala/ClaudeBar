@@ -12,20 +12,16 @@ struct CursorUsageProbeCachingTests {
 
     // MARK: - Test helpers
 
-    private func makeTemporaryDatabase(accessToken: String) throws -> URL {
+    private func makeTemporaryDatabase(accessToken: String) async throws -> URL {
         let dbURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("cursor-probe-tests-\(UUID().uuidString).vscdb")
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = [
+        let result = try await runProcess("/usr/bin/sqlite3", [
             dbURL.path,
             "CREATE TABLE ItemTable(key TEXT, value TEXT); " +
                 "INSERT INTO ItemTable VALUES ('cursorAuth/accessToken', '\(accessToken)');"
-        ]
-        try process.run()
-        process.waitUntilExit()
-        #expect(process.terminationStatus == 0)
+        ])
+        #expect(result.status == 0)
 
         return dbURL
     }
@@ -71,7 +67,7 @@ struct CursorUsageProbeCachingTests {
     func `unexpired token is reused without re-reading the database`() async throws {
         let farFuture = Date().addingTimeInterval(3600).timeIntervalSince1970
         let jwt = makeJWT(exp: farFuture)
-        let dbURL = try makeTemporaryDatabase(accessToken: jwt)
+        let dbURL = try await makeTemporaryDatabase(accessToken: jwt)
 
         let mockNetwork = MockNetworkClient()
         given(mockNetwork).request(.any).willReturn(jsonResponse(usageJSON))
@@ -92,7 +88,7 @@ struct CursorUsageProbeCachingTests {
     func `expired token is re-read from the database`() async throws {
         let alreadyExpired = Date().addingTimeInterval(-60).timeIntervalSince1970
         let jwt = makeJWT(exp: alreadyExpired)
-        let dbURL = try makeTemporaryDatabase(accessToken: jwt)
+        let dbURL = try await makeTemporaryDatabase(accessToken: jwt)
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
         let mockNetwork = MockNetworkClient()
@@ -115,7 +111,7 @@ struct CursorUsageProbeCachingTests {
     func `a 401 drops the cached token and retries once with a fresh read`() async throws {
         let farFuture = Date().addingTimeInterval(3600).timeIntervalSince1970
         let jwt = makeJWT(exp: farFuture)
-        let dbURL = try makeTemporaryDatabase(accessToken: jwt)
+        let dbURL = try await makeTemporaryDatabase(accessToken: jwt)
         defer { try? FileManager.default.removeItem(at: dbURL) }
 
         let mockNetwork = MockNetworkClient()

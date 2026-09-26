@@ -10,6 +10,7 @@ struct ClaudeConfigCard: View {
     @Environment(\.appTheme) private var theme
 
     @State private var claudeConfigExpanded: Bool = false
+    @State private var hasCredentials = false
 
     var body: some View {
         configCard
@@ -107,9 +108,6 @@ struct ClaudeConfigCard: View {
                 }
             }
 
-            let credentialLoader = ClaudeCredentialLoader()
-            let hasCredentials = credentialLoader.loadCredentials() != nil
-
             HStack(spacing: 6) {
                 Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .font(.system(size: 10))
@@ -126,5 +124,6 @@ struct ClaudeConfigCard: View {
                     .foregroundStyle(theme.textTertiary)
             }
         }
+        .task { hasCredentials = await ClaudeCredentialLoader().loadCredentials() != nil }
     }
 }

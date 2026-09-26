@@ -48,19 +48,19 @@ struct ClaudeCredentialLoaderTests {
     // MARK: - Credential Loading Tests
 
     @Test
-    func `loadCredentials returns nil when file does not exist`() throws {
+    func `loadCredentials returns nil when file does not exist`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         // Disable keychain to test file-only path
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let credentials = loader.loadCredentials()
+        let credentials = await loader.loadCredentials()
 
         #expect(credentials == nil)
     }
 
     @Test
-    func `loadCredentials returns credentials from file`() throws {
+    func `loadCredentials returns credentials from file`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -73,7 +73,7 @@ struct ClaudeCredentialLoaderTests {
         )
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path)
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result != nil)
         #expect(result?.oauth.accessToken == "my-access-token")
@@ -83,7 +83,7 @@ struct ClaudeCredentialLoaderTests {
     }
 
     @Test
-    func `loadCredentials returns nil when credentials file has empty accessToken`() throws {
+    func `loadCredentials returns nil when credentials file has empty accessToken`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -91,13 +91,13 @@ struct ClaudeCredentialLoaderTests {
 
         // Disable keychain to test file-only path
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let credentials = loader.loadCredentials()
+        let credentials = await loader.loadCredentials()
 
         #expect(credentials == nil)
     }
 
     @Test
-    func `loadCredentials handles malformed JSON gracefully`() throws {
+    func `loadCredentials handles malformed JSON gracefully`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -108,13 +108,13 @@ struct ClaudeCredentialLoaderTests {
 
         // Disable keychain to test file-only path
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let credentials = loader.loadCredentials()
+        let credentials = await loader.loadCredentials()
 
         #expect(credentials == nil)
     }
 
     @Test
-    func `loadCredentials handles missing claudeAiOauth field`() throws {
+    func `loadCredentials handles missing claudeAiOauth field`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -126,7 +126,7 @@ struct ClaudeCredentialLoaderTests {
 
         // Disable keychain to test file-only path
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let credentials = loader.loadCredentials()
+        let credentials = await loader.loadCredentials()
 
         #expect(credentials == nil)
     }
@@ -134,7 +134,7 @@ struct ClaudeCredentialLoaderTests {
     // MARK: - Token Expiry Tests
 
     @Test
-    func `needsRefresh returns true when token is expired`() throws {
+    func `needsRefresh returns true when token is expired`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -143,14 +143,14 @@ struct ClaudeCredentialLoaderTests {
         try createCredentialsFile(at: tempDir, expiresAt: pastTime)
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path)
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result != nil)
         #expect(loader.needsRefresh(result!.oauth) == true)
     }
 
     @Test
-    func `needsRefresh returns true when token expires within 5 minutes`() throws {
+    func `needsRefresh returns true when token expires within 5 minutes`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -159,14 +159,14 @@ struct ClaudeCredentialLoaderTests {
         try createCredentialsFile(at: tempDir, expiresAt: nearFuture)
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path)
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result != nil)
         #expect(loader.needsRefresh(result!.oauth) == true)
     }
 
     @Test
-    func `needsRefresh returns false when token has more than 5 minutes left`() throws {
+    func `needsRefresh returns false when token has more than 5 minutes left`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -175,21 +175,21 @@ struct ClaudeCredentialLoaderTests {
         try createCredentialsFile(at: tempDir, expiresAt: futureTime)
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path)
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result != nil)
         #expect(loader.needsRefresh(result!.oauth) == false)
     }
 
     @Test
-    func `needsRefresh returns true when expiresAt is missing`() throws {
+    func `needsRefresh returns true when expiresAt is missing`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
         try createCredentialsFile(at: tempDir, expiresAt: nil)
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path)
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result != nil)
         #expect(loader.needsRefresh(result!.oauth) == true)
@@ -198,7 +198,7 @@ struct ClaudeCredentialLoaderTests {
     // MARK: - Credential Saving Tests
 
     @Test
-    func `saveCredentials updates file correctly`() throws {
+    func `saveCredentials updates file correctly`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -209,17 +209,17 @@ struct ClaudeCredentialLoaderTests {
         )
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path)
-        var result = loader.loadCredentials()!
+        var result = await loader.loadCredentials()!
 
         // Update the token
         result.oauth.accessToken = "new-token"
         result.oauth.refreshToken = "new-refresh"
         result.oauth.expiresAt = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
 
-        loader.saveCredentials(result)
+        await loader.saveCredentials(result)
 
         // Reload and verify
-        let reloaded = loader.loadCredentials()
+        let reloaded = await loader.loadCredentials()
         #expect(reloaded?.oauth.accessToken == "new-token")
         #expect(reloaded?.oauth.refreshToken == "new-refresh")
     }
@@ -240,7 +240,7 @@ struct ClaudeCredentialLoaderTests {
     // MARK: - Environment Variable Tests
 
     @Test
-    func `loadCredentials returns credentials from env var when CLAUDE_CODE_OAUTH_TOKEN set`() throws {
+    func `loadCredentials returns credentials from env var when CLAUDE_CODE_OAUTH_TOKEN set`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -249,7 +249,7 @@ struct ClaudeCredentialLoaderTests {
             useKeychain: false,
             environment: ["CLAUDE_CODE_OAUTH_TOKEN": "my-setup-token"]
         )
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result != nil)
         #expect(result?.oauth.accessToken == "my-setup-token")
@@ -257,7 +257,7 @@ struct ClaudeCredentialLoaderTests {
     }
 
     @Test
-    func `loadCredentials from env var has no refresh token and no expiresAt`() throws {
+    func `loadCredentials from env var has no refresh token and no expiresAt`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -266,14 +266,14 @@ struct ClaudeCredentialLoaderTests {
             useKeychain: false,
             environment: ["CLAUDE_CODE_OAUTH_TOKEN": "my-setup-token"]
         )
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result?.oauth.refreshToken == nil)
         #expect(result?.oauth.expiresAt == nil)
     }
 
     @Test
-    func `loadCredentials trims whitespace and newlines from env token`() throws {
+    func `loadCredentials trims whitespace and newlines from env token`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -282,13 +282,13 @@ struct ClaudeCredentialLoaderTests {
             useKeychain: false,
             environment: ["CLAUDE_CODE_OAUTH_TOKEN": "  my-setup-token\n"]
         )
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result?.oauth.accessToken == "my-setup-token")
     }
 
     @Test
-    func `loadCredentials prefers file credentials over env var`() throws {
+    func `loadCredentials prefers file credentials over env var`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -304,7 +304,7 @@ struct ClaudeCredentialLoaderTests {
             useKeychain: false,
             environment: ["CLAUDE_CODE_OAUTH_TOKEN": "env-token"]
         )
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         // File credentials should win (full-scope for quota monitoring)
         #expect(result?.oauth.accessToken == "file-token")
@@ -312,7 +312,7 @@ struct ClaudeCredentialLoaderTests {
     }
 
     @Test
-    func `loadCredentials ignores empty env var and falls through to file`() throws {
+    func `loadCredentials ignores empty env var and falls through to file`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -323,14 +323,14 @@ struct ClaudeCredentialLoaderTests {
             useKeychain: false,
             environment: ["CLAUDE_CODE_OAUTH_TOKEN": ""]
         )
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result?.oauth.accessToken == "file-token")
         #expect(result?.source == .file)
     }
 
     @Test
-    func `loadCredentials falls through to file when env var not present`() throws {
+    func `loadCredentials falls through to file when env var not present`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -341,14 +341,14 @@ struct ClaudeCredentialLoaderTests {
             useKeychain: false,
             environment: [:]  // No env var
         )
-        let result = loader.loadCredentials()
+        let result = await loader.loadCredentials()
 
         #expect(result?.oauth.accessToken == "file-token")
         #expect(result?.source == .file)
     }
 
     @Test
-    func `saveCredentials is no-op for environment source`() throws {
+    func `saveCredentials is no-op for environment source`() async throws {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -357,10 +357,10 @@ struct ClaudeCredentialLoaderTests {
             useKeychain: false,
             environment: ["CLAUDE_CODE_OAUTH_TOKEN": "env-token"]
         )
-        let result = loader.loadCredentials()!
+        let result = await loader.loadCredentials()!
 
         // saveCredentials should not crash for environment source
-        loader.saveCredentials(result)
+        await loader.saveCredentials(result)
 
         // No file should be created
         let credPath = (tempDir.path as NSString).appendingPathComponent(".claude/.credentials.json")

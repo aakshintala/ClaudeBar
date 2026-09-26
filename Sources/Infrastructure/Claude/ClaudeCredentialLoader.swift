@@ -82,14 +82,14 @@ public struct ClaudeCredentialLoader: Sendable {
     /// over the `CLAUDE_CODE_OAUTH_TOKEN` env var (inference-only from `claude setup-token`).
     /// This ensures quota monitoring uses full-scope credentials when available,
     /// while still falling back to the env var token if nothing else exists.
-    public func loadCredentials() -> ClaudeCredentialResult? {
+    public func loadCredentials() async -> ClaudeCredentialResult? {
         // Try file first (full-scope OAuth from `claude login`)
         if let fileResult = loadFromFile() {
             return fileResult
         }
 
         // Keychain (if enabled)
-        if useKeychain, let keychainResult = loadFromKeychain() {
+        if useKeychain, let keychainResult = await loadFromKeychain() {
             return keychainResult
         }
 
@@ -111,7 +111,7 @@ public struct ClaudeCredentialLoader: Sendable {
     }
 
     /// Saves updated credentials back to the original source.
-    public func saveCredentials(_ result: ClaudeCredentialResult) {
+    public func saveCredentials(_ result: ClaudeCredentialResult) async {
         // Environment credentials are read-only (set via env var, not persisted by us)
         if result.source == .environment {
             return
@@ -140,7 +140,7 @@ public struct ClaudeCredentialLoader: Sendable {
         case .file:
             saveToFile(updatedData)
         case .keychain:
-            saveToKeychain(updatedData)
+            await saveToKeychain(updatedData)
         }
     }
 
@@ -211,22 +211,12 @@ public struct ClaudeCredentialLoader: Sendable {
 
     // MARK: - Private: Keychain Operations
 
-    private func loadFromKeychain() -> ClaudeCredentialResult? {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        process.arguments = ["find-generic-password", "-s", keychainService, "-w"]
-
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = Pipe()
-
+    private func loadFromKeychain() async -> ClaudeCredentialResult? {
         do {
-            try process.run()
-            process.waitUntilExit()
-            guard process.terminationStatus == 0 else { return nil }
+            let result = try await runProcess("/usr/bin/security", ["find-generic-password", "-s", keychainService, "-w"])
+            guard result.status == 0 else { return nil }
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            guard let jsonString = String(data: data, encoding: .utf8)?
+            guard let jsonString = String(data: result.stdout, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines),
                   !jsonString.isEmpty else { return nil }
 
@@ -254,7 +244,7 @@ public struct ClaudeCredentialLoader: Sendable {
         }
     }
 
-    private func saveToKeychain(_ data: [String: Any]) {
+    private func saveToKeychain(_ data: [String: Any]) async {
         guard let jsonData = try? JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted]) else {
             AppLog.credentials.error("Failed to serialize Claude credentials for Keychain")
             return
@@ -264,25 +254,14 @@ public struct ClaudeCredentialLoader: Sendable {
         // SecItem* from this app would prompt. The secret goes over stdin, never argv.
         // ponytail: account is the login name, which is what Claude Code writes; read
         // the item's acct attribute if that ever differs.
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        process.arguments = ["-i"]
-        let stdin = Pipe()
-        process.standardInput = stdin
-        process.standardOutput = Pipe()
-        process.standardError = Pipe()
-
         do {
-            try process.run()
             let command = Self.keychainUpdateCommand(json: jsonData, account: NSUserName(), service: keychainService)
-            try stdin.fileHandleForWriting.write(contentsOf: Data(command.utf8))
-            try stdin.fileHandleForWriting.close()
-            process.waitUntilExit()
+            let status = try await runProcess("/usr/bin/security", ["-i"], stdin: Data(command.utf8)).status
 
-            if process.terminationStatus == 0 {
+            if status == 0 {
                 AppLog.credentials.info("Saved Claude credentials to Keychain")
             } else {
-                AppLog.credentials.error("Failed to save Claude credentials to Keychain (exit code: \(process.terminationStatus))")
+                AppLog.credentials.error("Failed to save Claude credentials to Keychain (exit code: \(status))")
             }
         } catch {
             AppLog.credentials.error("Failed to save Claude credentials to Keychain: \(error.localizedDescription)")
