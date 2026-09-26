@@ -36,20 +36,16 @@ struct ClaudeBarApp: App {
         // - ProviderSettingsRepository + all provider sub-protocols
         let settingsRepository = JSONSettingsRepository.shared
 
-        // Create all providers with their probes (rich domain models)
-        // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
-        // Each probe checks isAvailable() for credentials/prerequisites
-        let providers: [any AIProvider] = [
-            ClaudeProvider(probe: ClaudeAPIUsageProbe(), settingsRepository: settingsRepository),
-            CodexProvider(
-                probe: CodexAPIUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
-            CursorProvider(probe: CursorUsageProbe(), settingsRepository: settingsRepository),
-            OpenCodeProvider(
-                probe: OpenCodeUsageProbe(),
-                settingsRepository: settingsRepository
-            ),
+        // One AIProvider per (id, name, probe). The id is the settings key and feed id.
+        // OpenCode Go: 5h ($12), weekly ($30), monthly ($60) from opencode's quota API.
+        func provider(_ id: String, _ name: String, _ probe: any UsageProbe) -> AIProvider {
+            AIProvider(id: id, name: name, probe: probe, settingsRepository: settingsRepository)
+        }
+        let providers = [
+            provider("claude", "Claude", ClaudeAPIUsageProbe()),
+            provider("codex", "Codex", CodexAPIUsageProbe()),
+            provider("cursor", "Cursor", CursorUsageProbe()),
+            provider("opencode-go", "OpenCode Go", OpenCodeUsageProbe()),
         ]
         AppLog.providers.info("Created \(providers.count) providers")
 

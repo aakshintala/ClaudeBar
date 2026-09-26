@@ -55,8 +55,8 @@ struct ProviderEnableDisableSpec {
             let codexProbe = MockUsageProbe()
             // No setup — Codex should never be called
 
-            let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: claudeProbe, settingsRepository: settings)
+            let codex = AIProvider(id: "codex", name: "Codex", probe: codexProbe, settingsRepository: settings)
             codex.isEnabled = false
 
             let monitor = QuotaMonitor(
@@ -88,8 +88,8 @@ struct ProviderEnableDisableSpec {
         func `enabling Codex includes it in monitoring`() {
             // Given — Codex disabled
             let settings = ProviderEnableDisableSpec.makeSettings()
-            let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-            let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: MockUsageProbe(), settingsRepository: settings)
+            let codex = AIProvider(id: "codex", name: "Codex", probe: MockUsageProbe(), settingsRepository: settings)
             codex.isEnabled = false
 
             let monitor = QuotaMonitor(

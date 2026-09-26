@@ -3,7 +3,7 @@ import Domain
 
 /// Provider header + indented quota bucket rows + optional cost card.
 struct ProviderQuotaSection: View {
-    let provider: any AIProvider
+    let provider: AIProvider
     @Environment(\.appTheme) private var theme
 
     var body: some View {

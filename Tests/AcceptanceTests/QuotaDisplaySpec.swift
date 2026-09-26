@@ -55,7 +55,7 @@ struct QuotaDisplaySpec {
             given(probe).isAvailable().willReturn(true)
             given(probe).probe().willReturn(snapshot)
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
+            let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: Self.makeSettings())
             let monitor = QuotaMonitor(
                 providers: [claude],
                 clock: TestClock()
@@ -90,7 +90,7 @@ struct QuotaDisplaySpec {
             given(probe).isAvailable().willReturn(true)
             given(probe).probe().willReturn(snapshot)
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
+            let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: Self.makeSettings())
             let monitor = QuotaMonitor(
                 providers: [claude],
                 clock: TestClock()
@@ -127,7 +127,7 @@ struct QuotaDisplaySpec {
             given(settings).isEnabled(forProvider: .any).willReturn(true)
             given(settings).setEnabled(.any, forProvider: .any).willReturn()
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [claude],
                 clock: TestClock()
@@ -152,7 +152,7 @@ struct QuotaDisplaySpec {
             given(settings).isEnabled(forProvider: .any).willReturn(true)
             given(settings).setEnabled(.any, forProvider: .any).willReturn()
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [claude],
                 clock: TestClock()

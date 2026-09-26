@@ -49,7 +49,7 @@ struct QuotaFeedDTOTests {
             accountTier: .claudeMax
         ))
 
-        let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+        let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(providers: [claude], clock: TestClock())
         await monitor.refresh()
 
@@ -70,7 +70,7 @@ struct QuotaFeedDTOTests {
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(true)
 
-        let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+        let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
 
         let feed = QuotaFeedDTO.make(from: [claude], at: Self.fixedNow)
 
@@ -88,7 +88,7 @@ struct QuotaFeedDTOTests {
         given(probe).isAvailable().willReturn(true)
         given(probe).probe().willThrow(ProbeError.authenticationRequired)
 
-        let cursor = CursorProvider(probe: probe, settingsRepository: settings)
+        let cursor = AIProvider(id: "cursor", name: "Cursor", probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(providers: [cursor], clock: TestClock())
         await monitor.refresh()
 
@@ -114,7 +114,7 @@ struct QuotaFeedDTOTests {
             ]
         )
 
-        let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+        let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(providers: [claude], clock: TestClock())
         await monitor.refresh()
         await monitor.refresh(force: true)
@@ -131,11 +131,8 @@ struct QuotaFeedDTOTests {
         let enabledSettings = makeSettings(enabled: true)
         let disabledSettings = makeSettings(enabled: false)
 
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: enabledSettings)
-        let opencode = OpenCodeProvider(
-            probe: MockUsageProbe(),
-            settingsRepository: disabledSettings
-        )
+        let claude = AIProvider(id: "claude", name: "Claude", probe: MockUsageProbe(), settingsRepository: enabledSettings)
+        let opencode = AIProvider(id: "opencode-go", name: "OpenCode Go", probe: MockUsageProbe(), settingsRepository: disabledSettings)
 
         let feed = QuotaFeedDTO.make(from: [claude, opencode], at: Self.fixedNow)
 

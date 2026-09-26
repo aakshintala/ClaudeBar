@@ -26,7 +26,7 @@ struct QuotaFeedServiceTests {
         let gate = RefreshGate()
         let probe = GatedUsageProbe(gate: gate) { Date(timeIntervalSince1970: 1_700_000_000) }
         let settings = makeSettings()
-        let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+        let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(providers: [claude], clock: TestClock())
         let now = Date(timeIntervalSince1970: 1_700_000_000)
         let service = QuotaFeedService(monitor: monitor, now: { now })
@@ -47,7 +47,7 @@ struct QuotaFeedServiceTests {
     @Test
     func `hung probe does not hold the feed past the deadline`() async {
         let probe = GatedUsageProbe(gate: RefreshGate()) { Date() }  // gate never released
-        let claude = ClaudeProvider(probe: probe, settingsRepository: makeSettings())
+        let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: makeSettings())
         let monitor = QuotaMonitor(providers: [claude], clock: TestClock())
         let service = QuotaFeedService(monitor: monitor, refreshDeadline: 0.2)
 
@@ -65,7 +65,7 @@ struct QuotaFeedServiceTests {
         given(probe).isAvailable().willReturn(true)
         given(probe).probe().willThrow(ProbeError.authenticationRequired)
 
-        let cursor = CursorProvider(probe: probe, settingsRepository: settings)
+        let cursor = AIProvider(id: "cursor", name: "Cursor", probe: probe, settingsRepository: settings)
         let monitor = QuotaMonitor(providers: [cursor], clock: TestClock())
         let service = QuotaFeedService(monitor: monitor)
 

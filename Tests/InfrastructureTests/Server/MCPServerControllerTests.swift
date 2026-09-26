@@ -30,7 +30,7 @@ struct MCPServerControllerTests {
         given(probe).isAvailable().willReturn(true)
         given(probe).probe().willReturn(UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date()))
 
-        let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+        let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
         return QuotaMonitor(providers: [claude], clock: TestClock())
     }
 

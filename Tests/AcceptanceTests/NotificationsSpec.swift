@@ -60,7 +60,7 @@ struct NotificationsSpec {
                 capturedAt: Date()
             ))
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [claude],
                 alerter: mockAlerter,
@@ -103,7 +103,7 @@ struct NotificationsSpec {
 
             let probe = DegradingProbe()
 
-            let codex = CodexProvider(probe: probe, settingsRepository: settings)
+            let codex = AIProvider(id: "codex", name: "Codex", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [codex],
                 alerter: mockAlerter,
@@ -168,7 +168,7 @@ struct NotificationsSpec {
                 capturedAt: Date()
             ))
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [claude],
                 alerter: mockAlerter,
@@ -219,8 +219,8 @@ struct NotificationsSpec {
             given(codexProbe).isAvailable().willReturn(true)
             given(codexProbe).probe().willThrow(ProbeError.timeout)
 
-            let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: claudeProbe, settingsRepository: settings)
+            let codex = AIProvider(id: "codex", name: "Codex", probe: codexProbe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [claude, codex],
                 clock: TestClock()

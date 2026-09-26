@@ -1,46 +1,70 @@
 import Foundation
+import Observation
 
-/// Protocol defining what an AI provider is.
-/// Each provider (Claude, Codex, Cursor, OpenCode) is a rich domain model implementing this protocol.
-/// Providers are @Observable classes with their own state (isSyncing, snapshot, error).
+/// An AI provider: identity plus the observable state of its last refresh.
+/// Every provider is this one class; what differs is the `UsageProbe` it is given.
+/// Adding a provider = write a probe + one registration line in `ClaudeBarApp`.
 ///
 /// `@MainActor` isolates the observable state (isSyncing/snapshot/lastError) to the main
 /// actor so its cheap writes land on the same thread the readers (QuotaMonitor, SwiftUI)
 /// run on. The heavy probe work stays off-main: `refresh()` suspends at the non-isolated
-/// `await probe.probe()`, which runs on the global executor. A `@MainActor` class is
-/// implicitly Sendable, so conformers no longer need `@unchecked Sendable`.
+/// `await probe.probe()`, which runs on the global executor.
 @MainActor
-public protocol AIProvider: AnyObject, Sendable, Identifiable where ID == String {
-    // MARK: - Identity
+@Observable
+public final class AIProvider: Identifiable {
+    /// Unique identifier; also the settings key and feed id (e.g. "claude", "opencode-go")
+    public let id: String
 
-    /// Unique identifier for the provider (e.g., "claude", "codex", "cursor")
-    var id: String { get }
+    /// Display name (e.g. "Claude", "OpenCode Go")
+    public let name: String
 
-    /// Display name for the provider (e.g., "Claude", "Codex", "Cursor")
-    var name: String { get }
+    /// Whether the provider is enabled (persisted via settingsRepository)
+    public var isEnabled: Bool {
+        didSet { settingsRepository.setEnabled(isEnabled, forProvider: id) }
+    }
 
-    /// Whether the provider is enabled (user can toggle this)
-    var isEnabled: Bool { get set }
+    public private(set) var isSyncing: Bool = false
+    public private(set) var snapshot: UsageSnapshot?
+    public private(set) var lastError: Error?
 
-    // MARK: - State (Observable)
+    private let probe: any UsageProbe
+    private let settingsRepository: any ProviderSettingsRepository
 
-    /// Whether the provider is currently syncing data
-    var isSyncing: Bool { get }
+    public init(
+        id: String,
+        name: String,
+        probe: any UsageProbe,
+        settingsRepository: any ProviderSettingsRepository
+    ) {
+        self.id = id
+        self.name = name
+        self.probe = probe
+        self.settingsRepository = settingsRepository
+        self.isEnabled = settingsRepository.isEnabled(forProvider: id)
+    }
 
-    /// The current usage snapshot (nil if never refreshed or unavailable)
-    var snapshot: UsageSnapshot? { get }
-
-    /// The last error that occurred during refresh
-    var lastError: Error? { get }
-
-    // MARK: - Operations
-
-    /// Checks if the provider is available (CLI installed, credentials present, etc.)
-    func isAvailable() async -> Bool
+    /// Checks if the provider is available (credentials present, etc.)
+    public func isAvailable() async -> Bool {
+        await probe.isAvailable()
+    }
 
     /// Refreshes the usage data and updates the snapshot.
+    /// Sets isSyncing during refresh and captures any errors.
     @discardableResult
-    func refresh() async throws -> UsageSnapshot
+    public func refresh() async throws -> UsageSnapshot {
+        isSyncing = true
+        defer { isSyncing = false }
+
+        do {
+            let newSnapshot = try await probe.probe()
+            snapshot = newSnapshot
+            lastError = nil
+            return newSnapshot
+        } catch {
+            lastError = error
+            throw error
+        }
+    }
 }
 
 import Mockable

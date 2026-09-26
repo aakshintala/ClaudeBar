@@ -78,7 +78,7 @@ public struct QuotaFeedQuotaDTO: Codable, Sendable, Equatable {
 
 public enum QuotaFeedDTOMapper {
     @MainActor
-    public static func make(from providers: [any AIProvider], at now: Date) -> QuotaFeedDTO {
+    public static func make(from providers: [AIProvider], at now: Date) -> QuotaFeedDTO {
         var enabled: [QuotaFeedProviderDTO] = []
         var disabledIds: [String] = []
 
@@ -98,7 +98,7 @@ public enum QuotaFeedDTOMapper {
     }
 
     @MainActor
-    private static func mapProvider(_ provider: any AIProvider, at now: Date) -> QuotaFeedProviderDTO {
+    private static func mapProvider(_ provider: AIProvider, at now: Date) -> QuotaFeedProviderDTO {
         let snapshot = provider.snapshot
         let capturedAt = snapshot?.capturedAt
         let ageSeconds = capturedAt.map { Int(now.timeIntervalSince($0)) }
@@ -165,7 +165,7 @@ public enum QuotaFeedDTOMapper {
 
 public extension QuotaFeedDTO {
     @MainActor
-    static func make(from providers: [any AIProvider], at now: Date) -> QuotaFeedDTO {
+    static func make(from providers: [AIProvider], at now: Date) -> QuotaFeedDTO {
         QuotaFeedDTOMapper.make(from: providers, at: now)
     }
 }

@@ -2,7 +2,7 @@ import Domain
 
 public extension QuotaMonitor {
     convenience init(
-        providers: [any AIProvider],
+        providers: [AIProvider],
         alerter: (any QuotaAlerter)? = nil,
         powerStateProvider: (any PowerStateProvider)? = SystemPowerStateProvider()
     ) {

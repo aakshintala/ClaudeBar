@@ -51,7 +51,7 @@ struct RefreshSpec {
                 capturedAt: Date()
             ))
 
-            let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [claude],
                 clock: TestClock()
@@ -84,8 +84,8 @@ struct RefreshSpec {
             given(codexProbe).isAvailable().willReturn(true)
             given(codexProbe).probe().willThrow(ProbeError.timeout)
 
-            let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: claudeProbe, settingsRepository: settings)
+            let codex = AIProvider(id: "codex", name: "Codex", probe: codexProbe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [claude, codex],
                 clock: TestClock()
@@ -125,8 +125,8 @@ struct RefreshSpec {
                 quotas: [UsageQuota(percentRemaining: 40, quotaType: .session, providerId: "codex")],
                 capturedAt: Date()
             )])
-            let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
-            let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
+            let claude = AIProvider(id: "claude", name: "Claude", probe: claudeProbe, settingsRepository: settings)
+            let codex = AIProvider(id: "codex", name: "Codex", probe: codexProbe, settingsRepository: settings)
             let monitor = QuotaMonitor(
                 providers: [claude, codex],
                 clock: OneTickClock()
@@ -179,7 +179,7 @@ struct RefreshSpec {
                     capturedAt: Date()
                 ),
             ])
-            let codex = CodexProvider(probe: probe, settingsRepository: settings)
+            let codex = AIProvider(id: "codex", name: "Codex", probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(providers: [codex], clock: TestClock())
 
             // When/Then — opening the popover again keeps the fresh snapshot...

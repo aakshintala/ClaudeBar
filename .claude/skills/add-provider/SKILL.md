@@ -121,98 +121,18 @@ public struct {Provider}UsageProbe: UsageProbe {
 }
 ```
 
-### Phase 4: Create Provider
+### Phase 4: Register Provider
 
-**Choose Repository Type (ISP):**
-- **Simple provider** (no special config) → Use base `ProviderSettingsRepository`
-- **Provider with config** → Create sub-protocol extending base (see ISP section below)
-
-Create `Sources/Domain/Provider/{Provider}Provider.swift`:
+There is no per-provider class: every provider is one `AIProvider(id:name:probe:settingsRepository:)`.
+Add one line to the `providers` list in `Sources/App/ClaudeBarApp.swift`:
 
 ```swift
-import Foundation
-import Observation
-
-@Observable
-public final class {Provider}Provider: AIProvider, @unchecked Sendable {
-    public let id: String = "{provider-id}"
-    public let name: String = "{Provider Name}"
-    public let cliCommand: String = "{cli-command}"
-
-    public var dashboardURL: URL? { URL(string: "https://...") }
-    public var statusPageURL: URL? { nil }
-
-    /// Whether the provider is enabled (persisted via settingsRepository)
-    public var isEnabled: Bool {
-        didSet {
-            settingsRepository.setEnabled(isEnabled, forProvider: id)
-        }
-    }
-
-    public private(set) var isSyncing: Bool = false
-    public private(set) var snapshot: UsageSnapshot?
-    public private(set) var lastError: Error?
-
-    private let probe: any UsageProbe
-    private let settingsRepository: any ProviderSettingsRepository  // Or your sub-protocol
-
-    public init(probe: any UsageProbe, settingsRepository: any ProviderSettingsRepository) {
-        self.probe = probe
-        self.settingsRepository = settingsRepository
-        // Default to enabled for most providers (set defaultValue: false for opt-in providers)
-        self.isEnabled = settingsRepository.isEnabled(forProvider: "{provider-id}")
-    }
-
-    public func isAvailable() async -> Bool {
-        await probe.isAvailable()
-    }
-
-    @discardableResult
-    public func refresh() async throws -> UsageSnapshot {
-        isSyncing = true
-        defer { isSyncing = false }
-        do {
-            let newSnapshot = try await probe.probe()
-            snapshot = newSnapshot
-            lastError = nil
-            return newSnapshot
-        } catch {
-            lastError = error
-            throw error
-        }
-    }
-}
+provider("{provider-id}", "{Provider Name}", {Provider}UsageProbe()),
 ```
 
-### Phase 5: Register Provider
-
-Add to `Sources/App/ClaudeBarApp.swift`:
-
-```swift
-let settingsRepository = JSONSettingsRepository.shared
-
-let repository = AIProviders(providers: [
-    ClaudeProvider(probe: ClaudeUsageProbe(), settingsRepository: settingsRepository),
-    // ... existing providers
-    {Provider}Provider(probe: {Provider}UsageProbe(), settingsRepository: settingsRepository),
-])
-```
-
-**For providers with special settings (ISP pattern):**
-
-```swift
-// ZaiProvider uses ZaiSettingsRepository (sub-protocol)
-ZaiProvider(
-    probe: ZaiUsageProbe(settingsRepository: settingsRepository),
-    settingsRepository: settingsRepository  // Same instance, casted to ZaiSettingsRepository
-)
-
-// CopilotProvider uses CopilotSettingsRepository (sub-protocol with credentials)
-CopilotProvider(
-    probe: CopilotUsageProbe(settingsRepository: settingsRepository),
-    settingsRepository: settingsRepository  // Same instance, casted to CopilotSettingsRepository
-)
-```
+The id is the settings key (`providers.{id}.isEnabled`) and the feed id; never change it once shipped.
+A probe that needs config takes the settings sub-protocol itself (see ISP section below):
+`{Provider}UsageProbe(settingsRepository: settingsRepository)`.
 
 Add visual identity in `Sources/App/Views/Theme.swift`:
 
@@ -292,13 +212,9 @@ extension JSONSettingsRepository: {Provider}SettingsRepository {
 }
 ```
 
-### Step 3: Update Provider and Probe
+### Step 3: Give the Probe the Sub-Protocol
 
 ```swift
-// Provider
-private let settingsRepository: any {Provider}SettingsRepository
-
-// Probe (if needs settings)
 public init(settingsRepository: any {Provider}SettingsRepository) {
     self.settingsRepository = settingsRepository
 }

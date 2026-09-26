@@ -13,7 +13,7 @@ import Observation
 @Observable
 public final class QuotaMonitor {
     /// All registered providers
-    private let providers: [any AIProvider]
+    private let providers: [AIProvider]
 
     /// Optional alerter for quota changes (e.g., system notifications)
     private let alerter: (any QuotaAlerter)?
@@ -39,7 +39,7 @@ public final class QuotaMonitor {
 
     /// Creates a QuotaMonitor with a set of providers.
     public init(
-        providers: [any AIProvider],
+        providers: [AIProvider],
         alerter: (any QuotaAlerter)? = nil,
         clock: any Clock,
         powerStateProvider: (any PowerStateProvider)? = nil
@@ -74,7 +74,7 @@ public final class QuotaMonitor {
         }
     }
 
-    private func startRefresh(_ provider: any AIProvider) -> Task<Void, Never> {
+    private func startRefresh(_ provider: AIProvider) -> Task<Void, Never> {
         let task = Task {
             await refreshProvider(provider)
             inFlight[provider.id] = nil
@@ -83,7 +83,7 @@ public final class QuotaMonitor {
         return task
     }
 
-    private func refreshProvider(_ provider: any AIProvider) async {
+    private func refreshProvider(_ provider: AIProvider) async {
         guard await provider.isAvailable() else {
             return
         }
@@ -97,7 +97,7 @@ public final class QuotaMonitor {
     }
 
     /// Handles snapshot update and alerts user if status changed
-    private func handleSnapshotUpdate(provider: any AIProvider, snapshot: UsageSnapshot) async {
+    private func handleSnapshotUpdate(provider: AIProvider, snapshot: UsageSnapshot) async {
         let previousStatus = previousStatuses[provider.id] ?? .healthy
         let newStatus = snapshot.overallStatus
 
@@ -116,12 +116,12 @@ public final class QuotaMonitor {
     // MARK: - Queries
 
     /// Returns all providers
-    public var allProviders: [any AIProvider] {
+    public var allProviders: [AIProvider] {
         providers
     }
 
     /// Returns only enabled providers
-    public var enabledProviders: [any AIProvider] {
+    public var enabledProviders: [AIProvider] {
         providers.filter { $0.isEnabled }
     }
 

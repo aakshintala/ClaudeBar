@@ -190,8 +190,7 @@ The skill will guide you through:
 1. **Parsing Tests** → Create tests for API/CLI response parsing first
 2. **Probe Behavior Tests** → Test detection and error handling with mocks
 3. **Probe Implementation** → Implement `UsageProbe` in `Sources/Infrastructure/CLI/`
-4. **Provider Class** → Create `AIProvider` in `Sources/Domain/Provider/`
-5. **Registration** → Add to `ClaudeBarApp.init()` providers array
+4. **Registration** → One `provider(id, name, probe)` line in `ClaudeBarApp.init()` (no provider class to write)
 
 **Repository Selection (ISP):**
 - **Simple provider** (no special config) → Use base `ProviderSettingsRepository`

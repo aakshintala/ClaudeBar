@@ -128,7 +128,7 @@ struct SettingsContentView: View {
         }
     }
 
-    private func providerRow(provider: any AIProvider) -> some View {
+    private func providerRow(provider: AIProvider) -> some View {
         HStack(spacing: 10) {
             ProviderIconView(providerId: provider.id, size: 20)
 
