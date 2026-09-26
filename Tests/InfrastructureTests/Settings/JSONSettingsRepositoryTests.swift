@@ -5,7 +5,7 @@ import Foundation
 @Suite("JSONSettingsRepository")
 struct JSONSettingsRepositoryTests {
 
-    /// Shape of a real `~/.claudebar/settings.json` written by older builds,
+    /// Shape of a real `~/.claudebar/settings.json` written by older builds (before the QuotaBar rename),
     /// including keys that are no longer read.
     private let legacyFile = """
     {
@@ -30,7 +30,7 @@ struct JSONSettingsRepositoryTests {
 
     private func tempFile(_ contents: String? = nil) -> URL {
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("claudebar-test-\(UUID().uuidString)/settings.json")
+            .appendingPathComponent("quotabar-test-\(UUID().uuidString)/settings.json")
         if let contents {
             try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
             try? contents.write(to: url, atomically: true, encoding: .utf8)
@@ -89,20 +89,37 @@ struct JSONSettingsRepositoryTests {
         repo.update { $0.app.themeMode = "dark" }
 
         let file = json(url)
-        #expect(Set(file.keys) == ["app", "feed", "mcp", "providers"])
+        #expect(Set(file.keys) == ["app", "feed", "providers"])
         let app = file["app"] as? [String: Any] ?? [:]
         #expect(Set(app.keys) == ["themeMode", "backgroundSyncEnabled", "backgroundSyncInterval", "quotaAlertsEnabled"])
         #expect(app["themeMode"] as? String == "dark")
         #expect(app["backgroundSyncInterval"] as? Double == 300)
         let providers = file["providers"] as? [String: Any] ?? [:]
         #expect(Set(providers.keys) == ["claude", "codex", "cursor", "opencode-go"])
-        // The installed older build still reads mcp.*, so it is mirrored from feed.
-        #expect((file["mcp"] as? [String: Any])?["enabled"] as? Bool == true)
         #expect((file["feed"] as? [String: Any])?["enabled"] as? Bool == true)
 
         let reloaded = JSONSettingsRepository(fileURL: url)
         #expect(reloaded.settings == repo.settings)
         #expect(reloaded.isEnabled(forProvider: "codex") == false)
+    }
+
+    @Test
+    func `legacy file moves to the new path when the new one is missing`() {
+        let legacy = tempFile(legacyFile)
+        let url = tempFile()
+        let repo = JSONSettingsRepository(fileURL: url, legacyFileURL: legacy)
+        #expect(repo.settings.app.themeMode == "light")
+        #expect(FileManager.default.fileExists(atPath: url.path))
+        #expect(!FileManager.default.fileExists(atPath: legacy.path))
+    }
+
+    @Test
+    func `existing new file wins and the legacy file is left alone`() {
+        let legacy = tempFile(legacyFile)
+        let url = tempFile(#"{ "app": { "themeMode": "dark" } }"#)
+        let repo = JSONSettingsRepository(fileURL: url, legacyFileURL: legacy)
+        #expect(repo.settings.app.themeMode == "dark")
+        #expect(FileManager.default.fileExists(atPath: legacy.path))
     }
 
     @Test

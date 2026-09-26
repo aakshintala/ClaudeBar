@@ -3,7 +3,7 @@ import Observation
 
 /// An AI provider: identity plus the observable state of its last refresh.
 /// Every provider is this one class; what differs is the `UsageProbe` it is given.
-/// Adding a provider = write a probe + one registration line in `ClaudeBarApp`.
+/// Adding a provider = write a probe + one registration line in `QuotaBarApp`.
 ///
 /// `@MainActor` isolates the observable state (isSyncing/snapshot/lastError) to the main
 /// actor so its cheap writes land on the same thread the readers (QuotaMonitor, SwiftUI)

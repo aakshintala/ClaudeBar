@@ -175,7 +175,7 @@ struct SettingsContentView: View {
                 }
                 .toggleStyle(.switch)
                 .tint(theme.accentPrimary)
-                // No .onChange here on purpose. ClaudeBarApp owns the server
+                // No .onChange here on purpose. QuotaBarApp owns the server
                 // lifecycle; a second observer of the same property delivered
                 // sync() twice, and the duplicate bind lost the port to
                 // EADDRINUSE. The toggle only writes the setting.

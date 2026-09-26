@@ -16,7 +16,7 @@ struct FileLoggerTests {
         logger.log(.info, category: "test", message: "hello world")
         logger.flushForTesting()
 
-        let contents = try String(contentsOf: dir.appendingPathComponent("ClaudeBar.log"), encoding: .utf8)
+        let contents = try String(contentsOf: dir.appendingPathComponent("QuotaBar.log"), encoding: .utf8)
         #expect(contents.contains("[INFO] [test] hello world"))
     }
 
@@ -30,7 +30,7 @@ struct FileLoggerTests {
         logger.log(.info, category: "test", message: "second")
         logger.flushForTesting()
 
-        let contents = try String(contentsOf: dir.appendingPathComponent("ClaudeBar.log"), encoding: .utf8)
+        let contents = try String(contentsOf: dir.appendingPathComponent("QuotaBar.log"), encoding: .utf8)
         #expect(contents.contains("first"))
         #expect(contents.contains("second"))
     }
@@ -44,15 +44,15 @@ struct FileLoggerTests {
         // to write megabytes of data to exercise rotation.
         let logger = FileLogger(directory: dir, maxFileSize: 100, rotationCheckInterval: 1)
 
-        let logURL = dir.appendingPathComponent("ClaudeBar.log")
-        let oldURL = dir.appendingPathComponent("ClaudeBar.old.log")
+        let logURL = dir.appendingPathComponent("QuotaBar.log")
+        let oldURL = dir.appendingPathComponent("QuotaBar.old.log")
 
         for i in 0..<20 {
             logger.log(.info, category: "test", message: "padding message number \(i) to grow the file")
         }
         logger.flushForTesting()
 
-        #expect(FileManager.default.fileExists(atPath: oldURL.path), "expected rotation to produce ClaudeBar.old.log")
+        #expect(FileManager.default.fileExists(atPath: oldURL.path), "expected rotation to produce QuotaBar.old.log")
 
         let oldSize = try FileManager.default.attributesOfItem(atPath: oldURL.path)[.size] as? UInt64
         #expect((oldSize ?? 0) > 100)
@@ -73,7 +73,7 @@ struct FileLoggerTests {
         logger.log(.info, category: "test", message: "small")
         logger.flushForTesting()
 
-        let oldURL = dir.appendingPathComponent("ClaudeBar.old.log")
+        let oldURL = dir.appendingPathComponent("QuotaBar.old.log")
         #expect(!FileManager.default.fileExists(atPath: oldURL.path))
     }
 }

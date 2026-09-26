@@ -1,6 +1,6 @@
 import Foundation
 
-/// File-based logger that writes to ~/Library/Logs/ClaudeBar/ClaudeBar.log
+/// File-based logger that writes to ~/Library/Logs/QuotaBar/QuotaBar.log
 /// Provides user-accessible logs for debugging and support.
 ///
 /// Thread-safety: All file operations are serialized on a dedicated dispatch queue.
@@ -12,7 +12,7 @@ public final class FileLogger: @unchecked Sendable {
     public static let shared = FileLogger()
 
     private let fileURL: URL
-    private let queue = DispatchQueue(label: "com.tddworks.ClaudeBar.FileLogger")
+    private let queue = DispatchQueue(label: "com.aakshintala.subscriptionusagebar.FileLogger")
     private let maxFileSize: UInt64
     private let rotationCheckInterval: Int
 
@@ -29,15 +29,15 @@ public final class FileLogger: @unchecked Sendable {
     private var writesSinceRotationCheck = 0
 
     private convenience init() {
-        // ~/Library/Logs/ClaudeBar/ClaudeBar.log
+        // ~/Library/Logs/QuotaBar/QuotaBar.log
         let logsDir = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first!
             .appendingPathComponent("Logs", isDirectory: true)
-            .appendingPathComponent("ClaudeBar", isDirectory: true)
+            .appendingPathComponent("QuotaBar", isDirectory: true)
         self.init(directory: logsDir)
     }
 
     /// - Parameters:
-    ///   - directory: Where `ClaudeBar.log` (and its `.old.log` rotation) live. Exposed so tests
+    ///   - directory: Where `QuotaBar.log` (and its `.old.log` rotation) live. Exposed so tests
     ///     can point at a temp directory instead of `~/Library/Logs`.
     ///   - maxFileSize: Rotation threshold in bytes. Exposed so tests don't need to write 5 MB.
     ///   - rotationCheckInterval: How many writes between size checks.
@@ -50,7 +50,7 @@ public final class FileLogger: @unchecked Sendable {
             NSLog("[FileLogger] Failed to create logs directory at %@: %@", directory.path, error.localizedDescription)
         }
 
-        self.fileURL = directory.appendingPathComponent("ClaudeBar.log")
+        self.fileURL = directory.appendingPathComponent("QuotaBar.log")
         self.maxFileSize = maxFileSize
         self.rotationCheckInterval = rotationCheckInterval
     }

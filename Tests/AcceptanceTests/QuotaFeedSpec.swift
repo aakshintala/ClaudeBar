@@ -4,8 +4,8 @@ import Mockable
 @testable import Domain
 @testable import Infrastructure
 
-@Suite("Feature: MCP Quota Feed")
-struct MCPFeedSpec {
+@Suite("Feature: Quota Feed")
+struct QuotaFeedSpec {
 
     private struct TestClock: Clock {
         func sleep(for duration: Duration) async throws {}

@@ -32,7 +32,7 @@ jobs:
         run: tuist generate --no-open
 
       - name: Build Debug
-        run: xcodebuild build -scheme ClaudeBar -workspace ClaudeBar.xcworkspace -destination 'platform=macOS,arch=arm64'
+        run: xcodebuild build -scheme QuotaBar -workspace QuotaBar.xcworkspace -destination 'platform=macOS,arch=arm64'
 
       - name: Build Release
-        run: xcodebuild build -scheme ClaudeBar -workspace ClaudeBar.xcworkspace -destination 'platform=macOS,arch=arm64' -configuration Release
+        run: xcodebuild build -scheme QuotaBar -workspace QuotaBar.xcworkspace -destination 'platform=macOS,arch=arm64' -configuration Release

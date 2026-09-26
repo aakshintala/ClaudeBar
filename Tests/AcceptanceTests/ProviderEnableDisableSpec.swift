@@ -113,7 +113,7 @@ struct ProviderEnableDisableSpec {
         func `enabled state is stored in settings`() {
             // Given — isolated settings file
             let tempDir = FileManager.default.temporaryDirectory
-                .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
+                .appendingPathComponent("quotabar-test-\(UUID().uuidString)")
             let fileURL = tempDir.appendingPathComponent("settings.json")
             defer { try? FileManager.default.removeItem(at: tempDir) }
             let repo = JSONSettingsRepository(fileURL: fileURL)

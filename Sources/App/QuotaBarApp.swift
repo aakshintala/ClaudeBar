@@ -4,7 +4,7 @@ import Infrastructure
 import MenuBarExtraAccess
 
 @main
-struct ClaudeBarApp: App {
+struct QuotaBarApp: App {
     /// The main domain service - monitors all AI providers
     /// This is the single source of truth for providers and their state
     @State private var monitor: QuotaMonitor
@@ -30,7 +30,7 @@ struct ClaudeBarApp: App {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         AppLog.ui.info("QuotaBar v\(version) (\(build)) initializing...")
 
-        // ~/.claudebar/settings.json, read once into memory.
+        // ~/.quotabar/settings.json, read once into memory.
         let settingsRepository = JSONSettingsRepository.shared
 
         // One AIProvider per (id, name, probe). The id is the settings key and feed id.

@@ -1,7 +1,7 @@
 import Foundation
 import Domain
 
-/// Everything persisted in `~/.claudebar/settings.json`.
+/// Everything persisted in `~/.quotabar/settings.json`.
 /// A missing or mistyped key decodes to its default; keys not modelled here
 /// are dropped on the next write.
 public struct SettingsFile: Codable, Equatable, Sendable {
@@ -57,8 +57,6 @@ public struct SettingsFile: Codable, Equatable, Sendable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(app, forKey: .app)
         try c.encode(feed, forKey: .feed)
-        // ponytail: mirrors feed for installed builds that still read `mcp.*`; drop once they are gone.
-        try c.encode(feed, forKey: .mcp)
         try c.encode(providers, forKey: .providers)
     }
 }
@@ -69,19 +67,30 @@ private extension KeyedDecodingContainer {
     }
 }
 
-/// Settings read once from `~/.claudebar/settings.json` into memory; every
+/// Settings read once from `~/.quotabar/settings.json` into memory; every
 /// change rewrites the whole file atomically.
 public final class JSONSettingsRepository: ProviderSettingsRepository, @unchecked Sendable {
-    public static let shared = JSONSettingsRepository(
-        fileURL: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent(".claudebar/settings.json")
-    )
+    public static let shared: JSONSettingsRepository = {
+        let home = FileManager.default.homeDirectoryForCurrentUser
+        return JSONSettingsRepository(
+            fileURL: home.appendingPathComponent(".quotabar/settings.json"),
+            legacyFileURL: home.appendingPathComponent(".claudebar/settings.json")
+        )
+    }()
 
     private let fileURL: URL
     private let lock = NSLock()
     private var current: SettingsFile
 
-    public init(fileURL: URL) {
+    /// - Parameter legacyFileURL: moved to `fileURL` once, if `fileURL` does not exist yet
+    ///   (the pre-rename `~/.claudebar/settings.json`).
+    public init(fileURL: URL, legacyFileURL: URL? = nil) {
         self.fileURL = fileURL
+        let fm = FileManager.default
+        if let legacyFileURL, !fm.fileExists(atPath: fileURL.path), fm.fileExists(atPath: legacyFileURL.path) {
+            try? fm.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? fm.moveItem(at: legacyFileURL, to: fileURL)
+        }
         current = (try? JSONDecoder().decode(SettingsFile.self, from: Data(contentsOf: fileURL))) ?? SettingsFile()
     }
 

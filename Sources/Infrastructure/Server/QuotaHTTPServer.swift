@@ -163,7 +163,7 @@ public final class QuotaHTTPServer: @unchecked Sendable {
     private let feedProvider: @Sendable () async -> Data
     private let hooks: QuotaHooks?
     private var listener: NWListener?
-    private let queue = DispatchQueue(label: "com.tddworks.ClaudeBar.quota-http")
+    private let queue = DispatchQueue(label: "com.aakshintala.subscriptionusagebar.quota-http")
 
     /// A client that connects and sends nothing (or never finishes sending)
     /// is cancelled after this long, so it doesn't sit open forever.

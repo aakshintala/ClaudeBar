@@ -2,9 +2,9 @@ import Foundation
 import Domain
 import Infrastructure
 
-/// Observable settings manager for ClaudeBar preferences.
+/// Observable settings manager for QuotaBar preferences.
 /// Thin `@Observable` wrapper around `JSONSettingsRepository` for SwiftUI reactivity.
-/// All persistence is delegated to the repository (`~/.claudebar/settings.json`).
+/// All persistence is delegated to the repository (`~/.quotabar/settings.json`).
 @MainActor
 @Observable
 public final class AppSettings {
