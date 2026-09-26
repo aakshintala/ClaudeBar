@@ -3,6 +3,16 @@ import Testing
 @testable import Infrastructure
 @testable import Domain
 
+// Cursor JWTs have sub like "github|user_01J6BBEPT2KSQKPPRGXDY8M1F4" — base64url
+// encode a payload JSON the same way a real token would.
+private func pipeJWT(payloadJson: String) -> String {
+    let payloadBase64 = Data(payloadJson.utf8).base64EncodedString()
+        .replacingOccurrences(of: "+", with: "-")
+        .replacingOccurrences(of: "/", with: "_")
+        .replacingOccurrences(of: "=", with: "")
+    return "eyJhbGciOiJIUzI1NiJ9.\(payloadBase64).sig"
+}
+
 @Suite("CursorUsageProbe Parsing Tests")
 struct CursorUsageProbeParsingTests {
 
@@ -379,70 +389,34 @@ struct CursorUsageProbeParsingTests {
 
     // MARK: - Error Cases
 
-    @Test
-    func `parse empty response throws error`() {
-        let json = "{}".data(using: .utf8)!
-
-        #expect(throws: ProbeError.self) {
-            try CursorUsageProbe.parseUsageSummary(json)
-        }
-    }
-
-    @Test
-    func `parse invalid json throws error`() {
-        let json = "not json".data(using: .utf8)!
-
-        #expect(throws: ProbeError.self) {
-            try CursorUsageProbe.parseUsageSummary(json)
-        }
-    }
-
-    @Test
-    func `parse response with no individualUsage and not unlimited throws error`() {
-        let json = """
+    @Test(arguments: [
+        "{}",
+        "not json",
+        """
         {
             "membershipType": "pro",
             "isUnlimited": false
         }
-        """.data(using: .utf8)!
-
+        """,
+    ])
+    func `parse invalid usage summary throws`(json: String) {
         #expect(throws: ProbeError.self) {
-            try CursorUsageProbe.parseUsageSummary(json)
+            try CursorUsageProbe.parseUsageSummary(Data(json.utf8))
         }
     }
 
     // MARK: - Billing Cycle
 
-    @Test
-    func `parse billing cycle end with fractional seconds`() throws {
+    @Test(arguments: [
+        "2025-03-01T00:00:00.000Z", // with fractional seconds
+        "2025-03-01T00:00:00Z", // without fractional seconds
+    ])
+    func `parse billing cycle end sets resetsAt`(billingCycleEnd: String) throws {
         let json = """
         {
             "membershipType": "pro",
             "isUnlimited": false,
-            "billingCycleEnd": "2025-03-01T00:00:00.000Z",
-            "individualUsage": {
-                "plan": {
-                    "enabled": true,
-                    "used": 100,
-                    "limit": 500,
-                    "remaining": 400
-                },
-                "onDemand": { "enabled": false, "used": 0, "limit": null, "remaining": null }
-            }
-        }
-        """.data(using: .utf8)!
-
-        let snapshot = try CursorUsageProbe.parseUsageSummary(json)
-        #expect(snapshot.quotas[0].resetsAt != nil)
-    }
-
-    @Test
-    func `parse billing cycle end without fractional seconds`() throws {
-        let json = """
-        {
-            "membershipType": "pro",
-            "isUnlimited": false,
-            "billingCycleEnd": "2025-03-01T00:00:00Z",
+            "billingCycleEnd": "\(billingCycleEnd)",
             "individualUsage": {
                 "plan": {
                     "enabled": true,
@@ -461,57 +435,27 @@ struct CursorUsageProbeParsingTests {
 
     // MARK: - JWT Parsing
 
-    @Test
-    func `extract user ID from valid JWT`() throws {
+    @Test(arguments: [
         // JWT with payload: {"sub": "user_abc123", "iat": 1234567890}
-        let header = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
-        let payload = "eyJzdWIiOiJ1c2VyX2FiYzEyMyIsImlhdCI6MTIzNDU2Nzg5MH0"
-        let signature = "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-        let jwt = "\(header).\(payload).\(signature)"
-
-        let userId = try CursorUsageProbe.extractUserIdFromJWT(jwt)
-        #expect(userId == "user_abc123")
-    }
-
-    @Test
-    func `extract user ID with pipe character like real Cursor JWTs`() throws {
-        // Cursor JWTs have sub like "github|user_01J6BBEPT2KSQKPPRGXDY8M1F4"
+        (
+            jwt: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyX2FiYzEyMyIsImlhdCI6MTIzNDU2Nzg5MH0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c",
+            expectedUserId: "user_abc123"
+        ),
         // Payload: {"sub": "github|user_01ABC", "type": "session"}
-        // base64url of {"sub":"github|user_01ABC","type":"session"} =
-        let payloadJson = #"{"sub":"github|user_01ABC","type":"session"}"#
-        let payloadBase64 = Data(payloadJson.utf8).base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
-        let jwt = "eyJhbGciOiJIUzI1NiJ9.\(payloadBase64).sig"
-
+        (pipeJWT(payloadJson: #"{"sub":"github|user_01ABC","type":"session"}"#), "github|user_01ABC"),
+        // Payload: {"sub": "u1"} — base64 with padding needed
+        ("eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1MSJ9.sig", "u1"),
+    ])
+    func `extract user ID from valid JWT`(jwt: String, expectedUserId: String) throws {
         let userId = try CursorUsageProbe.extractUserIdFromJWT(jwt)
-        #expect(userId == "github|user_01ABC")
+        #expect(userId == expectedUserId)
     }
 
-    @Test
-    func `extract user ID from JWT with padding needed`() throws {
-        // Payload: {"sub": "u1"}
-        let header = "eyJhbGciOiJIUzI1NiJ9"
-        let payload = "eyJzdWIiOiJ1MSJ9"
-        let jwt = "\(header).\(payload).sig"
-
-        let userId = try CursorUsageProbe.extractUserIdFromJWT(jwt)
-        #expect(userId == "u1")
-    }
-
-    @Test
-    func `extract user ID from invalid JWT throws`() {
-        #expect(throws: ProbeError.self) {
-            try CursorUsageProbe.extractUserIdFromJWT("not-a-jwt")
-        }
-    }
-
-    @Test
-    func `extract user ID from JWT without sub claim throws`() {
-        // Payload: {"iat": 123} (no sub)
-        let jwt = "eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjEyM30.sig"
-
+    @Test(arguments: [
+        "not-a-jwt",
+        "eyJhbGciOiJIUzI1NiJ9.eyJpYXQiOjEyM30.sig", // payload {"iat": 123} — no sub claim
+    ])
+    func `extract user ID from invalid JWT throws`(jwt: String) {
         #expect(throws: ProbeError.self) {
             try CursorUsageProbe.extractUserIdFromJWT(jwt)
         }

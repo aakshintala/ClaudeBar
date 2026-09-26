@@ -6,24 +6,14 @@ struct AccountTierTests {
 
     // MARK: - Badge Text Tests
 
-    @Test
-    func `claudeMax has correct badge text`() {
-        #expect(AccountTier.claudeMax.badgeText == "MAX")
-    }
-
-    @Test
-    func `claudePro has correct badge text`() {
-        #expect(AccountTier.claudePro.badgeText == "PRO")
-    }
-
-    @Test
-    func `claudeApi has correct badge text`() {
-        #expect(AccountTier.claudeApi.badgeText == "API")
-    }
-
-    @Test
-    func `custom tier has correct badge text`() {
-        #expect(AccountTier.custom("ULTRA").badgeText == "ULTRA")
+    @Test(arguments: [
+        (AccountTier.claudeMax, "MAX"),
+        (.claudePro, "PRO"),
+        (.claudeApi, "API"),
+        (.custom("ULTRA"), "ULTRA"),
+    ])
+    func `account tier has correct badge text`(tier: AccountTier, expected: String) {
+        #expect(tier.badgeText == expected)
     }
 
     // MARK: - Equality Tests

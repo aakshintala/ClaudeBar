@@ -7,21 +7,22 @@ struct QuotaTypeTests {
 
     // MARK: - Display Name Tests
 
-    @Test
-    func `session quota has display name Session`() {
-        #expect(QuotaType.session.displayName == "Session")
-    }
-
-    @Test
-    func `weekly quota has display name Weekly`() {
-        #expect(QuotaType.weekly.displayName == "Weekly")
-    }
-
-    @Test
-    func `model specific quota capitalizes model name`() {
-        #expect(QuotaType.modelSpecific("opus").displayName == "Opus")
-        #expect(QuotaType.modelSpecific("sonnet").displayName == "Sonnet")
-        #expect(QuotaType.modelSpecific("haiku").displayName == "Haiku")
+    @Test(arguments: [
+        (QuotaType.session, "Session"),
+        (.weekly, "Weekly"),
+        (.modelSpecific("opus"), "Opus"),
+        (.modelSpecific("sonnet"), "Sonnet"),
+        (.modelSpecific("haiku"), "Haiku"),
+        // .capitalized capitalizes each word
+        (.modelSpecific("claude-3-opus"), "Claude-3-Opus"),
+        // Labels arrive display-ready; capitalizing would mangle acronyms
+        // ("MCP" → "Mcp") and window tokens ("Claude 5h" → "Claude 5H").
+        (.timeLimit("MCP"), "MCP"),
+        (.timeLimit("Daily Limit"), "Daily Limit"),
+        (.timeLimit("Claude 5h"), "Claude 5h"),
+    ])
+    func `quota type display name`(quotaType: QuotaType, expected: String) {
+        #expect(quotaType.displayName == expected)
     }
 
     @Test
@@ -31,41 +32,16 @@ struct QuotaTypeTests {
         #expect(fable.quotaKey == "model:fable")
     }
 
-    @Test
-    func `model specific quota handles multi-word names`() {
-        // .capitalized capitalizes each word
-        #expect(QuotaType.modelSpecific("claude-3-opus").displayName == "Claude-3-Opus")
-    }
-
-    @Test
-    func `time limit quota preserves name verbatim`() {
-        // Labels arrive display-ready; capitalizing would mangle acronyms
-        // ("MCP" → "Mcp") and window tokens ("Claude 5h" → "Claude 5H").
-        #expect(QuotaType.timeLimit("MCP").displayName == "MCP")
-        #expect(QuotaType.timeLimit("Daily Limit").displayName == "Daily Limit")
-        #expect(QuotaType.timeLimit("Claude 5h").displayName == "Claude 5h")
-    }
-
     // MARK: - Duration Tests
 
-    @Test
-    func `session quota has 5 hour duration`() {
-        #expect(QuotaType.session.duration == .hours(5))
-    }
-
-    @Test
-    func `weekly quota has 7 day duration`() {
-        #expect(QuotaType.weekly.duration == .days(7))
-    }
-
-    @Test
-    func `model specific quota has 7 day duration`() {
-        #expect(QuotaType.modelSpecific("opus").duration == .days(7))
-    }
-
-    @Test
-    func `time limit quota has 7 day duration`() {
-        #expect(QuotaType.timeLimit("any").duration == .days(7))
+    @Test(arguments: [
+        (QuotaType.session, QuotaDuration.hours(5)),
+        (.weekly, .days(7)),
+        (.modelSpecific("opus"), .days(7)),
+        (.timeLimit("any"), .days(7)),
+    ])
+    func `quota type duration`(quotaType: QuotaType, expected: QuotaDuration) {
+        #expect(quotaType.duration == expected)
     }
 
     // MARK: - Equality Tests
@@ -107,17 +83,15 @@ struct QuotaDurationTests {
 
     // MARK: - Seconds Calculation Tests
 
-    @Test
-    func `hours converts to seconds correctly`() {
-        #expect(QuotaDuration.hours(1).seconds == 3600)
-        #expect(QuotaDuration.hours(5).seconds == 18000)
-        #expect(QuotaDuration.hours(24).seconds == 86400)
-    }
-
-    @Test
-    func `days converts to seconds correctly`() {
-        #expect(QuotaDuration.days(1).seconds == 86400)
-        #expect(QuotaDuration.days(7).seconds == 604800)
+    @Test(arguments: [
+        (QuotaDuration.hours(1), 3600),
+        (.hours(5), 18000),
+        (.hours(24), 86400),
+        (.days(1), 86400),
+        (.days(7), 604800),
+    ])
+    func `duration converts to seconds correctly`(duration: QuotaDuration, expectedSeconds: TimeInterval) {
+        #expect(duration.seconds == expectedSeconds)
     }
 
     // MARK: - Equality Tests

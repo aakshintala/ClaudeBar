@@ -10,32 +10,16 @@ struct NotificationAlerterTests {
 
     // MARK: - Should Alert Tests
 
-    @Test
-    func `shouldAlert returns true for warning status`() {
+    @Test(arguments: [
+        (QuotaStatus.warning, true),
+        (.critical, true),
+        (.depleted, true),
+        (.healthy, false),
+    ])
+    func `shouldAlert reflects status severity`(status: QuotaStatus, expected: Bool) {
         let alerter = NotificationAlerter()
 
-        #expect(alerter.shouldAlert(for: .warning) == true)
-    }
-
-    @Test
-    func `shouldAlert returns true for critical status`() {
-        let alerter = NotificationAlerter()
-
-        #expect(alerter.shouldAlert(for: .critical) == true)
-    }
-
-    @Test
-    func `shouldAlert returns true for depleted status`() {
-        let alerter = NotificationAlerter()
-
-        #expect(alerter.shouldAlert(for: .depleted) == true)
-    }
-
-    @Test
-    func `shouldAlert returns false for healthy status`() {
-        let alerter = NotificationAlerter()
-
-        #expect(alerter.shouldAlert(for: .healthy) == false)
+        #expect(alerter.shouldAlert(for: status) == expected)
     }
 
     // MARK: - Provider Display Name Tests
@@ -61,44 +45,19 @@ struct NotificationAlerterTests {
 
     // MARK: - Alert Body Tests
 
-    @Test
-    func `alertBody for warning describes low quota`() {
+    @Test(arguments: [
+        (QuotaStatus.warning, "Claude", "running low"),
+        (.critical, "Codex", "critically low"),
+        (.depleted, "Cursor", "depleted"),
+        (.healthy, "Claude", "recovered"),
+    ])
+    func `alertBody describes status for provider`(status: QuotaStatus, providerName: String, expectedPhrase: String) {
         let alerter = NotificationAlerter()
 
-        let body = alerter.alertBody(for: .warning, providerName: "Claude")
+        let body = alerter.alertBody(for: status, providerName: providerName)
 
-        #expect(body.contains("Claude"))
-        #expect(body.contains("running low"))
-    }
-
-    @Test
-    func `alertBody for critical describes critically low`() {
-        let alerter = NotificationAlerter()
-
-        let body = alerter.alertBody(for: .critical, providerName: "Codex")
-
-        #expect(body.contains("Codex"))
-        #expect(body.contains("critically low"))
-    }
-
-    @Test
-    func `alertBody for depleted describes depletion`() {
-        let alerter = NotificationAlerter()
-
-        let body = alerter.alertBody(for: .depleted, providerName: "Cursor")
-
-        #expect(body.contains("Cursor"))
-        #expect(body.contains("depleted"))
-    }
-
-    @Test
-    func `alertBody for healthy describes recovery`() {
-        let alerter = NotificationAlerter()
-
-        let body = alerter.alertBody(for: .healthy, providerName: "Claude")
-
-        #expect(body.contains("Claude"))
-        #expect(body.contains("recovered"))
+        #expect(body.contains(providerName))
+        #expect(body.contains(expectedPhrase))
     }
 
     // MARK: - Status Degradation Detection (Domain Logic)
@@ -130,81 +89,44 @@ struct NotificationAlerterTests {
 
     // MARK: - Alert Integration Tests
 
-    @Test
-    func `alert sends notification when status degrades to warning`() async {
+    @Test(arguments: [
+        (providerId: "claude", from: QuotaStatus.healthy, to: QuotaStatus.warning, expectedPhrase: "running low"),
+        ("codex", .warning, .critical, "critically low"),
+        ("cursor", .critical, .depleted, "depleted"),
+    ])
+    func `alert sends notification when status degrades`(
+        providerId: String,
+        from: QuotaStatus,
+        to: QuotaStatus,
+        expectedPhrase: String
+    ) async {
         // Given
         let mockSender = MockAlertSender()
         given(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
         let alerter = NotificationAlerter(alertSender: mockSender)
 
         // When
-        await alerter.alert(providerId: "claude", previousStatus: .healthy, currentStatus: .warning)
+        await alerter.alert(providerId: providerId, previousStatus: from, currentStatus: to)
 
         // Then
         verify(mockSender).send(
             title: .matching { $0.contains("Quota Alert") },
-            body: .matching { $0.contains("running low") },
+            body: .matching { $0.contains(expectedPhrase) },
             categoryIdentifier: .value("QUOTA_ALERT")
         ).called(1)
     }
 
-    @Test
-    func `alert sends notification when status degrades to critical`() async {
+    @Test(arguments: [
+        (from: QuotaStatus.warning, to: QuotaStatus.healthy), // status improves
+        (.warning, .warning), // status stays the same
+    ])
+    func `alert does not send notification when status does not degrade`(from: QuotaStatus, to: QuotaStatus) async {
         // Given
         let mockSender = MockAlertSender()
-        given(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
         let alerter = NotificationAlerter(alertSender: mockSender)
 
         // When
-        await alerter.alert(providerId: "codex", previousStatus: .warning, currentStatus: .critical)
-
-        // Then
-        verify(mockSender).send(
-            title: .matching { $0.contains("Quota Alert") },
-            body: .matching { $0.contains("critically low") },
-            categoryIdentifier: .value("QUOTA_ALERT")
-        ).called(1)
-    }
-
-    @Test
-    func `alert sends notification when status degrades to depleted`() async {
-        // Given
-        let mockSender = MockAlertSender()
-        given(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).willReturn(())
-        let alerter = NotificationAlerter(alertSender: mockSender)
-
-        // When
-        await alerter.alert(providerId: "cursor", previousStatus: .critical, currentStatus: .depleted)
-
-        // Then
-        verify(mockSender).send(
-            title: .matching { $0.contains("Quota Alert") },
-            body: .matching { $0.contains("depleted") },
-            categoryIdentifier: .value("QUOTA_ALERT")
-        ).called(1)
-    }
-
-    @Test
-    func `alert does not send notification when status improves`() async {
-        // Given
-        let mockSender = MockAlertSender()
-        let alerter = NotificationAlerter(alertSender: mockSender)
-
-        // When - status improves from warning to healthy
-        await alerter.alert(providerId: "claude", previousStatus: .warning, currentStatus: .healthy)
-
-        // Then - no alert sent
-        verify(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).called(0)
-    }
-
-    @Test
-    func `alert does not send notification when status stays the same`() async {
-        // Given
-        let mockSender = MockAlertSender()
-        let alerter = NotificationAlerter(alertSender: mockSender)
-
-        // When - status stays the same
-        await alerter.alert(providerId: "claude", previousStatus: .warning, currentStatus: .warning)
+        await alerter.alert(providerId: "claude", previousStatus: from, currentStatus: to)
 
         // Then - no alert sent
         verify(mockSender).send(title: .any, body: .any, categoryIdentifier: .any).called(0)
