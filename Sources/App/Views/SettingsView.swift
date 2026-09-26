@@ -373,8 +373,8 @@ struct ThemeOptionButton: View {
         DarkTheme().backgroundGradient
         SettingsContentView(
             showSettings: .constant(true),
-            monitor: QuotaMonitor(providers: AIProviders(providers: [])),
-            mcpServerController: MCPServerController(monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+            monitor: QuotaMonitor(providers: []),
+            mcpServerController: MCPServerController(monitor: QuotaMonitor(providers: []))
         )
     }
     .appThemeProvider(themeModeId: "dark")
@@ -386,8 +386,8 @@ struct ThemeOptionButton: View {
         LightTheme().backgroundGradient
         SettingsContentView(
             showSettings: .constant(true),
-            monitor: QuotaMonitor(providers: AIProviders(providers: [])),
-            mcpServerController: MCPServerController(monitor: QuotaMonitor(providers: AIProviders(providers: [])))
+            monitor: QuotaMonitor(providers: []),
+            mcpServerController: MCPServerController(monitor: QuotaMonitor(providers: []))
         )
     }
     .appThemeProvider(themeModeId: "light")

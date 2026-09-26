@@ -50,7 +50,7 @@ struct QuotaFeedDTOTests {
         ))
 
         let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
+        let monitor = QuotaMonitor(providers: [claude], clock: TestClock())
         await monitor.refresh()
 
         let feed = QuotaFeedDTO.make(from: monitor.allProviders, at: Self.fixedNow)
@@ -89,7 +89,7 @@ struct QuotaFeedDTOTests {
         given(probe).probe().willThrow(ProbeError.authenticationRequired)
 
         let cursor = CursorProvider(probe: probe, settingsRepository: settings)
-        let monitor = QuotaMonitor(providers: AIProviders(providers: [cursor]), clock: TestClock())
+        let monitor = QuotaMonitor(providers: [cursor], clock: TestClock())
         await monitor.refresh()
 
         let feed = QuotaFeedDTO.make(from: monitor.allProviders, at: Self.fixedNow)
@@ -115,7 +115,7 @@ struct QuotaFeedDTOTests {
         )
 
         let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
+        let monitor = QuotaMonitor(providers: [claude], clock: TestClock())
         await monitor.refresh()
         await monitor.refresh(force: true)
 

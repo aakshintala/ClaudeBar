@@ -10,15 +10,6 @@ public final class CursorProvider: AIProvider {
 
     public let id: String = "cursor"
     public let name: String = "Cursor"
-    public let cliCommand: String = "cursor"
-
-    public var dashboardURL: URL? {
-        URL(string: "https://www.cursor.com/settings")
-    }
-
-    public var statusPageURL: URL? {
-        nil
-    }
 
     /// Whether the provider is enabled (persisted via settingsRepository)
     public var isEnabled: Bool {

@@ -12,11 +12,6 @@ public struct UsageSnapshot: Sendable, Equatable {
     /// When this snapshot was captured
     public let capturedAt: Date
 
-    /// Optional account information
-    public let accountEmail: String?
-    public let accountOrganization: String?
-    public let loginMethod: String?
-
     /// The account tier (e.g., Claude Max, Pro, or custom tier from other providers)
     public let accountTier: AccountTier?
 
@@ -29,18 +24,12 @@ public struct UsageSnapshot: Sendable, Equatable {
         providerId: String,
         quotas: [UsageQuota],
         capturedAt: Date,
-        accountEmail: String? = nil,
-        accountOrganization: String? = nil,
-        loginMethod: String? = nil,
         accountTier: AccountTier? = nil,
         costUsage: CostUsage? = nil
     ) {
         self.providerId = providerId
         self.quotas = quotas
         self.capturedAt = capturedAt
-        self.accountEmail = accountEmail
-        self.accountOrganization = accountOrganization
-        self.loginMethod = loginMethod
         self.accountTier = accountTier
         self.costUsage = costUsage
     }

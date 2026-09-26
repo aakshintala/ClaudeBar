@@ -9,15 +9,6 @@ public final class OpenCodeProvider: AIProvider {
 
     public let id: String = "opencode-go"
     public let name: String = "OpenCode Go"
-    public let cliCommand: String = "opencode"
-
-    public var dashboardURL: URL? {
-        URL(string: "https://opencode.ai/auth")
-    }
-
-    public var statusPageURL: URL? {
-        nil
-    }
 
     public var isEnabled: Bool {
         didSet {

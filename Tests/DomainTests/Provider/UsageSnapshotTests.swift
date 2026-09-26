@@ -158,37 +158,6 @@ struct UsageSnapshotTests {
 
     // MARK: - Provider Lookup (Rich Domain Model)
 
-    // MARK: - Account Information
-
-    @Test
-    func `snapshot captures account information`() {
-        // Given & When
-        let snapshot = UsageSnapshot(
-            providerId: "claude",
-            quotas: [],
-            capturedAt: Date(),
-            accountEmail: "user@example.com",
-            accountOrganization: "Acme Corp",
-            loginMethod: "Claude Max"
-        )
-
-        // Then
-        #expect(snapshot.accountEmail == "user@example.com")
-        #expect(snapshot.accountOrganization == "Acme Corp")
-        #expect(snapshot.loginMethod == "Claude Max")
-    }
-
-    @Test
-    func `snapshot account info is optional`() {
-        // Given & When
-        let snapshot = UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date())
-
-        // Then
-        #expect(snapshot.accountEmail == nil)
-        #expect(snapshot.accountOrganization == nil)
-        #expect(snapshot.loginMethod == nil)
-    }
-
     // MARK: - Session and Weekly Quota Accessors
 
     @Test

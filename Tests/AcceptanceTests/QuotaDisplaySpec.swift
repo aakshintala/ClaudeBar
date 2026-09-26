@@ -10,7 +10,6 @@ import Mockable
 /// and reset times after a provider refresh.
 ///
 /// Behaviors covered:
-/// - #8: User sees account info card (email, tier badge, freshness)
 /// - #9: User sees quota cards with percentage, progress bar, reset time
 /// - #10: User toggles "Remaining" vs "Used" display mode
 /// - #13: Unavailable provider shows error message with guidance
@@ -21,55 +20,6 @@ struct QuotaDisplaySpec {
     private struct TestClock: Clock {
         func sleep(for duration: Duration) async throws {}
         func sleep(nanoseconds: UInt64) async throws {}
-    }
-
-    // MARK: - #8: Account info card
-
-    @Suite("Scenario: Account info displays after refresh")
-    @MainActor
-    struct AccountInfo {
-        private struct TestClock: Clock {
-            func sleep(for duration: Duration) async throws {}
-            func sleep(nanoseconds: UInt64) async throws {}
-        }
-
-        private static func makeSettings() -> MockProviderSettingsRepository {
-            let mock = MockProviderSettingsRepository()
-            given(mock).isEnabled(forProvider: .any, defaultValue: .any).willReturn(true)
-            given(mock).isEnabled(forProvider: .any).willReturn(true)
-            given(mock).setEnabled(.any, forProvider: .any).willReturn()
-            return mock
-        }
-
-        @Test
-        func `account email and tier are displayed after refresh`() async throws {
-            // Given — probe returns a snapshot with account metadata
-            let snapshot = UsageSnapshot(
-                providerId: "claude",
-                quotas: [UsageQuota(percentRemaining: 65, quotaType: .session, providerId: "claude")],
-                capturedAt: Date(),
-                accountEmail: "user@example.com",
-                accountOrganization: "Acme Corp",
-                accountTier: .claudeMax
-            )
-            let probe = MockUsageProbe()
-            given(probe).isAvailable().willReturn(true)
-            given(probe).probe().willReturn(snapshot)
-
-            let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
-            let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
-                clock: TestClock()
-            )
-
-            // When — user opens menu and quota is refreshed
-            await monitor.refresh()
-
-            // Then
-            #expect(claude.snapshot != nil)
-            #expect(claude.snapshot?.accountEmail == "user@example.com")
-            #expect(claude.snapshot?.accountTier == .claudeMax)
-        }
     }
 
     // MARK: - #9: Quota cards with percentage, status, reset time
@@ -107,7 +57,7 @@ struct QuotaDisplaySpec {
 
             let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: [claude],
                 clock: TestClock()
             )
 
@@ -142,7 +92,7 @@ struct QuotaDisplaySpec {
 
             let claude = ClaudeProvider(probe: probe, settingsRepository: Self.makeSettings())
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: [claude],
                 clock: TestClock()
             )
 
@@ -179,7 +129,7 @@ struct QuotaDisplaySpec {
 
             let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: [claude],
                 clock: TestClock()
             )
 
@@ -204,7 +154,7 @@ struct QuotaDisplaySpec {
 
             let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: [claude],
                 clock: TestClock()
             )
 

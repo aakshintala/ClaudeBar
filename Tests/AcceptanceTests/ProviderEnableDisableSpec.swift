@@ -60,7 +60,7 @@ struct ProviderEnableDisableSpec {
             codex.isEnabled = false
 
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: [claude, codex],
                 clock: TestClock()
             )
 
@@ -93,7 +93,7 @@ struct ProviderEnableDisableSpec {
             codex.isEnabled = false
 
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: [claude, codex],
                 clock: TestClock()
             )
 

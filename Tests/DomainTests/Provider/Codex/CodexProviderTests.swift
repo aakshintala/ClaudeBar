@@ -32,21 +32,6 @@ struct CodexProviderTests {
     }
 
     @Test
-    func `codex provider has correct cliCommand`() {
-        let settings = makeSettingsRepository()
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        #expect(codex.cliCommand == "codex")
-    }
-
-    @Test
-    func `codex provider has dashboard URL pointing to openai`() {
-        let settings = makeSettingsRepository()
-        let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        #expect(codex.dashboardURL != nil)
-        #expect(codex.dashboardURL?.host?.contains("openai") == true)
-    }
-
-    @Test
     func `codex provider is enabled by default`() {
         let settings = makeSettingsRepository()
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)

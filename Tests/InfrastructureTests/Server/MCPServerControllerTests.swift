@@ -31,7 +31,7 @@ struct MCPServerControllerTests {
         given(probe).probe().willReturn(UsageSnapshot(providerId: "claude", quotas: [], capturedAt: Date()))
 
         let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-        return QuotaMonitor(providers: AIProviders(providers: [claude]), clock: TestClock())
+        return QuotaMonitor(providers: [claude], clock: TestClock())
     }
 
     /// Ports in the ephemeral range, chosen per-test to avoid collisions with

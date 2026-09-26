@@ -39,7 +39,7 @@ struct ClaudeBarApp: App {
         // Create all providers with their probes (rich domain models)
         // Each provider manages its own isEnabled state (persisted via ProviderSettingsRepository)
         // Each probe checks isAvailable() for credentials/prerequisites
-        let repository = AIProviders(providers: [
+        let providers: [any AIProvider] = [
             ClaudeProvider(probe: ClaudeAPIUsageProbe(), settingsRepository: settingsRepository),
             CodexProvider(
                 probe: CodexAPIUsageProbe(),
@@ -50,12 +50,12 @@ struct ClaudeBarApp: App {
                 probe: OpenCodeUsageProbe(),
                 settingsRepository: settingsRepository
             ),
-        ])
-        AppLog.providers.info("Created \(repository.all.count) providers")
+        ]
+        AppLog.providers.info("Created \(providers.count) providers")
 
         // Initialize the domain service with quota alerter
         let monitor = QuotaMonitor(
-            providers: repository,
+            providers: providers,
             alerter: quotaAlerter
         )
         self.monitor = monitor

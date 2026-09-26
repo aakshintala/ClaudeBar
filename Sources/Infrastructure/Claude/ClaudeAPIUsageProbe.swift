@@ -128,7 +128,6 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
     private let cache = CredentialCache()
     private let rateLimit = RateLimitState()
     private let snapshotCache: SnapshotCache
-    private let accountInfoResolver: any AccountInfoResolving
 
     /// Fallback retry window applied when the API returns 429 without a
     /// usable `Retry-After` header. Five minutes is conservative enough to
@@ -156,14 +155,12 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
         credentialLoader: ClaudeCredentialLoader = ClaudeCredentialLoader(),
         networkClient: any NetworkClient = URLSession.shared,
         timeout: TimeInterval = 15,
-        snapshotCacheTTL: TimeInterval = Self.snapshotCacheTTL,
-        accountInfoResolver: any AccountInfoResolving = ClaudeAccountInfoResolver()
+        snapshotCacheTTL: TimeInterval = Self.snapshotCacheTTL
     ) {
         self.credentialLoader = credentialLoader
         self.networkClient = networkClient
         self.timeout = timeout
         self.snapshotCache = SnapshotCache(ttl: snapshotCacheTTL)
-        self.accountInfoResolver = accountInfoResolver
     }
 
     public func isAvailable() async -> Bool {
@@ -512,7 +509,6 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             costUsage = CostUsage(
                 totalCost: pair.used,
                 budget: pair.cap,
-                apiDuration: 0,
                 providerId: "claude",
                 kind: .extraUsage,
                 capturedAt: Date(),
@@ -523,7 +519,6 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
             costUsage = CostUsage(
                 totalCost: pair.used,
                 budget: pair.cap,
-                apiDuration: 0,
                 providerId: "claude",
                 kind: .extraUsage,
                 capturedAt: Date(),
@@ -539,15 +534,10 @@ public struct ClaudeAPIUsageProbe: UsageProbe, @unchecked Sendable {
 
         AppLog.probes.info("Claude API: Parsed \(quotas.count) quotas, tier=\(accountTier?.badgeText ?? "unknown")")
 
-        let accountInfo = accountInfoResolver.resolve()
-
         return UsageSnapshot(
             providerId: "claude",
             quotas: quotas,
             capturedAt: Date(),
-            accountEmail: accountInfo?.email,
-            accountOrganization: accountInfo?.organization,
-            loginMethod: nil,
             accountTier: accountTier,
             costUsage: costUsage
         )

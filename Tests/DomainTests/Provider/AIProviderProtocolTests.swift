@@ -44,20 +44,6 @@ struct AIProviderProtocolTests {
     }
 
     @Test
-    func `all providers have dashboard urls`() {
-        let settings = makeSettingsRepository()
-        let providers: [any AIProvider] = [
-            ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            CodexProvider(probe: MockUsageProbe(), settingsRepository: settings),
-            CursorProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        ]
-
-        for provider in providers {
-            #expect(provider.dashboardURL != nil)
-        }
-    }
-
-    @Test
     func `different providers have different ids`() {
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)

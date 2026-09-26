@@ -11,15 +11,6 @@ public final class ClaudeProvider: AIProvider {
 
     public let id: String = "claude"
     public let name: String = "Claude"
-    public let cliCommand: String = "claude"
-
-    public var dashboardURL: URL? {
-        URL(string: "https://console.anthropic.com/settings/billing")
-    }
-
-    public var statusPageURL: URL? {
-        URL(string: "https://status.anthropic.com")
-    }
 
     /// Whether the provider is enabled (persisted via settingsRepository)
     public var isEnabled: Bool {
@@ -70,16 +61,9 @@ public final class ClaudeProvider: AIProvider {
     }
 
     /// Refreshes the usage data and updates the snapshot.
-    /// Interactive refresh: delegates to the kind-aware implementation.
-    @discardableResult
-    public func refresh() async throws -> UsageSnapshot {
-        try await refresh(.interactive)
-    }
-
-    /// Refreshes the usage data and updates the snapshot.
     /// Sets isSyncing during refresh and captures any errors.
     @discardableResult
-    public func refresh(_ kind: RefreshKind) async throws -> UsageSnapshot {
+    public func refresh() async throws -> UsageSnapshot {
         isSyncing = true
         defer { isSyncing = false }
 

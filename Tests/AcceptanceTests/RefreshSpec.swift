@@ -53,7 +53,7 @@ struct RefreshSpec {
 
             let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: [claude],
                 clock: TestClock()
             )
 
@@ -87,7 +87,7 @@ struct RefreshSpec {
             let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
             let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: [claude, codex],
                 clock: TestClock()
             )
 
@@ -128,7 +128,7 @@ struct RefreshSpec {
             let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
             let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: [claude, codex],
                 clock: OneTickClock()
             )
 
@@ -180,7 +180,7 @@ struct RefreshSpec {
                 ),
             ])
             let codex = CodexProvider(probe: probe, settingsRepository: settings)
-            let monitor = QuotaMonitor(providers: AIProviders(providers: [codex]), clock: TestClock())
+            let monitor = QuotaMonitor(providers: [codex], clock: TestClock())
 
             // When/Then — opening the popover again keeps the fresh snapshot...
             await monitor.refresh()

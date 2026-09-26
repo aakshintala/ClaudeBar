@@ -62,7 +62,7 @@ struct NotificationsSpec {
 
             let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: [claude],
                 alerter: mockAlerter,
                 clock: TestClock()
             )
@@ -105,7 +105,7 @@ struct NotificationsSpec {
 
             let codex = CodexProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [codex]),
+                providers: [codex],
                 alerter: mockAlerter,
                 clock: TestClock()
             )
@@ -170,7 +170,7 @@ struct NotificationsSpec {
 
             let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude]),
+                providers: [claude],
                 alerter: mockAlerter,
                 clock: TestClock()
             )
@@ -222,7 +222,7 @@ struct NotificationsSpec {
             let claude = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
             let codex = CodexProvider(probe: codexProbe, settingsRepository: settings)
             let monitor = QuotaMonitor(
-                providers: AIProviders(providers: [claude, codex]),
+                providers: [claude, codex],
                 clock: TestClock()
             )
 

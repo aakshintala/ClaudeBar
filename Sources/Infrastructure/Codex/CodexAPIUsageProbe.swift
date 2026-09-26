@@ -279,7 +279,6 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             costUsage = CostUsage(
                 totalCost: used,
                 budget: limit,
-                apiDuration: 0,
                 providerId: "codex",
                 capturedAt: Date(),
                 resetsAt: nil,
@@ -299,9 +298,6 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             providerId: "codex",
             quotas: quotas,
             capturedAt: Date(),
-            accountEmail: nil,
-            accountOrganization: nil,
-            loginMethod: nil,
             accountTier: accountTier,
             costUsage: costUsage
         )

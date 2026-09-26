@@ -48,10 +48,10 @@ struct MCPFeedSpec {
         ))
 
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [
+            providers: [
                 ClaudeProvider(probe: claudeProbe, settingsRepository: settings),
                 CodexProvider(probe: codexProbe, settingsRepository: settings)
-            ]),
+            ],
             clock: TestClock()
         )
 
@@ -93,7 +93,7 @@ struct MCPFeedSpec {
             accountTier: .custom("Plus")
         ))
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [CodexProvider(probe: probe, settingsRepository: makeSettings())]),
+            providers: [CodexProvider(probe: probe, settingsRepository: makeSettings())],
             clock: TestClock()
         )
 

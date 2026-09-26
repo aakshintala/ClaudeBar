@@ -100,7 +100,6 @@ struct CostStatCard: View {
             costUsage: CostUsage(
                 totalCost: 5.41,
                 budget: 20,
-                apiDuration: 0,
                 providerId: "claude",
                 kind: .extraUsage,
                 resetText: "Resets Jan 1, 2026"
@@ -120,7 +119,6 @@ struct CostStatCard: View {
             costUsage: CostUsage(
                 totalCost: 0.55,
                 budget: 10,
-                apiDuration: 379.7,
                 providerId: "claude"
             )
         )

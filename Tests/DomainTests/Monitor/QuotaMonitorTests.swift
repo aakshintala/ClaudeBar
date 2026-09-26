@@ -118,14 +118,14 @@ struct QuotaMonitorTests {
     }
 
     private func makeMonitor(
-        providers: any AIProviderRepository,
+        providers: [any AIProvider],
         alerter: (any QuotaAlerter)? = nil
     ) -> QuotaMonitor {
         QuotaMonitor(providers: providers, alerter: alerter, clock: TestClock())
     }
 
     private func makeSuspendingMonitor(
-        providers: any AIProviderRepository,
+        providers: [any AIProvider],
         alerter: (any QuotaAlerter)? = nil
     ) -> QuotaMonitor {
         QuotaMonitor(providers: providers, alerter: alerter, clock: SuspendingClock())
@@ -158,7 +158,7 @@ struct QuotaMonitorTests {
             capturedAt: Date()
         ))
         let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let monitor = makeMonitor(providers: [provider])
 
         // When
         await monitor.refresh()
@@ -176,7 +176,7 @@ struct QuotaMonitorTests {
         let probe = MockUsageProbe()
         given(probe).isAvailable().willReturn(false)
         let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let monitor = makeMonitor(providers: [provider])
 
         // When
         await monitor.refresh()
@@ -209,7 +209,7 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
         let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let monitor = makeMonitor(providers: [claudeProvider, codexProvider])
 
         // When
         await monitor.refresh()
@@ -237,7 +237,7 @@ struct QuotaMonitorTests {
 
         let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
         let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let monitor = makeMonitor(providers: [claudeProvider, codexProvider])
 
         // When
         await monitor.refresh()
@@ -262,7 +262,7 @@ struct QuotaMonitorTests {
         let cursorProvider = CursorProvider(probe: cursorProbe, settingsRepository: settings)
         cursorProvider.isEnabled = false
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [claudeProvider, codexProvider, cursorProvider]),
+            providers: [claudeProvider, codexProvider, cursorProvider],
             clock: RecordingClock()
         )
 
@@ -284,7 +284,7 @@ struct QuotaMonitorTests {
         let codexProbe = CountingUsageProbe(providerId: "codex", gate: gate)
         let claudeProvider = ClaudeProvider(probe: claudeProbe, settingsRepository: settings)
         let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let monitor = makeMonitor(providers: [claudeProvider, codexProvider])
 
         // When - the popover and the feed refresh at the same time
         async let popover: Void = monitor.refresh()
@@ -307,7 +307,7 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let probe = CountingUsageProbe(providerId: "claude")
         let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let monitor = makeMonitor(providers: [provider])
 
         // When / Then - a snapshot under a minute old is kept...
         await monitor.refresh()
@@ -325,7 +325,7 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let probe = CountingUsageProbe(providerId: "claude", capturedAgo: 120)
         let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [provider]))
+        let monitor = makeMonitor(providers: [provider])
 
         // When
         await monitor.refresh()
@@ -340,7 +340,7 @@ struct QuotaMonitorTests {
         // Given
         let settings = makeSettingsRepository()
         let provider = ClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [provider]))
+        let monitor = makeSuspendingMonitor(providers: [provider])
 
         // When
         let loop = monitor.startMonitoring(interval: .seconds(60))
@@ -361,7 +361,7 @@ struct QuotaMonitorTests {
         // the #182 off-main mutation. The flow asserts the flag flips on, then off.
         let settings = makeSettingsRepository()
         let provider = ClaudeProvider(probe: CountingUsageProbe(providerId: "claude"), settingsRepository: settings)
-        let monitor = makeSuspendingMonitor(providers: AIProviders(providers: [provider]))
+        let monitor = makeSuspendingMonitor(providers: [provider])
 
         monitor.startMonitoring(interval: .seconds(60))
         #expect(monitor.isMonitoring == true)
@@ -477,7 +477,7 @@ struct QuotaMonitorTests {
         let provider = ClaudeProvider(probe: probe, settingsRepository: settings)
         let power = FakePowerStateProvider(asleep: true)
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [provider]),
+            providers: [provider],
             clock: RecordingClock(),
             powerStateProvider: power
         )
@@ -501,7 +501,7 @@ struct QuotaMonitorTests {
         let power = FakePowerStateProvider(asleep: false, onBattery: true)
         let clock = RecordingClock()
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [provider]),
+            providers: [provider],
             clock: clock,
             powerStateProvider: power
         )
@@ -519,7 +519,7 @@ struct QuotaMonitorTests {
         let power = FakePowerStateProvider(asleep: false, onBattery: false)
         let clock = RecordingClock()
         let monitor = QuotaMonitor(
-            providers: AIProviders(providers: [provider]),
+            providers: [provider],
             clock: clock,
             powerStateProvider: power
         )
@@ -537,7 +537,7 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: [claude, codex])
 
         // Then
         #expect(monitor.allProviders.count == 2)
@@ -550,7 +550,7 @@ struct QuotaMonitorTests {
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
         codex.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: [claude, codex])
 
         // Then
         #expect(monitor.enabledProviders.count == 1)
@@ -574,7 +574,7 @@ struct QuotaMonitorTests {
         ))
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]), alerter: mockAlerter)
+        let monitor = makeMonitor(providers: [claude], alerter: mockAlerter)
 
         // When
         await monitor.refresh()
@@ -602,7 +602,7 @@ struct QuotaMonitorTests {
         ))
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: probe, settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude]), alerter: mockAlerter)
+        let monitor = makeMonitor(providers: [claude], alerter: mockAlerter)
 
         // When - refresh twice with same status
         await monitor.refresh()
@@ -634,7 +634,7 @@ struct QuotaMonitorTests {
         let codexProvider = CodexProvider(probe: codexProbe, settingsRepository: settings)
         codexProvider.isEnabled = false
 
-        let monitor = makeMonitor(providers: AIProviders(providers: [claudeProvider, codexProvider]))
+        let monitor = makeMonitor(providers: [claudeProvider, codexProvider])
 
         // When
         await monitor.refresh()
@@ -652,7 +652,7 @@ struct QuotaMonitorTests {
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: [claude, codex])
 
         // When
         monitor.setProviderEnabled("claude", enabled: false)
@@ -669,7 +669,7 @@ struct QuotaMonitorTests {
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
         let codex = CodexProvider(probe: MockUsageProbe(), settingsRepository: settings)
         codex.isEnabled = false
-        let monitor = makeMonitor(providers: AIProviders(providers: [claude, codex]))
+        let monitor = makeMonitor(providers: [claude, codex])
 
         // When
         monitor.setProviderEnabled("codex", enabled: true)

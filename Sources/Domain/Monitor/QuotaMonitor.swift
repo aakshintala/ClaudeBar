@@ -12,8 +12,8 @@ import Observation
 @MainActor
 @Observable
 public final class QuotaMonitor {
-    /// The providers repository (internal - access via delegation methods)
-    private let providers: any AIProviderRepository
+    /// All registered providers
+    private let providers: [any AIProvider]
 
     /// Optional alerter for quota changes (e.g., system notifications)
     private let alerter: (any QuotaAlerter)?
@@ -37,9 +37,9 @@ public final class QuotaMonitor {
 
     // MARK: - Initialization
 
-    /// Creates a QuotaMonitor with a provider repository.
+    /// Creates a QuotaMonitor with a set of providers.
     public init(
-        providers: any AIProviderRepository,
+        providers: [any AIProvider],
         alerter: (any QuotaAlerter)? = nil,
         clock: any Clock,
         powerStateProvider: (any PowerStateProvider)? = nil
@@ -63,7 +63,7 @@ public final class QuotaMonitor {
     /// The popover, the HTTP feed and the background loop all come through here.
     public func refresh(force: Bool = false) async {
         await withTaskGroup(of: Void.self) { group in
-            for provider in providers.enabled {
+            for provider in providers where provider.isEnabled {
                 if !force, let capturedAt = provider.snapshot?.capturedAt,
                    Date().timeIntervalSince(capturedAt) < Self.minimumSnapshotAge {
                     continue
@@ -117,17 +117,17 @@ public final class QuotaMonitor {
 
     /// Returns all providers
     public var allProviders: [any AIProvider] {
-        providers.all
+        providers
     }
 
     /// Returns only enabled providers
     public var enabledProviders: [any AIProvider] {
-        providers.enabled
+        providers.filter { $0.isEnabled }
     }
 
     /// Sets a provider's enabled state.
     public func setProviderEnabled(_ id: String, enabled: Bool) {
-        providers.provider(id: id)?.isEnabled = enabled
+        providers.first { $0.id == id }?.isEnabled = enabled
     }
 
     // MARK: - Continuous Monitoring

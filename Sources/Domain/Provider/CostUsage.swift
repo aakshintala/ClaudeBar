@@ -18,9 +18,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
     /// nil for API accounts that don't have a fixed budget
     public let budget: Decimal?
 
-    /// Total time spent on API calls
-    public let apiDuration: TimeInterval
-
     /// The provider ID this cost belongs to (e.g., "claude")
     public let providerId: String
 
@@ -38,7 +35,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
     public init(
         totalCost: Decimal,
         budget: Decimal? = nil,
-        apiDuration: TimeInterval,
         providerId: String,
         kind: Kind = .apiCost,
         capturedAt: Date = Date(),
@@ -48,7 +44,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
         self.kind = kind
         self.totalCost = totalCost
         self.budget = budget
-        self.apiDuration = apiDuration
         self.providerId = providerId
         self.capturedAt = capturedAt
         self.resetsAt = resetsAt
@@ -68,11 +63,6 @@ public struct CostUsage: Sendable, Equatable, Hashable {
         return formatter.string(from: totalCost as NSDecimalNumber) ?? "$\(totalCost)"
     }
 
-    /// Formatted API duration (e.g., "6m 19.7s")
-    public var formattedApiDuration: String {
-        formatDuration(apiDuration)
-    }
-
     // MARK: - Budget Calculation
 
     /// Calculates the budget status based on the given budget threshold
@@ -84,21 +74,5 @@ public struct CostUsage: Sendable, Equatable, Hashable {
     public var budgetStatusFromBuiltIn: BudgetStatus? {
         guard let budget else { return nil }
         return BudgetStatus.from(cost: totalCost, budget: budget)
-    }
-
-    // MARK: - Private Helpers
-
-    private func formatDuration(_ duration: TimeInterval) -> String {
-        let hours = Int(duration) / 3600
-        let minutes = Int(duration) / 60 % 60
-        let seconds = duration.truncatingRemainder(dividingBy: 60)
-
-        if hours > 0 {
-            return String(format: "%dh %dm %.1fs", hours, minutes, seconds)
-        } else if minutes > 0 {
-            return String(format: "%dm %.1fs", minutes, seconds)
-        } else {
-            return String(format: "%.1fs", seconds)
-        }
     }
 }

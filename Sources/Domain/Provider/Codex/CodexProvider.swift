@@ -11,15 +11,6 @@ public final class CodexProvider: AIProvider {
 
     public let id: String = "codex"
     public let name: String = "Codex"
-    public let cliCommand: String = "codex"
-
-    public var dashboardURL: URL? {
-        URL(string: "https://platform.openai.com/usage")
-    }
-
-    public var statusPageURL: URL? {
-        URL(string: "https://status.openai.com")
-    }
 
     /// Whether the provider is enabled (persisted via settingsRepository)
     public var isEnabled: Bool {

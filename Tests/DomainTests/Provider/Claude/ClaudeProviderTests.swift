@@ -32,21 +32,6 @@ struct ClaudeProviderTests {
     }
 
     @Test
-    func `claude provider has correct cliCommand`() {
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        #expect(claude.cliCommand == "claude")
-    }
-
-    @Test
-    func `claude provider has dashboard URL pointing to anthropic`() {
-        let settings = makeSettingsRepository()
-        let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)
-        #expect(claude.dashboardURL != nil)
-        #expect(claude.dashboardURL?.host?.contains("anthropic") == true)
-    }
-
-    @Test
     func `claude provider is enabled by default`() {
         let settings = makeSettingsRepository()
         let claude = ClaudeProvider(probe: MockUsageProbe(), settingsRepository: settings)

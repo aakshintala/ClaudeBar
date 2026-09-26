@@ -12,13 +12,11 @@ struct CostUsageTests {
         // Given
         let cost = CostUsage(
             totalCost: Decimal(string: "5.50")!,
-            apiDuration: 3600,
             providerId: "claude"
         )
 
         // Then
         #expect(cost.totalCost == Decimal(string: "5.50"))
-        #expect(cost.apiDuration == 3600)
         #expect(cost.providerId == "claude")
     }
 
@@ -26,7 +24,6 @@ struct CostUsageTests {
     func `defaults kind to API cost`() {
         let cost = CostUsage(
             totalCost: 1,
-            apiDuration: 0,
             providerId: "claude"
         )
 
@@ -37,7 +34,6 @@ struct CostUsageTests {
     func `creates extra usage kind`() {
         let cost = CostUsage(
             totalCost: 1,
-            apiDuration: 0,
             providerId: "claude",
             kind: .extraUsage
         )
@@ -52,7 +48,6 @@ struct CostUsageTests {
         // Given
         let cost = CostUsage(
             totalCost: Decimal(string: "0.55")!,
-            apiDuration: 0,
             providerId: "claude"
         )
 
@@ -65,7 +60,6 @@ struct CostUsageTests {
         // Given
         let cost = CostUsage(
             totalCost: Decimal(string: "1234.56")!,
-            apiDuration: 0,
             providerId: "claude"
         )
 
@@ -83,45 +77,6 @@ struct CostUsageTests {
         return formatter.string(from: value as NSDecimalNumber) ?? "$\(value)"
     }
 
-    @Test
-    func `formats API duration with hours minutes seconds`() {
-        // Given
-        let cost = CostUsage(
-            totalCost: 0,
-            apiDuration: 3661.5, // 1h 1m 1.5s
-            providerId: "claude"
-        )
-
-        // Then
-        #expect(cost.formattedApiDuration == "1h 1m 1.5s")
-    }
-
-    @Test
-    func `formats API duration with minutes and seconds only`() {
-        // Given
-        let cost = CostUsage(
-            totalCost: 0,
-            apiDuration: 379.7, // 6m 19.7s
-            providerId: "claude"
-        )
-
-        // Then
-        #expect(cost.formattedApiDuration == "6m 19.7s")
-    }
-
-    @Test
-    func `formats API duration with seconds only`() {
-        // Given
-        let cost = CostUsage(
-            totalCost: 0,
-            apiDuration: 45.2,
-            providerId: "claude"
-        )
-
-        // Then
-        #expect(cost.formattedApiDuration == "45.2s")
-    }
-
     // MARK: - Budget Calculation
 
     @Test
@@ -129,7 +84,6 @@ struct CostUsageTests {
         // Given
         let cost = CostUsage(
             totalCost: 5,
-            apiDuration: 0,
             providerId: "claude"
         )
 
@@ -145,7 +99,6 @@ struct CostUsageTests {
         // Given
         let cost = CostUsage(
             totalCost: 8.5,
-            apiDuration: 0,
             providerId: "claude"
         )
 
@@ -161,7 +114,6 @@ struct CostUsageTests {
         // Given
         let cost = CostUsage(
             totalCost: 12,
-            apiDuration: 0,
             providerId: "claude"
         )
 
@@ -178,9 +130,9 @@ struct CostUsageTests {
     func `cost usage is equatable`() {
         // Given
         let capturedAt = Date()
-        let cost1 = CostUsage(totalCost: 5, apiDuration: 100, providerId: "claude", capturedAt: capturedAt)
-        let cost2 = CostUsage(totalCost: 5, apiDuration: 100, providerId: "claude", capturedAt: capturedAt)
-        let cost3 = CostUsage(totalCost: 10, apiDuration: 100, providerId: "claude", capturedAt: capturedAt)
+        let cost1 = CostUsage(totalCost: 5, providerId: "claude", capturedAt: capturedAt)
+        let cost2 = CostUsage(totalCost: 5, providerId: "claude", capturedAt: capturedAt)
+        let cost3 = CostUsage(totalCost: 10, providerId: "claude", capturedAt: capturedAt)
 
         // Then
         #expect(cost1 == cost2)
