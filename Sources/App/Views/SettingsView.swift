@@ -154,18 +154,18 @@ struct SettingsContentView: View {
         .padding(.vertical, 4)
     }
 
-    // MARK: - MCP
+    // MARK: - Quota Feed
 
     private var mcpCard: some View {
         settingsCard(
-            title: "MCP Quota Server",
+            title: "Quota Feed",
             subtitle: "Expose quotas to Claude Code agents",
             icon: "antenna.radiowaves.left.and.right"
         ) {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle(isOn: $settings.mcpEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Enable MCP server")
+                        Text("Enable quota feed")
                             .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
                             .foregroundStyle(theme.textPrimary)
                         Text("http://127.0.0.1:\(settings.mcpPort)/quotas")
@@ -186,7 +186,7 @@ struct SettingsContentView: View {
                         .foregroundStyle(theme.statusCritical)
                 }
 
-                Text("Agents call get_quotas via the bundled mcp/index.ts stdio server. Coalesces refreshes to once per minute.")
+                Text("Serves Claude Code HTTP hooks under /hooks and the JSON feed at /quotas. See the README for hook setup.")
                     .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                     .foregroundStyle(theme.textTertiary)
             }

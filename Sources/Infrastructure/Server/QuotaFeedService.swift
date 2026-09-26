@@ -24,6 +24,11 @@ public final class QuotaFeedService {
         return QuotaFeedDTO.make(from: monitor.allProviders, at: now())
     }
 
+    /// The feed as the monitor holds it now, without triggering a refresh.
+    public func cachedFeed() -> QuotaFeedDTO {
+        QuotaFeedDTO.make(from: monitor.allProviders, at: now())
+    }
+
     private func refreshIfNeeded() async {
         let currentTime = now()
 

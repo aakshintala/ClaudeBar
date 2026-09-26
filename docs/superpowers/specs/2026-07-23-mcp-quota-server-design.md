@@ -1,7 +1,9 @@
 # MCP Quota Server Design
 
 **Date:** 2026-07-23
-**Status:** Approved, not yet implemented
+**Status:** Superseded (2026-09-26). The stdio MCP server cost ~93 MB of
+Node per Claude Code session. Replaced by Claude Code HTTP hooks served by the
+app itself; see "Quota for Claude Code agents" in the README.
 
 ## Goal
 

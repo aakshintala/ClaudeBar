@@ -19,4 +19,3 @@ build/
 .claude/settings.local.json
 
 # MCP server (local-only Node tooling)
-mcp/node_modules/

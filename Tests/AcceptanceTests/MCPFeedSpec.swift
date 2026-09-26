@@ -79,4 +79,44 @@ struct MCPFeedSpec {
         #expect(feed.providers[0].quotas[0].key == "session")
         #expect(feed.providers[1].id == "codex")
     }
+
+    @Test
+    @MainActor
+    func `POST session-start hook returns the rendered feed as additional context`() async throws {
+        let capturedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let probe = MockUsageProbe()
+        given(probe).isAvailable().willReturn(true)
+        given(probe).probe().willReturn(UsageSnapshot(
+            providerId: "codex",
+            quotas: [UsageQuota(percentRemaining: 81, quotaType: .weekly, providerId: "codex")],
+            capturedAt: capturedAt,
+            accountTier: .custom("Plus")
+        ))
+        let monitor = QuotaMonitor(
+            providers: AIProviders(providers: [CodexProvider(probe: probe, settingsRepository: makeSettings())]),
+            clock: TestClock()
+        )
+
+        let port: UInt16 = 19_877
+        let feedService = QuotaFeedService(monitor: monitor, now: { capturedAt.addingTimeInterval(30) })
+        _ = await feedService.currentFeed()  // hooks read the cache, so warm it
+        let server = QuotaHTTPServer(port: port, feedService: feedService)
+        try server.start()
+        defer { server.stop() }
+
+        try await Task.sleep(nanoseconds: 100_000_000)
+
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:\(port)/hooks/session-start")!)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = Data(#"{"session_id":"s1","hook_event_name":"SessionStart"}"#.utf8)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let http = try #require(response as? HTTPURLResponse)
+        #expect(http.statusCode == 200)
+
+        let json = try #require(try JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let output = try #require(json["hookSpecificOutput"] as? [String: Any])
+        #expect(output["hookEventName"] as? String == "SessionStart")
+        #expect(output["additionalContext"] as? String == "Quota headroom (QuotaBar):\ncodex (Plus) - weekly 81%")
+    }
 }

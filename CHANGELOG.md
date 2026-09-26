@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Quota reaches Claude Code through HTTP hooks served by the app
+  (`/hooks/session-start`, `/hooks/prompt`) instead of the Node stdio MCP
+  server, which cost ~93 MB per Claude Code session. `mcp/` is removed. The
+  prompt hook speaks only when a bucket gets worse. See the README for setup.
+
+### Security
+- The quota listener rejects requests whose `Host` is not `127.0.0.1` or
+  `localhost` (blocks DNS rebinding from web pages) and caps request size at 1 MB.
+
 ### Fixed
 - Cursor no longer shows "EMPTY" for Pro/paid accounts that have bonus credits.
   The probe derived remaining usage from the `used`/`limit` fields, which cover

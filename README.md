@@ -126,6 +126,33 @@ open ClaudeBar.xcworkspace
 
 Then press `Cmd+R` in Xcode to run. The app will appear in your menu bar. Click to view quota details for each provider.
 
+## Quota for Claude Code agents
+
+QuotaBar can tell Claude Code sessions how much quota is left, so agents can
+route work ("Claude weekly is at 12%, delegate to Codex") and hold back
+expensive runs. It uses Claude Code's HTTP hooks, answered by the app itself:
+no extra process per session.
+
+1. Settings → "Quota Feed" → enable. It listens on `127.0.0.1:8787` only.
+2. Add to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:8787/hooks/session-start", "timeout": 3 }] }],
+    "UserPromptSubmit": [{ "hooks": [{ "type": "http", "url": "http://127.0.0.1:8787/hooks/prompt", "timeout": 2 }] }]
+  }
+}
+```
+
+- **Session start** adds the full feed to context: one line per healthy
+  provider, with reset times only on buckets that need attention.
+- **Each prompt** adds nothing unless a bucket got worse since the session was
+  last told. A low quota is announced once, not on every prompt.
+- Hooks read the app's cached data and never trigger a probe, so they cannot
+  stall a session. The text states how old the data is.
+- `GET /quotas` serves the raw JSON feed for other clients.
+
 ## Development
 
 The project uses [Tuist](https://tuist.io) for dependency management and Xcode project generation.

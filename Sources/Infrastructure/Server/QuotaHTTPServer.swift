@@ -14,23 +14,43 @@ public struct QuotaHTTPResponse: Equatable, Sendable {
 public struct QuotaHTTPRequest: Equatable, Sendable {
     public let method: String
     public let path: String
+    /// Header names lowercased.
+    public var headers: [String: String] = [:]
+    public var body = Data()
+
+    /// Browsers always send the Host they resolved. A DNS-rebinding page that
+    /// reaches this loopback listener still carries its own domain here.
+    public var hasLoopbackHost: Bool {
+        guard let host = headers["host"] else { return false }
+        let name = host.split(separator: ":", maxSplits: 1).first.map(String.init) ?? host
+        return name == "127.0.0.1" || name == "localhost"
+    }
 }
 
 public enum QuotaHTTPMessageParser {
     public static let headerTerminator = Data("\r\n\r\n".utf8)
 
+    /// Nil until the headers and the full `Content-Length` body have arrived.
     public static func parseCompleteRequest(from buffer: Data) -> QuotaHTTPRequest? {
         guard let range = buffer.range(of: headerTerminator) else { return nil }
-        let headerData = buffer[..<range.lowerBound]
-        guard let headerText = String(data: headerData, encoding: .utf8) else { return nil }
-        guard let requestLine = headerText.split(separator: "\r\n", omittingEmptySubsequences: false).first else {
-            return nil
-        }
+        guard let headerText = String(data: buffer[..<range.lowerBound], encoding: .utf8) else { return nil }
+        let lines = headerText.components(separatedBy: "\r\n")
 
-        let parts = requestLine.split(separator: " ", omittingEmptySubsequences: true)
+        let parts = lines[0].split(separator: " ", omittingEmptySubsequences: true)
         guard parts.count == 3 else { return nil }
 
-        return QuotaHTTPRequest(method: String(parts[0]), path: String(parts[1]))
+        var headers: [String: String] = [:]
+        for line in lines.dropFirst() {
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            headers[line[..<colon].lowercased()] = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+        }
+
+        let length = headers["content-length"].flatMap { Int($0) } ?? 0
+        guard buffer.distance(from: range.upperBound, to: buffer.endIndex) >= length else { return nil }
+        let bodyStart = range.upperBound
+        let body = buffer[bodyStart..<buffer.index(bodyStart, offsetBy: length)]
+
+        return QuotaHTTPRequest(method: String(parts[0]), path: String(parts[1]), headers: headers, body: Data(body))
     }
 }
 
@@ -38,6 +58,8 @@ public struct QuotaHTTPIncrementalParser: Sendable {
     private var buffer = Data()
 
     public init() {}
+
+    public var bufferedByteCount: Int { buffer.count }
 
     public mutating func append(_ chunk: Data) -> QuotaHTTPRequest? {
         buffer.append(chunk)
@@ -50,24 +72,45 @@ public struct QuotaHTTPIncrementalParser: Sendable {
 }
 
 public enum QuotaHTTPRequestHandler {
-    public static func handle(_ requestData: Data, feedBody: Data) -> QuotaHTTPResponse {
+    /// Hook bodies carry the user's prompt, so this is generous; it only stops
+    /// a web page from making the app buffer an unbounded POST.
+    public static let maxRequestBytes = 1_048_576
+
+    public static func handle(
+        _ requestData: Data,
+        feedBody: @Sendable () async -> Data,
+        hooks: QuotaHooks?
+    ) async -> QuotaHTTPResponse {
         guard let request = QuotaHTTPMessageParser.parseCompleteRequest(from: requestData) else {
             return response(statusCode: 400, body: Data("Bad Request".utf8))
         }
-        return respond(to: request, feedBody: feedBody)
+        return await respond(to: request, feedBody: feedBody, hooks: hooks)
     }
 
-    public static func respond(to request: QuotaHTTPRequest, feedBody: Data) -> QuotaHTTPResponse {
-        guard request.method == "GET" else {
-            return response(statusCode: 405, body: Data("Method Not Allowed".utf8))
+    public static func respond(
+        to request: QuotaHTTPRequest,
+        feedBody: @Sendable () async -> Data,
+        hooks: QuotaHooks?
+    ) async -> QuotaHTTPResponse {
+        guard request.hasLoopbackHost else {
+            return response(statusCode: 403, body: Data("Forbidden".utf8))
         }
 
-        switch request.path {
-        case "/quotas":
-            return response(statusCode: 200, body: feedBody, contentType: "application/json")
+        switch (request.method, request.path) {
+        case ("GET", "/quotas"):
+            return response(statusCode: 200, body: await feedBody())
+        case ("POST", "/hooks/session-start"):
+            guard let hooks else { break }
+            return response(statusCode: 200, body: await hooks.sessionStart(request.body))
+        case ("POST", "/hooks/prompt"):
+            guard let hooks else { break }
+            return response(statusCode: 200, body: await hooks.prompt(request.body))
+        case (_, "/quotas"), (_, "/hooks/session-start"), (_, "/hooks/prompt"):
+            return response(statusCode: 405, body: Data("Method Not Allowed".utf8))
         default:
-            return response(statusCode: 404, body: Data("Not Found".utf8))
+            break
         }
+        return response(statusCode: 404, body: Data("Not Found".utf8))
     }
 
     public static func response(
@@ -87,8 +130,10 @@ public enum QuotaHTTPRequestHandler {
         switch statusCode {
         case 200: statusText = "OK"
         case 400: statusText = "Bad Request"
+        case 403: statusText = "Forbidden"
         case 404: statusText = "Not Found"
         case 405: statusText = "Method Not Allowed"
+        case 413: statusText = "Content Too Large"
         default: statusText = "Error"
         }
 
@@ -116,6 +161,7 @@ public final class QuotaHTTPServer: @unchecked Sendable {
 
     public let port: UInt16
     private let feedProvider: @Sendable () async -> Data
+    private let hooks: QuotaHooks?
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "com.tddworks.ClaudeBar.quota-http")
 
@@ -135,13 +181,15 @@ public final class QuotaHTTPServer: @unchecked Sendable {
     /// readiness write is not guaranteed visible to the reader.
     private let stateLock = NSLock()
 
-    public init(port: UInt16, feedProvider: @escaping @Sendable () async -> Data) {
+    public init(port: UInt16, hooks: QuotaHooks? = nil, feedProvider: @escaping @Sendable () async -> Data) {
         self.port = port
+        self.hooks = hooks
         self.feedProvider = feedProvider
     }
 
+    @MainActor
     public convenience init(port: UInt16, feedService: QuotaFeedService, encoder: JSONEncoder = QuotaHTTPServer.makeEncoder()) {
-        self.init(port: port) {
+        self.init(port: port, hooks: QuotaHooks(feed: { feedService.cachedFeed() })) {
             let feed = await feedService.currentFeed()
             return (try? encoder.encode(feed)) ?? Data()
         }
@@ -241,10 +289,17 @@ public final class QuotaHTTPServer: @unchecked Sendable {
 
             if let data, let request = state.parser.append(data) {
                 Task {
-                    let feedBody = await self.feedProvider()
-                    let response = QuotaHTTPRequestHandler.respond(to: request, feedBody: feedBody)
+                    let response = await QuotaHTTPRequestHandler.respond(
+                        to: request, feedBody: self.feedProvider, hooks: self.hooks
+                    )
                     self.send(response: response, on: connection)
                 }
+                return
+            }
+
+            if state.parser.bufferedByteCount > QuotaHTTPRequestHandler.maxRequestBytes {
+                let response = QuotaHTTPRequestHandler.response(statusCode: 413, body: Data("Content Too Large".utf8))
+                self.send(response: response, on: connection)
                 return
             }
 
