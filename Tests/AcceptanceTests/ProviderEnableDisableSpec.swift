@@ -119,7 +119,7 @@ struct ProviderEnableDisableSpec {
                 .appendingPathComponent("claudebar-test-\(UUID().uuidString)")
             let fileURL = tempDir.appendingPathComponent("settings.json")
             defer { try? FileManager.default.removeItem(at: tempDir) }
-            let repo = JSONSettingsRepository(store: JSONSettingsStore(fileURL: fileURL))
+            let repo = JSONSettingsRepository(fileURL: fileURL)
 
             // When — set enabled to false
             repo.setEnabled(false, forProvider: "codex")

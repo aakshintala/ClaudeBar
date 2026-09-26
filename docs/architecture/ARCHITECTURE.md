@@ -82,7 +82,7 @@ The key principle is **QuotaMonitor as Single Source of Truth** - all provider s
 │                                                                      │
 │  Storage (Sources/Infrastructure/Storage/)                          │
 │  ├── AIProviders - implements AIProviderRepository                  │
-│  ├── JSONSettingsStore - thread-safe JSON file I/O                  │
+│  ├── SettingsFile - Codable shape of settings.json                  │
 │  └── JSONSettingsRepository                                         │
 │      └── Implements all settings protocols (ISP single impl)        │
 │                                                                      │
@@ -188,7 +188,7 @@ public final class JSONSettingsRepository:
     CopilotSettingsRepository,
     // ... all other sub-protocols
 {
-    // Persists to ~/.claudebar/settings.json via JSONSettingsStore
+    // Holds ~/.claudebar/settings.json in memory as a Codable SettingsFile
     // Credentials (tokens, API keys) use UserDefaults (Keychain migration planned)
 }
 ```

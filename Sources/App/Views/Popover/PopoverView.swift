@@ -6,7 +6,7 @@ import Infrastructure
 struct PopoverView: View {
     let monitor: QuotaMonitor
     let quotaAlerter: QuotaAlerter
-    let mcpServerController: MCPServerController
+    let feedServerController: FeedServerController
 
     @Environment(\.appTheme) private var theme
     @State private var showSettings = false
@@ -24,7 +24,7 @@ struct PopoverView: View {
                 SettingsContentView(
                     showSettings: $showSettings,
                     monitor: monitor,
-                    mcpServerController: mcpServerController
+                    feedServerController: feedServerController
                 )
             } else {
                 VStack(spacing: 0) {

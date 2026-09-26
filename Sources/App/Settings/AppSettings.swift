@@ -18,7 +18,7 @@ public final class AppSettings {
     /// The current theme mode (light, dark)
     public var themeMode: String {
         didSet {
-            repository.setThemeMode(themeMode)
+            repository.update { $0.app.themeMode = themeMode }
         }
     }
 
@@ -27,35 +27,35 @@ public final class AppSettings {
     /// Whether background sync is enabled (default: false)
     public var backgroundSyncEnabled: Bool {
         didSet {
-            repository.setBackgroundSyncEnabled(backgroundSyncEnabled)
+            repository.update { $0.app.backgroundSyncEnabled = backgroundSyncEnabled }
         }
     }
 
-    /// Background sync interval in seconds (default: 60)
+    /// Background sync interval in seconds (default: 600)
     public var backgroundSyncInterval: TimeInterval {
         didSet {
-            repository.setBackgroundSyncInterval(backgroundSyncInterval)
+            repository.update { $0.app.backgroundSyncInterval = backgroundSyncInterval }
         }
     }
 
     /// Whether quota-threshold notifications are enabled (default: true)
     public var quotaAlertsEnabled: Bool {
         didSet {
-            repository.setQuotaAlertsEnabled(quotaAlertsEnabled)
+            repository.update { $0.app.quotaAlertsEnabled = quotaAlertsEnabled }
         }
     }
 
-    /// Whether the local MCP quota HTTP server is enabled (default: false)
-    public var mcpEnabled: Bool {
+    /// Whether the localhost quota feed server is enabled (default: false)
+    public var feedEnabled: Bool {
         didSet {
-            repository.setMCPEnabled(mcpEnabled)
+            repository.update { $0.feed.enabled = feedEnabled }
         }
     }
 
-    /// Port for the MCP quota HTTP server (default: 8787)
-    public var mcpPort: Int {
+    /// Port for the quota feed server (default: 8787)
+    public var feedPort: Int {
         didSet {
-            repository.setMCPPort(mcpPort)
+            repository.update { $0.feed.port = feedPort }
         }
     }
 
@@ -86,13 +86,13 @@ public final class AppSettings {
     private init(repository: JSONSettingsRepository = .shared) {
         self.repository = repository
 
-        // Load all values from repository
-        self.themeMode = repository.themeMode()
-        self.backgroundSyncEnabled = repository.backgroundSyncEnabled()
-        self.backgroundSyncInterval = repository.backgroundSyncInterval()
-        self.quotaAlertsEnabled = repository.quotaAlertsEnabled()
-        self.mcpEnabled = repository.mcpEnabled()
-        self.mcpPort = repository.mcpPort()
+        let stored = repository.settings
+        self.themeMode = stored.app.themeMode
+        self.backgroundSyncEnabled = stored.app.backgroundSyncEnabled
+        self.backgroundSyncInterval = stored.app.backgroundSyncInterval
+        self.quotaAlertsEnabled = stored.app.quotaAlertsEnabled
+        self.feedEnabled = stored.feed.enabled
+        self.feedPort = stored.feed.port
     }
 
     // MARK: - Provider Settings Access

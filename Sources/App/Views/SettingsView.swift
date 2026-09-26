@@ -6,7 +6,7 @@ import Infrastructure
 struct SettingsContentView: View {
     @Binding var showSettings: Bool
     let monitor: QuotaMonitor
-    let mcpServerController: MCPServerController
+    let feedServerController: FeedServerController
     @Environment(\.appTheme) private var theme
     @State private var settings = AppSettings.shared
 
@@ -32,7 +32,7 @@ struct SettingsContentView: View {
                     themeCard
                     providersCard
                     generalCard
-                    mcpCard
+                    feedCard
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
@@ -156,19 +156,19 @@ struct SettingsContentView: View {
 
     // MARK: - Quota Feed
 
-    private var mcpCard: some View {
+    private var feedCard: some View {
         settingsCard(
             title: "Quota Feed",
             subtitle: "Expose quotas to Claude Code agents",
             icon: "antenna.radiowaves.left.and.right"
         ) {
             VStack(alignment: .leading, spacing: 10) {
-                Toggle(isOn: $settings.mcpEnabled) {
+                Toggle(isOn: $settings.feedEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Enable quota feed")
                             .font(.system(size: 12, weight: .medium, design: theme.fontDesign))
                             .foregroundStyle(theme.textPrimary)
-                        Text("http://127.0.0.1:\(settings.mcpPort)/quotas")
+                        Text("http://127.0.0.1:\(settings.feedPort)/quotas")
                             .font(.system(size: 9, weight: .medium, design: theme.fontDesign))
                             .foregroundStyle(theme.textTertiary)
                     }
@@ -180,7 +180,7 @@ struct SettingsContentView: View {
                 // sync() twice, and the duplicate bind lost the port to
                 // EADDRINUSE. The toggle only writes the setting.
 
-                if let bindError = mcpServerController.bindError {
+                if let bindError = feedServerController.bindError {
                     Text(bindError)
                         .font(.system(size: 9, weight: .semibold, design: theme.fontDesign))
                         .foregroundStyle(theme.statusCritical)
@@ -368,7 +368,7 @@ struct ThemeOptionButton: View {
         SettingsContentView(
             showSettings: .constant(true),
             monitor: QuotaMonitor(providers: []),
-            mcpServerController: MCPServerController(monitor: QuotaMonitor(providers: []))
+            feedServerController: FeedServerController(monitor: QuotaMonitor(providers: []))
         )
     }
     .appThemeProvider(themeModeId: "dark")
@@ -381,7 +381,7 @@ struct ThemeOptionButton: View {
         SettingsContentView(
             showSettings: .constant(true),
             monitor: QuotaMonitor(providers: []),
-            mcpServerController: MCPServerController(monitor: QuotaMonitor(providers: []))
+            feedServerController: FeedServerController(monitor: QuotaMonitor(providers: []))
         )
     }
     .appThemeProvider(themeModeId: "light")

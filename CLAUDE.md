@@ -131,28 +131,15 @@ All settings are persisted in a single JSON file (`~/.claudebar/settings.json`) 
 
 ```
 Sources/Infrastructure/Storage/
-├── JSONSettingsStore.swift          # Low-level JSON file I/O (dot-notation keys)
-└── JSONSettingsRepository.swift     # Implements ALL settings protocols
+└── JSONSettingsRepository.swift     # SettingsFile (Codable) + repository
 
 Sources/App/Settings/
 └── AppSettings.swift               # @Observable wrapper for SwiftUI reactivity
 ```
 
-**Architecture:**
-- `JSONSettingsStore` — Thread-safe read/write with dot-notation key paths (e.g., `app.themeMode`, `claude.probeMode`, `providers.claude.isEnabled`)
-- `JSONSettingsRepository` — Single class implementing `AppSettingsRepository` + all provider sub-protocols + `HookSettingsRepository`
-- `AppSettings` — `@Observable` facade for SwiftUI; exposes typed provider accessors (`settings.claude`, `settings.copilot`, etc.)
-- Credentials (GitHub token, MiniMax API key) remain in UserDefaults (Keychain migration planned)
-
-**Key namespacing in settings.json:**
-| Namespace | Examples |
-|-----------|---------|
-| `app.*` | `app.themeMode`, `app.showDailyUsageCards`, `app.backgroundSyncEnabled` |
-| `providers.{id}.*` | `providers.claude.isEnabled`, `providers.copilot.isEnabled` |
-| `claude.*` | `claude.probeMode` |
-| `copilot.*` | `copilot.probeMode`, `copilot.authEnvVar` |
-| `bedrock.*` | `bedrock.awsProfile`, `bedrock.regions` |
-| `hook.*` | `hook.enabled`, `hook.port` |
+- `SettingsFile` — Codable struct for the whole file: `app.{themeMode, backgroundSyncEnabled, backgroundSyncInterval, quotaAlertsEnabled}`, `feed.{enabled, port}`, `providers.{id}.isEnabled`. Missing keys take defaults; unmodelled keys drop on the next write. Legacy `mcp.*` is read if `feed` is absent and mirrored on write for older installed builds.
+- `JSONSettingsRepository` — reads the file once, keeps it in memory, rewrites it atomically on `update { }`; implements `ProviderSettingsRepository`.
+- `AppSettings` — `@Observable` facade for SwiftUI.
 
 ### Theme System
 

@@ -13,8 +13,8 @@ struct ClaudeBarApp: App {
     /// driven imperatively outside SwiftUI (issue #192).
     private let statusItemDriver: StatusBarIconDriver
 
-    /// Localhost HTTP server for MCP quota feed consumers.
-    private let mcpServerController: MCPServerController
+    /// Localhost HTTP server for quota feed consumers.
+    private let feedServerController: FeedServerController
 
     /// Binding required by `.menuBarExtraAccess`; also enables programmatic
     /// dropdown control if ever needed.
@@ -22,7 +22,7 @@ struct ClaudeBarApp: App {
 
     /// Alerts users when quota status degrades
     private let quotaAlerter = NotificationAlerter {
-        JSONSettingsRepository.shared.quotaAlertsEnabled()
+        JSONSettingsRepository.shared.settings.app.quotaAlertsEnabled
     }
 
     init() {
@@ -30,10 +30,7 @@ struct ClaudeBarApp: App {
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         AppLog.ui.info("QuotaBar v\(version) (\(build)) initializing...")
 
-        // Create the shared settings repository (JSON-backed: ~/.claudebar/settings.json)
-        // JSONSettingsRepository implements all sub-protocols:
-        // - AppSettingsRepository (app-level display/sync settings)
-        // - ProviderSettingsRepository + all provider sub-protocols
+        // ~/.claudebar/settings.json, read once into memory.
         let settingsRepository = JSONSettingsRepository.shared
 
         // One AIProvider per (id, name, probe). The id is the settings key and feed id.
@@ -47,6 +44,7 @@ struct ClaudeBarApp: App {
             provider("cursor", "Cursor", CursorUsageProbe()),
             provider("opencode-go", "OpenCode Go", OpenCodeUsageProbe()),
         ]
+        settingsRepository.keepProviders(providers.map(\.id))
         AppLog.providers.info("Created \(providers.count) providers")
 
         // Initialize the domain service with quota alerter
@@ -55,12 +53,12 @@ struct ClaudeBarApp: App {
             alerter: quotaAlerter
         )
         self.monitor = monitor
-        self.mcpServerController = MCPServerController(monitor: monitor)
+        self.feedServerController = FeedServerController(monitor: monitor)
         AppLog.monitor.info("QuotaMonitor initialized")
 
-        mcpServerController.sync(
-            enabled: settingsRepository.mcpEnabled(),
-            port: settingsRepository.mcpPort()
+        feedServerController.sync(
+            enabled: settingsRepository.settings.feed.enabled,
+            port: settingsRepository.settings.feed.port
         )
 
         statusItemDriver = StatusBarIconDriver(
@@ -84,7 +82,7 @@ struct ClaudeBarApp: App {
                 PopoverView(
                     monitor: monitor,
                     quotaAlerter: quotaAlerter,
-                    mcpServerController: mcpServerController
+                    feedServerController: feedServerController
                 )
                     .appThemeProvider(themeModeId: settings.themeMode)
             }
@@ -94,12 +92,12 @@ struct ClaudeBarApp: App {
             // re-assert the menu-bar pixels on both edges.
             .onAppear { statusItemDriver.reassertPresentation() }
             .onDisappear { statusItemDriver.reassertPresentation() }
-            .onChange(of: settings.mcpEnabled) { _, enabled in
-                mcpServerController.sync(enabled: enabled, port: settings.mcpPort)
+            .onChange(of: settings.feedEnabled) { _, enabled in
+                feedServerController.sync(enabled: enabled, port: settings.feedPort)
             }
-            .onChange(of: settings.mcpPort) { _, port in
-                if settings.mcpEnabled {
-                    mcpServerController.sync(enabled: true, port: port)
+            .onChange(of: settings.feedPort) { _, port in
+                if settings.feedEnabled {
+                    feedServerController.sync(enabled: true, port: port)
                 }
             }
         } label: {

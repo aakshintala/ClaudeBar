@@ -4,7 +4,7 @@ import Observation
 
 @MainActor
 @Observable
-public final class MCPServerController {
+public final class FeedServerController {
     public private(set) var bindError: String?
 
     private let feedService: QuotaFeedService
@@ -31,7 +31,7 @@ public final class MCPServerController {
         guard (1...65_535).contains(port) else {
             stop()
             bindError = "Port must be between 1 and 65535"
-            AppLog.network.error("MCP quota server: invalid port \(port)")
+            AppLog.network.error("Quota feed server: invalid port \(port)")
             return
         }
 
@@ -40,7 +40,7 @@ public final class MCPServerController {
         // EADDRINUSE. SwiftUI can deliver the same state change more than once,
         // so this must be safe to call repeatedly.
         if let existing = server, existing.port == UInt16(port), existing.isRunning {
-            AppLog.network.debug("MCP quota server already running on port \(port)")
+            AppLog.network.debug("Quota feed server already running on port \(port)")
             return
         }
 
@@ -52,7 +52,7 @@ public final class MCPServerController {
                 guard let self, self.server === server else { return }
                 self.server = nil
                 self.bindError = "Could not bind port \(port) — it may already be in use"
-                AppLog.network.error("MCP quota server lost port \(port): \(error.localizedDescription)")
+                AppLog.network.error("Quota feed server lost port \(port): \(error.localizedDescription)")
             }
         }
 
@@ -60,10 +60,10 @@ public final class MCPServerController {
             try server.start()
             self.server = server
             bindError = nil
-            AppLog.network.info("MCP quota server started on port \(port)")
+            AppLog.network.info("Quota feed server started on port \(port)")
         } catch {
             bindError = "Could not bind port \(port) — it may already be in use"
-            AppLog.network.error("MCP quota server failed to bind port \(port): \(error.localizedDescription)")
+            AppLog.network.error("Quota feed server failed to bind port \(port): \(error.localizedDescription)")
         }
     }
 

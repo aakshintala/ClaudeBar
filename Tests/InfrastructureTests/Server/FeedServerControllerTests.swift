@@ -4,16 +4,16 @@ import Mockable
 @testable import Domain
 @testable import Infrastructure
 
-/// Lifecycle tests for the MCP listener.
+/// Lifecycle tests for the quota feed listener.
 ///
 /// These exist because the original implementation shipped three defects that
 /// unit tests over the pure request parser could never catch: a duplicate
 /// `onChange` fired `sync` twice, the second bind lost the port to EADDRINUSE,
 /// and the failure arrived asynchronously — after `start()` had already
 /// reported success — leaving `isRunning` reporting true for a dead listener.
-@Suite("MCPServerController lifecycle")
+@Suite("FeedServerController lifecycle")
 @MainActor
-struct MCPServerControllerTests {
+struct FeedServerControllerTests {
 
     private struct TestClock: Clock {
         func sleep(for duration: Duration) async throws {}
@@ -81,7 +81,7 @@ struct MCPServerControllerTests {
 
     @Test
     func `repeated sync on the same port leaves the endpoint serving`() async {
-        let controller = MCPServerController(monitor: makeMonitor())
+        let controller = FeedServerController(monitor: makeMonitor())
         let port = freePort()
 
         controller.sync(enabled: true, port: port)
@@ -104,14 +104,14 @@ struct MCPServerControllerTests {
     func `losing the port surfaces a bind error instead of reporting running`() async {
         let port = freePort()
 
-        let first = MCPServerController(monitor: makeMonitor())
+        let first = FeedServerController(monitor: makeMonitor())
         first.sync(enabled: true, port: port)
         #expect(await eventually { first.isRunning })
 
         // A second controller cannot have the port. Whether NWListener rejects
         // it synchronously or asynchronously, the observable end state must be
         // the same: not running, and an error the UI can show.
-        let second = MCPServerController(monitor: makeMonitor())
+        let second = FeedServerController(monitor: makeMonitor())
         second.sync(enabled: true, port: port)
 
         #expect(await eventually { second.bindError != nil })
@@ -126,7 +126,7 @@ struct MCPServerControllerTests {
 
     @Test
     func `disabling stops the server and clears any error`() async {
-        let controller = MCPServerController(monitor: makeMonitor())
+        let controller = FeedServerController(monitor: makeMonitor())
         let port = freePort()
 
         controller.sync(enabled: true, port: port)
@@ -140,7 +140,7 @@ struct MCPServerControllerTests {
 
     @Test
     func `switching port moves the listener`() async {
-        let controller = MCPServerController(monitor: makeMonitor())
+        let controller = FeedServerController(monitor: makeMonitor())
         let firstPort = freePort()
         let secondPort = freePort()
 
