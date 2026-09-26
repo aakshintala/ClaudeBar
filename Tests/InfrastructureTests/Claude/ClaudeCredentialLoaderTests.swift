@@ -224,6 +224,19 @@ struct ClaudeCredentialLoaderTests {
         #expect(reloaded?.oauth.refreshToken == "new-refresh")
     }
 
+    @Test
+    func `keychain update command updates in place and hex-encodes the secret`() {
+        let json = Data(#"{"claudeAiOauth":{"accessToken":"sk-secret"}}"#.utf8)
+
+        let command = ClaudeCredentialLoader.keychainUpdateCommand(
+            json: json, account: "me", service: "Claude Code-credentials"
+        )
+
+        let hex = json.map { String(format: "%02x", $0) }.joined()
+        #expect(command == #"add-generic-password -U -a "me" -s "Claude Code-credentials" -X \#(hex)"# + "\n")
+        #expect(!command.contains("sk-secret"))
+    }
+
     // MARK: - Environment Variable Tests
 
     @Test

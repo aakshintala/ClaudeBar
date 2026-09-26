@@ -255,39 +255,44 @@ public struct ClaudeCredentialLoader: Sendable {
     }
 
     private func saveToKeychain(_ data: [String: Any]) {
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted]),
-              let jsonString = String(data: jsonData, encoding: .utf8) else {
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: data, options: [.prettyPrinted]) else {
             AppLog.credentials.error("Failed to serialize Claude credentials for Keychain")
             return
         }
 
-        // Delete existing item first (ignore errors if not found)
-        let deleteProcess = Process()
-        deleteProcess.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        deleteProcess.arguments = ["delete-generic-password", "-s", keychainService]
-        deleteProcess.standardOutput = Pipe()
-        deleteProcess.standardError = Pipe()
-        try? deleteProcess.run()
-        deleteProcess.waitUntilExit()
-
-        // Add new item
-        let addProcess = Process()
-        addProcess.executableURL = URL(fileURLWithPath: "/usr/bin/security")
-        addProcess.arguments = ["add-generic-password", "-s", keychainService, "-w", jsonString]
-        addProcess.standardOutput = Pipe()
-        addProcess.standardError = Pipe()
+        // Keep using /usr/bin/security: Claude Code's item trusts only that tool, so
+        // SecItem* from this app would prompt. The secret goes over stdin, never argv.
+        // ponytail: account is the login name, which is what Claude Code writes; read
+        // the item's acct attribute if that ever differs.
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/security")
+        process.arguments = ["-i"]
+        let stdin = Pipe()
+        process.standardInput = stdin
+        process.standardOutput = Pipe()
+        process.standardError = Pipe()
 
         do {
-            try addProcess.run()
-            addProcess.waitUntilExit()
+            try process.run()
+            let command = Self.keychainUpdateCommand(json: jsonData, account: NSUserName(), service: keychainService)
+            try stdin.fileHandleForWriting.write(contentsOf: Data(command.utf8))
+            try stdin.fileHandleForWriting.close()
+            process.waitUntilExit()
 
-            if addProcess.terminationStatus == 0 {
+            if process.terminationStatus == 0 {
                 AppLog.credentials.info("Saved Claude credentials to Keychain")
             } else {
-                AppLog.credentials.error("Failed to save Claude credentials to Keychain (exit code: \(addProcess.terminationStatus))")
+                AppLog.credentials.error("Failed to save Claude credentials to Keychain (exit code: \(process.terminationStatus))")
             }
         } catch {
             AppLog.credentials.error("Failed to save Claude credentials to Keychain: \(error.localizedDescription)")
         }
+    }
+
+    /// The `security -i` line that updates the item in place (`-U`), passing the
+    /// secret hex-encoded (`-X`) so it needs no quoting.
+    static func keychainUpdateCommand(json: Data, account: String, service: String) -> String {
+        let hex = json.map { String(format: "%02x", $0) }.joined()
+        return "add-generic-password -U -a \"\(account)\" -s \"\(service)\" -X \(hex)\n"
     }
 }
