@@ -9,7 +9,12 @@ struct ClaudeAPIUsageProbeTests {
 
     // MARK: - Test Helpers
 
-    private func probe(responseJSON: String, subscriptionType: String = "claude_pro") async throws -> UsageSnapshot {
+    private func probe(
+        responseJSON: String,
+        subscriptionType: String = "claude_pro",
+        statusCode: Int = 200,
+        headerFields: [String: String]? = nil
+    ) async throws -> UsageSnapshot {
         let tempDir = try makeTemporaryDirectory()
         defer { try? FileManager.default.removeItem(at: tempDir) }
 
@@ -21,7 +26,7 @@ struct ClaudeAPIUsageProbeTests {
         )
 
         let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
+        let response = httpResponse("https://api.anthropic.com", statusCode: statusCode, headerFields: headerFields)
         given(mockNetwork).request(.any).willReturn((Data(responseJSON.utf8), response))
 
         let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
@@ -123,24 +128,18 @@ struct ClaudeAPIUsageProbeTests {
 
     // MARK: - Rate Limit (HTTP 429) Tests
 
-    @Test
-    func `probe throws rateLimited when API returns 429 with Retry-After seconds`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://api.anthropic.com", statusCode: 429, headerFields: ["Retry-After": "120"])
-        given(mockNetwork).request(.any).willReturn((Data(), response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
+    @Test(arguments: [
+        (headerFields: ["Retry-After": "120"], minDelta: 119.0, maxDelta: 122.0),
+        (headerFields: nil, minDelta: 299.0, maxDelta: 302.0),
+    ])
+    func `probe throws rateLimited with expected retry window on 429`(
+        headerFields: [String: String]?,
+        minDelta: Double,
+        maxDelta: Double
+    ) async throws {
         let before = Date()
         do {
-            _ = try await probe.probe()
+            _ = try await probe(responseJSON: "", statusCode: 429, headerFields: headerFields)
             Issue.record("Expected rateLimited error to be thrown")
         } catch let error as ProbeError {
             guard case .rateLimited(let retryAt) = error else {
@@ -148,36 +147,7 @@ struct ClaudeAPIUsageProbeTests {
                 return
             }
             let delta = retryAt.timeIntervalSince(before)
-            #expect(delta >= 119 && delta <= 122)
-        }
-    }
-
-    @Test
-    func `probe defaults to 5 minute retry when 429 has no Retry-After header`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://api.anthropic.com", statusCode: 429)
-        given(mockNetwork).request(.any).willReturn((Data(), response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let before = Date()
-        do {
-            _ = try await probe.probe()
-            Issue.record("Expected rateLimited error to be thrown")
-        } catch let error as ProbeError {
-            guard case .rateLimited(let retryAt) = error else {
-                Issue.record("Expected .rateLimited, got \(error)")
-                return
-            }
-            let delta = retryAt.timeIntervalSince(before)
-            #expect(delta >= 299 && delta <= 302)
+            #expect(delta >= minDelta && delta <= maxDelta)
         }
     }
 
@@ -206,48 +176,31 @@ struct ClaudeAPIUsageProbeTests {
 
     // MARK: - Retry-After Parsing Tests
 
-    @Test
-    func `parseRetryAfter accepts positive integer seconds`() {
-        #expect(ClaudeAPIUsageProbe.parseRetryAfter("120") == 120)
-        #expect(ClaudeAPIUsageProbe.parseRetryAfter("1") == 1)
-    }
-
-    @Test
-    func `parseRetryAfter rejects zero seconds`() {
+    @Test(arguments: [
+        ("120", 120),
+        ("1", 1),
         // /api/oauth/usage has been observed returning Retry-After: 0 while
         // still 429ing (anthropics/claude-code#30930). Treat 0 as no usable
         // value so the caller applies its fallback window instead.
-        #expect(ClaudeAPIUsageProbe.parseRetryAfter("0") == nil)
+        ("0", nil),
+        (nil, nil),
+        ("", nil),
+        ("   ", nil),
+        ("not a number", nil),
+        ("-5", nil),
+    ] as [(String?, TimeInterval?)])
+    func `parseRetryAfter parses plain integer seconds`(input: String?, expected: TimeInterval?) {
+        #expect(ClaudeAPIUsageProbe.parseRetryAfter(input) == expected)
     }
 
-    @Test
-    func `parseRetryAfter accepts HTTP-date in the future`() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
+    @Test(arguments: [
         // 2023-11-14 22:13:20 UTC + 60s = 2023-11-14 22:14:20 UTC
-        let result = ClaudeAPIUsageProbe.parseRetryAfter(
-            "Tue, 14 Nov 2023 22:14:20 GMT",
-            now: now
-        )
-        #expect(result == 60)
-    }
-
-    @Test
-    func `parseRetryAfter rejects past HTTP-dates`() {
+        ("Tue, 14 Nov 2023 22:14:20 GMT", 60),
+        ("Tue, 14 Nov 2023 22:00:00 GMT", nil),
+    ] as [(String, TimeInterval?)])
+    func `parseRetryAfter parses HTTP-date relative to now`(httpDate: String, expected: TimeInterval?) {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let result = ClaudeAPIUsageProbe.parseRetryAfter(
-            "Tue, 14 Nov 2023 22:00:00 GMT",
-            now: now
-        )
-        #expect(result == nil)
-    }
-
-    @Test
-    func `parseRetryAfter rejects malformed and empty values`() {
-        #expect(ClaudeAPIUsageProbe.parseRetryAfter(nil) == nil)
-        #expect(ClaudeAPIUsageProbe.parseRetryAfter("") == nil)
-        #expect(ClaudeAPIUsageProbe.parseRetryAfter("   ") == nil)
-        #expect(ClaudeAPIUsageProbe.parseRetryAfter("not a number") == nil)
-        #expect(ClaudeAPIUsageProbe.parseRetryAfter("-5") == nil)
+        #expect(ClaudeAPIUsageProbe.parseRetryAfter(httpDate, now: now) == expected)
     }
 
     // MARK: - Probe Authentication Tests
@@ -269,30 +222,14 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe parses session usage correctly`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry, subscriptionType: "claude_max")
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "five_hour": {
             "utilization": 25.5,
             "resets_at": "2025-01-15T10:00:00Z"
           }
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """, subscriptionType: "claude_max")
 
         #expect(snapshot.providerId == "claude")
         #expect(snapshot.accountTier == .claudeMax)
@@ -305,28 +242,12 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe parses weekly usage correctly`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
           "seven_day": { "utilization": 45.0, "resets_at": "2025-01-20T00:00:00Z" }
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         let weeklyQuota = snapshot.quotas.first { $0.quotaType == .weekly }
         #expect(weeklyQuota != nil)
@@ -335,29 +256,13 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe parses model-specific quotas correctly`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
           "seven_day_sonnet": { "utilization": 30.0, "resets_at": "2025-01-20T00:00:00Z" },
           "seven_day_opus": { "utilization": 60.0, "resets_at": "2025-01-20T00:00:00Z" }
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         let sonnetQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("sonnet") }
         #expect(sonnetQuota != nil)
@@ -370,17 +275,10 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe parses fable quota from scoped limits array`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
         // Newer API responses report model limits via a generic "limits" array
         // (kind "weekly_scoped" + scope.model.display_name) instead of
         // dedicated seven_day_<model> fields.
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "five_hour": { "utilization": 23.0, "resets_at": "2026-07-02T07:09:59Z" },
           "seven_day": { "utilization": 10.0, "resets_at": "2026-07-02T10:59:59Z" },
@@ -393,16 +291,7 @@ struct ClaudeAPIUsageProbeTests {
               "scope": { "model": { "id": null, "display_name": "Fable" }, "surface": null } }
           ]
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         let fableQuota = snapshot.quotas.first { $0.quotaType == .modelSpecific("fable") }
         #expect(fableQuota != nil)
@@ -416,17 +305,10 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe skips malformed limits entries and keeps over-quota negative remaining`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
         // Malformed scoped entries (no scope, no model, empty name, no percent) are
         // skipped; duplicate scoped entries yield one quota; a multi-word display
         // name keys on its first word; 105% used stays negative (over-quota signal).
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
           "limits": [
@@ -442,16 +324,7 @@ struct ClaudeAPIUsageProbeTests {
               "scope": { "model": { "id": null, "display_name": "Fable" } } }
           ]
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         let fableQuotas = snapshot.quotas.filter { $0.quotaType == .modelSpecific("fable") }
         #expect(fableQuotas.count == 1)
@@ -463,14 +336,7 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe does not duplicate model quota reported in both legacy field and limits array`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
           "seven_day_opus": { "utilization": 60.0, "resets_at": "2025-01-20T00:00:00Z" },
@@ -479,16 +345,7 @@ struct ClaudeAPIUsageProbeTests {
               "scope": { "model": { "id": null, "display_name": "Opus" }, "surface": null } }
           ]
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         let opusQuotas = snapshot.quotas.filter { $0.quotaType == .modelSpecific("opus") }
         #expect(opusQuotas.count == 1)
@@ -497,15 +354,8 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe parses extra usage correctly converting cents to dollars`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry, subscriptionType: "claude_pro")
-
-        let mockNetwork = MockNetworkClient()
         // API returns used_credits and monthly_limit in cents
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
           "extra_usage": {
@@ -514,16 +364,7 @@ struct ClaudeAPIUsageProbeTests {
             "monthly_limit": 2000
           }
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         #expect(snapshot.accountTier == .claudePro)
         #expect(snapshot.costUsage != nil)
@@ -536,16 +377,9 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe converts API cost from cents to dollars for large amounts`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry, subscriptionType: "claude_pro")
-
-        let mockNetwork = MockNetworkClient()
         // Simulates the real scenario: $26.72 spent of $50 budget
         // API returns 2672 cents and 5000 cents
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "five_hour": { "utilization": 10.0, "resets_at": "2025-01-15T10:00:00Z" },
           "extra_usage": {
@@ -554,16 +388,7 @@ struct ClaudeAPIUsageProbeTests {
             "monthly_limit": 5000
           }
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         #expect(snapshot.costUsage != nil)
         // 2672 cents -> $26.72 (NOT $2672.00)
@@ -819,23 +644,7 @@ struct ClaudeAPIUsageProbeTests {
 
     @Test
     func `probe handles empty response with badge`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = "{}".data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe(responseJSON: "{}")
 
         // Should succeed but have no quotas
         #expect(snapshot.quotas.isEmpty)
@@ -844,117 +653,41 @@ struct ClaudeAPIUsageProbeTests {
 
     // MARK: - Account Tier Detection Tests
 
-    @Test
-    func `probe detects claude_max subscription type`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry, subscriptionType: "claude_max")
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
-        { "five_hour": { "utilization": 10.0 } }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
-        #expect(snapshot.accountTier == .claudeMax)
-    }
-
-    @Test
-    func `probe detects claude_pro subscription type`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry, subscriptionType: "claude_pro")
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
-        { "five_hour": { "utilization": 10.0 } }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
-        #expect(snapshot.accountTier == .claudePro)
+    @Test(arguments: [
+        ("claude_max", AccountTier.claudeMax),
+        ("claude_pro", AccountTier.claudePro),
+    ])
+    func `probe detects subscription type`(subscriptionType: String, expectedTier: AccountTier) async throws {
+        let snapshot = try await probe(
+            responseJSON: """
+            { "five_hour": { "utilization": 10.0 } }
+            """,
+            subscriptionType: subscriptionType
+        )
+        #expect(snapshot.accountTier == expectedTier)
     }
 
     // MARK: - Error Handling Tests
 
     @Test
     func `probe throws sessionExpired on 401 response`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://api.anthropic.com", statusCode: 401)
-
-        given(mockNetwork).request(.any).willReturn((Data(), response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
         await #expect(throws: ProbeError.sessionExpired()) {
-            try await probe.probe()
+            try await probe(responseJSON: "", statusCode: 401)
         }
     }
 
     @Test
     func `probe throws authenticationRequired on 403 response`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://api.anthropic.com", statusCode: 403)
-
-        given(mockNetwork).request(.any).willReturn((Data(), response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
         // 403 triggers a token refresh attempt which also fails with 403 -> executionFailed
         await #expect(throws: ProbeError.self) {
-            try await probe.probe()
+            try await probe(responseJSON: "", statusCode: 403)
         }
     }
 
     @Test
     func `probe throws parseFailed on invalid JSON`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        let futureExpiry = Date().addingTimeInterval(3600).timeIntervalSince1970 * 1000
-        try createCredentialsFile(at: tempDir, expiresAt: futureExpiry)
-
-        let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://api.anthropic.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn(("not json".data(using: .utf8)!, response))
-
-        let loader = ClaudeCredentialLoader(homeDirectory: tempDir.path, useKeychain: false)
-        let probe = ClaudeAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
         await #expect(throws: ProbeError.self) {
-            try await probe.probe()
+            try await probe(responseJSON: "not json")
         }
     }
 
