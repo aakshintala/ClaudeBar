@@ -293,7 +293,7 @@ public struct CodexAPIUsageProbe: UsageProbe, @unchecked Sendable {
             accountTier = parsePlanType(planType)
         }
 
-        AppLog.probes.info("Codex API: Parsed \(quotas.count) quotas, tier=\(accountTier?.badgeText ?? "unknown")")
+        AppLog.probes.debug("Codex API: Parsed \(quotas.count) quotas, tier=\(accountTier?.badgeText ?? "unknown")")
 
         return UsageSnapshot(
             providerId: "codex",

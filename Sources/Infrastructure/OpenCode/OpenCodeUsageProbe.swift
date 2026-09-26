@@ -77,7 +77,7 @@ public struct OpenCodeUsageProbe: UsageProbe, @unchecked Sendable {
 
         let quotas = try Self.parseUsageResponse(data)
 
-        AppLog.probes.info("OpenCode probe success: 5hr \(Int(quotas[0].percentRemaining))%, weekly \(Int(quotas[1].percentRemaining))%, monthly \(Int(quotas[2].percentRemaining))%")
+        AppLog.probes.debug("OpenCode probe success: 5hr \(Int(quotas[0].percentRemaining))%, weekly \(Int(quotas[1].percentRemaining))%, monthly \(Int(quotas[2].percentRemaining))%")
 
         return UsageSnapshot(
             providerId: "opencode-go",

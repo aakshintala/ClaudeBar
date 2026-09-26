@@ -165,6 +165,10 @@ public final class QuotaHTTPServer: @unchecked Sendable {
     private var listener: NWListener?
     private let queue = DispatchQueue(label: "com.tddworks.ClaudeBar.quota-http")
 
+    /// A client that connects and sends nothing (or never finishes sending)
+    /// is cancelled after this long, so it doesn't sit open forever.
+    private let idleTimeout: TimeInterval
+
     /// NWListener reports bind failures (EADDRINUSE in particular) through its
     /// state handler *after* `start()` has already returned successfully. Without
     /// this callback the failure is invisible to the caller, which then reports a
@@ -181,9 +185,15 @@ public final class QuotaHTTPServer: @unchecked Sendable {
     /// readiness write is not guaranteed visible to the reader.
     private let stateLock = NSLock()
 
-    public init(port: UInt16, hooks: QuotaHooks? = nil, feedProvider: @escaping @Sendable () async -> Data) {
+    public init(
+        port: UInt16,
+        hooks: QuotaHooks? = nil,
+        idleTimeout: TimeInterval = 10,
+        feedProvider: @escaping @Sendable () async -> Data
+    ) {
         self.port = port
         self.hooks = hooks
+        self.idleTimeout = idleTimeout
         self.feedProvider = feedProvider
     }
 
@@ -274,6 +284,9 @@ public final class QuotaHTTPServer: @unchecked Sendable {
     private func handle(connection: NWConnection) {
         let state = ConnectionState()
         connection.start(queue: queue)
+        queue.asyncAfter(deadline: .now() + idleTimeout) { [weak connection] in
+            connection?.cancel()
+        }
         receive(on: connection, state: state)
     }
 

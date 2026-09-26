@@ -34,10 +34,32 @@ import Domain
 ///   }
 /// }
 /// ```
+
+/// Caches the access token in memory for the probe's lifetime, keyed off the
+/// JWT `exp` claim, so a normal refresh doesn't spawn `sqlite3`. Cleared on a
+/// 401 so the next call re-reads the (possibly rotated) token from disk.
+private actor CursorTokenCache {
+    private var entry: (token: String, userId: String, expiresAt: Date)?
+
+    func get() -> (token: String, userId: String)? {
+        guard let entry, entry.expiresAt > Date() else { return nil }
+        return (entry.token, entry.userId)
+    }
+
+    func set(token: String, userId: String, expiresAt: Date) {
+        entry = (token, userId, expiresAt)
+    }
+
+    func clear() {
+        entry = nil
+    }
+}
+
 public struct CursorUsageProbe: UsageProbe {
     private let networkClient: any NetworkClient
     private let timeout: TimeInterval
     private let dbPathOverride: String?
+    private let tokenCache = CursorTokenCache()
 
     private static let usageSummaryURL = "https://cursor.com/api/usage-summary"
 
@@ -71,24 +93,50 @@ public struct CursorUsageProbe: UsageProbe {
     public func probe() async throws -> UsageSnapshot {
         let dbPath = dbPathOverride ?? Self.defaultDatabasePath
 
+        let (token, userId) = try await credentials(dbPath: dbPath)
+        do {
+            return try await fetchAndParse(token: token, userId: userId)
+        } catch ProbeError.sessionExpired {
+            // Cached token was stale (rotated or revoked); drop it and retry once.
+            await tokenCache.clear()
+            let (freshToken, freshUserId) = try await credentials(dbPath: dbPath)
+            return try await fetchAndParse(token: freshToken, userId: freshUserId)
+        }
+    }
+
+    private func fetchAndParse(token: String, userId: String) async throws -> UsageSnapshot {
+        let cookie = "WorkosCursorSessionToken=\(userId)::\(token)"
+
+        AppLog.probes.debug("Cursor: Fetching usage summary...")
+
+        let response = try await fetchUsageSummary(cookie: cookie)
+        let snapshot = try Self.parseUsageSummary(response)
+
+        AppLog.probes.debug("Cursor: Probe success - \(snapshot.quotas.count) quotas found")
+        return snapshot
+    }
+
+    /// Returns the cached token/user id if it hasn't expired, otherwise reads
+    /// (and caches) a fresh one from Cursor's SQLite database.
+    private func credentials(dbPath: String) async throws -> (token: String, userId: String) {
+        if let cached = await tokenCache.get() {
+            return cached
+        }
+
         guard FileManager.default.fileExists(atPath: dbPath) else {
             AppLog.probes.error("Cursor: Database not found at \(dbPath)")
             throw ProbeError.cliNotFound("Cursor (database not found)")
         }
 
-        AppLog.probes.info("Cursor: Reading auth token from database...")
+        AppLog.probes.debug("Cursor: Reading auth token from database...")
 
         let accessToken = try readAccessToken(from: dbPath)
-        let userId = try Self.extractUserIdFromJWT(accessToken)
-        let cookie = "WorkosCursorSessionToken=\(userId)::\(accessToken)"
-
-        AppLog.probes.info("Cursor: Fetching usage summary...")
-
-        let response = try await fetchUsageSummary(cookie: cookie)
-        let snapshot = try Self.parseUsageSummary(response)
-
-        AppLog.probes.info("Cursor: Probe success - \(snapshot.quotas.count) quotas found")
-        return snapshot
+        let (userId, expiresAt) = try Self.decodeJWT(accessToken)
+        // No `exp` claim to cache against: re-read next time rather than guess a TTL.
+        if let expiresAt {
+            await tokenCache.set(token: accessToken, userId: userId, expiresAt: expiresAt)
+        }
+        return (accessToken, userId)
     }
 
     // MARK: - Token Extraction
@@ -129,6 +177,12 @@ public struct CursorUsageProbe: UsageProbe {
 
     /// Extracts the user ID (`sub` claim) from a JWT token by base64-decoding the payload.
     static func extractUserIdFromJWT(_ token: String) throws -> String {
+        try decodeJWT(token).userId
+    }
+
+    /// Decodes a JWT's payload, returning the `sub` claim and, if present, the
+    /// `exp` claim as a `Date` (used to know how long the token is cacheable).
+    static func decodeJWT(_ token: String) throws -> (userId: String, expiresAt: Date?) {
         let parts = token.split(separator: ".")
         guard parts.count >= 2 else {
             throw ProbeError.parseFailed("Invalid JWT format")
@@ -154,7 +208,8 @@ public struct CursorUsageProbe: UsageProbe {
             throw ProbeError.parseFailed("JWT payload missing 'sub' claim")
         }
 
-        return sub
+        let expiresAt = (json["exp"] as? Double).map { Date(timeIntervalSince1970: $0) }
+        return (sub, expiresAt)
     }
 
     // MARK: - API Call
