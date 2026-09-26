@@ -31,9 +31,10 @@ public enum QuotaStatus: Sendable, Equatable, Hashable, Comparable {
 
     /// Creates a pace-aware status using burn rate (usage% / timeElapsed%).
     /// Burn rate > threshold means consuming faster than the period can sustain.
-    /// Depleted is always absolute. The sub-20% critical floor is burn-rate-gated:
-    /// a slow-burn quota near zero percent is not urgent if consumption is not
-    /// accelerating. Falls back to absolute thresholds when time elapsed is 0.
+    /// Depleted is always absolute. Below 20% remaining, critical means the pace
+    /// so far exhausts the rest before reset (burn rate > 1); a quota that will
+    /// last is healthy however low it is. Falls back to absolute thresholds when
+    /// time elapsed is 0.
     ///
     /// - Parameters:
     ///   - percentRemaining: The percentage of quota remaining (0-100)
@@ -51,7 +52,9 @@ public enum QuotaStatus: Sendable, Equatable, Hashable, Comparable {
         let percentUsed = 100 - percentRemaining
         let burnRate = percentUsed / percentTimeElapsed
         if percentRemaining < 20 {
-            return burnRate > burnRateThreshold ? .critical : .healthy
+            // Not burnRateThreshold: any rate above 1 runs out before reset, and
+            // this close to empty that is hours away, not a trend to watch.
+            return burnRate > 1 ? .critical : .healthy
         }
         if burnRate > burnRateThreshold && percentRemaining < 50 {
             return .warning

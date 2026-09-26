@@ -164,6 +164,14 @@ struct QuotaStatusTests {
     }
 
     @Test
+    func `pace aware status is critical when low remaining will run out before reset even under the warning threshold`() {
+        // Live Cursor monthly: 1.8% left @ 87.8% elapsed → burn rate 1.12. Under the
+        // 1.5 warning threshold, but that pace exhausts the rest in ~12h with ~3.7 days to reset.
+        let status = QuotaStatus.from(percentRemaining: 1.8, percentTimeElapsed: 87.8, burnRateThreshold: 1.5)
+        #expect(status == .critical)
+    }
+
+    @Test
     func `pace aware status is healthy when plenty remaining despite high burn rate`() {
         // 10% used, 5% elapsed → burn rate 2.0, but 90% remaining — no warning yet
         let status = QuotaStatus.from(percentRemaining: 90, percentTimeElapsed: 5, burnRateThreshold: 1.5)

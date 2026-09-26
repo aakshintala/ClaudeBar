@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `localhost` (blocks DNS rebinding from web pages) and caps request size at 1 MB.
 
 ### Fixed
+- A quota under 20% is critical again when it will run out before reset.
+  Burn-rate gating used the 1.5x warning threshold, so Cursor monthly at 1.8%
+  left (about 12 hours of use, 3.7 days to reset) showed as healthy.
 - Cursor no longer shows "EMPTY" for Pro/paid accounts that have bonus credits.
   The probe derived remaining usage from the `used`/`limit` fields, which cover
   only the *included* base allotment; once that base is consumed (`used == limit`)
