@@ -9,39 +9,23 @@ struct CodexAPIUsageProbeTests {
 
     // MARK: - Test Helpers
 
-    private func createAuthFile(
-        at directory: URL,
-        accessToken: String = "test-access-token",
-        refreshToken: String = "test-refresh-token",
-        accountId: String? = nil,
-        lastRefresh: String? = nil
-    ) throws {
-        let codexDir = directory.appendingPathComponent(".codex", isDirectory: true)
-        try FileManager.default.createDirectory(at: codexDir, withIntermediateDirectories: true)
+    private func probe(
+        responseJSON: String,
+        statusCode: Int = 200,
+        headerFields: [String: String]? = nil
+    ) async throws -> UsageSnapshot {
+        let tempDir = try makeTemporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: tempDir) }
 
-        var tokens: [String: Any] = [
-            "access_token": accessToken,
-            "refresh_token": refreshToken
-        ]
-        if let accountId {
-            tokens["account_id"] = accountId
-        }
+        try createAuthFile(at: tempDir)
 
-        var auth: [String: Any] = [
-            "tokens": tokens
-        ]
-        if let lastRefresh {
-            auth["last_refresh"] = lastRefresh
-        } else {
-            // Set a recent last_refresh so we don't trigger a proactive refresh
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            auth["last_refresh"] = formatter.string(from: Date())
-        }
+        let mockNetwork = MockNetworkClient()
+        let response = httpResponse("https://chatgpt.com", statusCode: statusCode, headerFields: headerFields)
+        given(mockNetwork).request(.any).willReturn((Data(responseJSON.utf8), response))
 
-        let data = try JSONSerialization.data(withJSONObject: auth, options: [.prettyPrinted])
-        let filePath = codexDir.appendingPathComponent("auth.json")
-        try data.write(to: filePath)
+        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
+        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
+        return try await probe.probe()
     }
 
     // MARK: - isAvailable Tests
@@ -132,13 +116,7 @@ struct CodexAPIUsageProbeTests {
 
     @Test
     func `probe falls back to body when headers not present`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        try createAuthFile(at: tempDir)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "rate_limit": {
             "primary_window": {
@@ -151,16 +129,7 @@ struct CodexAPIUsageProbeTests {
             }
           }
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://chatgpt.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
-        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         let sessionQuota = snapshot.quotas.first { $0.quotaType == .session }
         #expect(sessionQuota != nil)
@@ -175,13 +144,7 @@ struct CodexAPIUsageProbeTests {
 
     @Test
     func `probe parses plan type from response body`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        try createAuthFile(at: tempDir)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
+        let snapshot = try await probe(responseJSON: """
         {
           "rate_limit": {
             "primary_window": {
@@ -190,16 +153,7 @@ struct CodexAPIUsageProbeTests {
           },
           "plan_type": "plus"
         }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://chatgpt.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
-        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        """)
 
         #expect(snapshot.accountTier == .custom("PLUS"))
     }
@@ -208,32 +162,18 @@ struct CodexAPIUsageProbeTests {
 
     @Test
     func `probe parses credits from response header`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        try createAuthFile(at: tempDir)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = """
-        {
-          "rate_limit": {
-            "primary_window": {
-              "used_percent": 10.0
+        let snapshot = try await probe(
+            responseJSON: """
+            {
+              "rate_limit": {
+                "primary_window": {
+                  "used_percent": 10.0
+                }
+              }
             }
-          }
-        }
-        """.data(using: .utf8)!
-
-        let response = httpResponse("https://chatgpt.com", statusCode: 200, headerFields: [
-            "x-codex-credits-balance": "750.0"
-        ])
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
-        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+            """,
+            headerFields: ["x-codex-credits-balance": "750.0"]
+        )
 
         // The real balance, no invented cap: the API reports no grant.
         let credits = try #require(snapshot.quotas.first { $0.quotaType == .timeLimit("Credits") })
@@ -246,17 +186,9 @@ struct CodexAPIUsageProbeTests {
 
     @Test
     func `probe parses a string credits balance from the body`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-        try createAuthFile(at: tempDir)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = #"{"credits": {"has_credits": true, "unlimited": false, "balance": "1234.5"}}"#.data(using: .utf8)!
-        let response = httpResponse("https://chatgpt.com", statusCode: 200)
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let probe = CodexAPIUsageProbe(credentialLoader: CodexCredentialLoader(homeDirectory: tempDir.path), networkClient: mockNetwork)
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe(
+            responseJSON: #"{"credits": {"has_credits": true, "unlimited": false, "balance": "1234.5"}}"#
+        )
 
         #expect(snapshot.quotas.map(\.balanceRemaining) == [Decimal(string: "1234.5")])
     }
@@ -265,22 +197,7 @@ struct CodexAPIUsageProbeTests {
 
     @Test
     func `probe handles empty response with no usage data`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        try createAuthFile(at: tempDir)
-
-        let mockNetwork = MockNetworkClient()
-        let responseJSON = "{}".data(using: .utf8)!
-
-        let response = httpResponse("https://chatgpt.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn((responseJSON, response))
-
-        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
-        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        let snapshot = try await probe.probe()
+        let snapshot = try await probe(responseJSON: "{}")
 
         // Should succeed but have no quotas
         #expect(snapshot.quotas.isEmpty)
@@ -290,41 +207,22 @@ struct CodexAPIUsageProbeTests {
 
     @Test
     func `probe throws sessionExpired on 401 response`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        try createAuthFile(at: tempDir)
-
-        let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://chatgpt.com", statusCode: 401)
-
-        given(mockNetwork).request(.any).willReturn((Data(), response))
-
-        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
-        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
         await #expect(throws: ProbeError.sessionExpired()) {
-            try await probe.probe()
+            try await probe(responseJSON: "", statusCode: 401)
         }
     }
 
     @Test
     func `probe throws parseFailed on invalid JSON`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        try createAuthFile(at: tempDir)
-
-        let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://chatgpt.com", statusCode: 200)
-
-        given(mockNetwork).request(.any).willReturn(("not json".data(using: .utf8)!, response))
-
-        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
-        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
         await #expect(throws: ProbeError.self) {
-            try await probe.probe()
+            try await probe(responseJSON: "not json")
+        }
+    }
+
+    @Test
+    func `probe throws executionFailed on HTTP 500`() async throws {
+        await #expect(throws: ProbeError.self) {
+            try await probe(responseJSON: "", statusCode: 500)
         }
     }
 
@@ -345,56 +243,12 @@ struct CodexAPIUsageProbeTests {
             try await probe.probe()
         }
     }
-
-    @Test
-    func `probe throws executionFailed on HTTP 500`() async throws {
-        let tempDir = try makeTemporaryDirectory()
-        defer { try? FileManager.default.removeItem(at: tempDir) }
-
-        try createAuthFile(at: tempDir)
-
-        let mockNetwork = MockNetworkClient()
-        let response = httpResponse("https://chatgpt.com", statusCode: 500)
-
-        given(mockNetwork).request(.any).willReturn((Data(), response))
-
-        let loader = CodexCredentialLoader(homeDirectory: tempDir.path)
-        let probe = CodexAPIUsageProbe(credentialLoader: loader, networkClient: mockNetwork)
-
-        await #expect(throws: ProbeError.self) {
-            try await probe.probe()
-        }
-    }
 }
 
 // MARK: - Token Refresh Tests
 
 @Suite("CodexAPIUsageProbe Token Refresh Tests")
 struct CodexAPIUsageProbeTokenRefreshTests {
-
-    private func createAuthFile(
-        at directory: URL,
-        accessToken: String = "test-access-token",
-        refreshToken: String = "test-refresh-token",
-        lastRefresh: String? = nil
-    ) throws {
-        let codexDir = directory.appendingPathComponent(".codex", isDirectory: true)
-        try FileManager.default.createDirectory(at: codexDir, withIntermediateDirectories: true)
-
-        var auth: [String: Any] = [
-            "tokens": [
-                "access_token": accessToken,
-                "refresh_token": refreshToken
-            ] as [String: Any]
-        ]
-        if let lastRefresh {
-            auth["last_refresh"] = lastRefresh
-        }
-
-        let data = try JSONSerialization.data(withJSONObject: auth, options: [.prettyPrinted])
-        let filePath = codexDir.appendingPathComponent("auth.json")
-        try data.write(to: filePath)
-    }
 
     @Test
     func `probe refreshes token when lastRefresh is old and retries`() async throws {
