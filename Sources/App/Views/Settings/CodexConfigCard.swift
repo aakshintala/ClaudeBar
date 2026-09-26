@@ -1,49 +1,21 @@
 import SwiftUI
 import Domain
-import Infrastructure
 
 /// Codex provider configuration card for SettingsView.
 struct CodexConfigCard: View {
-    let monitor: QuotaMonitor
+    let provider: AIProvider
 
     @Environment(\.appTheme) private var theme
 
     @State private var codexConfigExpanded: Bool = false
+    @State private var hasCredentials = false
 
     var body: some View {
-        DisclosureGroup(isExpanded: $codexConfigExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
+        ConfigCard(isExpanded: $codexConfigExpanded) {
             codexConfigForm
         } label: {
             codexConfigHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        codexConfigExpanded.toggle()
-                    }
-                }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
     }
 
     private var codexConfigHeader: some View {
@@ -97,9 +69,6 @@ struct CodexConfigCard: View {
                 }
             }
 
-            let credentialLoader = CodexCredentialLoader()
-            let hasCredentials = credentialLoader.loadCredentials() != nil
-
             HStack(spacing: 6) {
                 Image(systemName: hasCredentials ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
                     .font(.system(size: 10))
@@ -116,5 +85,6 @@ struct CodexConfigCard: View {
                     .foregroundStyle(theme.textTertiary)
             }
         }
+        .task { hasCredentials = await provider.isAvailable() }
     }
 }

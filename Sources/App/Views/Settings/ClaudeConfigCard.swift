@@ -1,57 +1,21 @@
 import SwiftUI
 import Domain
-import Infrastructure
 
 /// Claude provider configuration card for SettingsView.
 struct ClaudeConfigCard: View {
-    let monitor: QuotaMonitor
+    let provider: AIProvider
 
-    @State private var settings = AppSettings.shared
     @Environment(\.appTheme) private var theme
 
     @State private var claudeConfigExpanded: Bool = false
     @State private var hasCredentials = false
 
     var body: some View {
-        configCard
-    }
-
-    // MARK: - Config Card
-
-    private var configCard: some View {
-        DisclosureGroup(isExpanded: $claudeConfigExpanded) {
-            Divider()
-                .background(theme.glassBorder)
-                .padding(.vertical, 12)
-
+        ConfigCard(isExpanded: $claudeConfigExpanded) {
             configForm
         } label: {
             configHeader
-                .contentShape(.rect)
-                .onTapGesture {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        claudeConfigExpanded.toggle()
-                    }
-                }
         }
-        .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(theme.cardGradient)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 14)
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    theme.glassBorder, theme.glassBorder.opacity(0.5)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1
-                        )
-                )
-        )
     }
 
     private var configHeader: some View {
@@ -124,6 +88,6 @@ struct ClaudeConfigCard: View {
                     .foregroundStyle(theme.textTertiary)
             }
         }
-        .task { hasCredentials = await ClaudeCredentialLoader().loadCredentials() != nil }
+        .task { hasCredentials = await provider.isAvailable() }
     }
 }

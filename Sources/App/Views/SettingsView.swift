@@ -116,11 +116,11 @@ struct SettingsContentView: View {
                     providerRow(provider: provider)
 
                     if provider.id == ProviderID.claude, provider.isEnabled {
-                        ClaudeConfigCard(monitor: monitor)
+                        ClaudeConfigCard(provider: provider)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                     if provider.id == ProviderID.codex, provider.isEnabled {
-                        CodexConfigCard(monitor: monitor)
+                        CodexConfigCard(provider: provider)
                             .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
