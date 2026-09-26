@@ -14,10 +14,6 @@ let project = Project(
         ],
         debug: [
             "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "DEBUG MOCKING",
-            "ENABLE_DEBUG_DYLIB": "YES",
-        ],
-        release: [
-            "SWIFT_ACTIVE_COMPILATION_CONDITIONS": "MOCKING",
         ]
     ),
     targets: [
@@ -79,7 +75,6 @@ let project = Project(
             settings: .settings(
                 base: [
                     "SWIFT_STRICT_CONCURRENCY": "complete",
-                    "ENABLE_DEBUG_DYLIB": "YES",
                     "ENABLE_PREVIEWS": "YES",
                     "CODE_SIGN_IDENTITY": "-",
                     "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",

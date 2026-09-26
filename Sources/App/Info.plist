@@ -32,8 +32,6 @@
     <string>Copyright 2025 TDDWorks. All rights reserved.</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-    <key>NSSupportsLiveActivities</key>
-    <true/>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
 </dict>
