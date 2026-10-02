@@ -63,7 +63,7 @@ When `feed.enabled` is on, `FeedServerController` runs `QuotaHTTPServer` on `127
 | `POST /hooks/session-start` | Claude Code SessionStart hook: the cached feed as context text |
 | `POST /hooks/prompt` | Claude Code UserPromptSubmit hook: speaks only when a bucket got worse this session |
 
-The hooks never trigger a probe. The only other consumer of `/quotas` is the pi status extension at `~/work/pi-extensions/extensions/status/quota.ts`; change it in step with any change to the DTO shape.
+The hooks never trigger a probe. `/quotas` has two other consumers, the pi status extension at `~/work/pi-extensions/extensions/status/quota.ts` and the agent script `~/.agents/bin/quota` (behind the `quota` skill); change both in step with any change to the DTO shape.
 
 ## Themes
 
